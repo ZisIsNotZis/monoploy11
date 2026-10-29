@@ -1,11 +1,12 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=96';
+import { render } from './ui/render.js?v=97';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
 import { speak } from './ui/voice.js';
+import { avatarSvg } from './ui/icons.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -181,9 +182,26 @@ function renderSetupRows() {
     return `<div class="setup-player">
       <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai">AI</option></select>
       <select class="char" data-i="${i}">${characterOptions(`char:${char.id}`)}</select>
+      <span class="char-preview" data-i="${i}"></span>
       <select class="team" data-i="${i}">${teams}</select>
     </div>`;
   }).join('');
+  box.querySelectorAll('.char').forEach(sel => sel.onchange = () => updatePreview(sel.closest('.setup-player')));
+  box.querySelectorAll('.setup-player').forEach(updatePreview);
+}
+
+function updatePreview(row) {
+  const value = row.querySelector('.char').value;
+  const out = row.querySelector('.char-preview');
+  if (value.startsWith('boss:')) {
+    const [, id, tier] = value.split(':');
+    const b = BOSSES.find(x => x.id === id);
+    out.innerHTML = avatarSvg(id, b?.color ?? '#999', `${b?.name ?? id}·${['简单','普通','困难'][Number(tier)-1]}`);
+  } else {
+    const id = value.slice(5);
+    const c = CHARACTERS.find(x => x.id === id);
+    out.innerHTML = avatarSvg(id, c?.color ?? '#999', c?.name ?? id);
+  }
 }
 
 function startGame() {

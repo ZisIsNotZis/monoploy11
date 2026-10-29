@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=96';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=97';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -191,7 +191,7 @@ function renderBoard(el, state, currentP, actions) {
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
         const a = t ? Math.atan2(t.y - n.y, t.x - n.x) * 180 / Math.PI : 0;
-        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="--c:${q.color};color:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}">${tokenSvg()}<span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span></span>`;
+        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="--c:${q.color};color:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="tok-avatar" style="transform:rotate(${-(a + 90)}deg)">${avatarSvg(q.charId, q.color, q.name)}</span><i class="ptr"></i></span>`;
       }).join('')}</div>
     </div>`;
   }).join('');
