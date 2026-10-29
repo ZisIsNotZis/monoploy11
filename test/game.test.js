@@ -80,13 +80,14 @@ test('five identical cards synthesize the advanced card', () => {
   assert.deepEqual(p.cards, ['rushmissile']);
 });
 
-test('boss goes first and starts with properties', () => {
+test('boss goes first with extra cash but all ground starts empty', () => {
   const s = createGame({ seed: 13, participants: [
     { name: '孙小美', charId: 'sunxiaomei', team: 'ch' },
     { name: '博士', charId: 'sunxiaomei', team: 'boss', isBoss: true, bossId: 'doctor', bossTier: 3 },
   ]});
   assert.equal(s.players[0].name, '博士');
-  assert.ok(s.players[0].properties.length >= 5);
+  assert.equal(s.players[0].properties.length, 0);
+  assert.ok(s.players.every(p => Object.values(s.properties).filter(pr => pr.ownerId === p.id).length === 0));
   assert.equal(current(s).name, '博士');
   assert.equal(s.players[0].handLimit, 16);
 });
@@ -299,4 +300,50 @@ test('leaving an interactive road event continues to adjacent plots', () => {
     leavePending(s);
     assert.equal(s.pending?.type, 'buy', `${kind} should continue to an unowned adjacent plot`);
   }
+});
+
+
+test('buying small land leaves an empty plot; the next investment builds level 1', () => {
+  const s = createGame({ seed: 31 });
+  const p = current(s);
+  const plot = s.map.plots.find(x => !x.big);
+  p.cash = 100_000;
+  s.pending = { type: 'buy', cellId: plot.id, price: 8000 };
+  buyProperty(s);
+  assert.equal(s.properties[plot.id].level, 0);
+  assert.equal(rentFor(s, plot.id), 0);
+  s.pending = { type: 'build', cellId: plot.id, cost: 3000 };
+  buildProperty(s);
+  assert.equal(s.properties[plot.id].level, 1);
+  assert.ok(rentFor(s, plot.id) > 0);
+});
+
+test('big plots do not add to the small-house street multiplier', () => {
+  const s = createGame({ seed: 32 });
+  const owner = s.players[0];
+  const streetPlots = s.map.plots.filter(p => p.street === 'A');
+  const small = streetPlots.filter(p => !p.big);
+  const big = streetPlots.find(p => p.big);
+  for (const p of small) {
+    s.properties[p.id] = { ownerId: owner.id, level: 1, street: 'A', big: false };
+    owner.properties.push(p.id);
+  }
+  const withBig = rentFor(s, small[0].id);
+  s.properties[big.id] = { ownerId: owner.id, level: 1, street: 'A', big: true, bigType: 'commercial' };
+  owner.properties.push(big.id);
+  assert.equal(rentFor(s, small[0].id), withBig);
+});
+
+
+test('a bankrupt owner leaves the building standing but unowned', () => {
+  const s = createGame({ seed: 33 });
+  const p = s.players[0];
+  const plot = s.map.plots.find(x => !x.big);
+  p.cash = 0; p.deposit = 0;
+  p.properties.push(plot.id);
+  s.properties[plot.id] = { ownerId: p.id, level: 2, street: plot.street, big: false };
+  assert.equal(pay(s, p, null, 1000, '租金'), false);
+  assert.equal(p.alive, false);
+  assert.equal(s.properties[plot.id].ownerId, null);
+  assert.equal(s.properties[plot.id].level, 2);
 });

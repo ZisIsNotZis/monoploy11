@@ -59,10 +59,6 @@ export function createGame(config = {}) {
   for (const p of players) {
     if (!p.isBoss) continue;
     p.cash = 200_000; p.deposit = 100_000;
-    for (const plot of map.plots.slice(0, 6)) {
-      p.properties.push(plot.id);
-      state.properties[plot.id] = { ownerId: p.id, level: plot.big ? 1 : 2, street: plot.street ?? null, big: plot.big, bigType: plot.big ? 'commercial' : null };
-    }
   }
   for (let i = 0; i < TUNING.startingCards; i++) {
     for (const p of players) p.cards.push(randomCard(rng));
@@ -563,7 +559,7 @@ function resolvePlot(state, p, key) {
   if (!pr || !pr.ownerId) {
     if (p.god === '土地公') {
       p.properties.push(key);
-      state.properties[key] = { ownerId: p.id, level: plot?.big ? 0 : 1, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
+      state.properties[key] = { ownerId: p.id, level: 0, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
       log(state, `土地公附身，${p.name} 直接占领 ${label}`);
       return endTurn(state);
     }
@@ -740,10 +736,11 @@ export function buyProperty(state) {
   const { cellId, price } = state.pending;
   if (p.cash < price) return state;
   const plot = state.map.plots.find(p => p.id === cellId);
+  const old = state.properties[cellId];
   p.cash -= price;
   p.properties.push(cellId);
   state.properties[cellId] = {
-    ownerId: p.id, level: plot?.big ? 0 : 1, street: plot?.street ?? null, big: !!plot?.big, bigType: null,
+    ownerId: p.id, level: old?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: old?.bigType ?? null,
   };
   log(state, `${p.name} 以 ${price} 买下 ${plot?.label ?? cellId}`);
   const queue = state.pending.queue ?? [];
@@ -849,7 +846,7 @@ function applyCard(state, p, id, target) {
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== key); }
       const plot = state.map.plots.find(x => x.id === key);
       p.properties.push(key);
-      state.properties[key] = { ownerId: p.id, level: plot?.big ? (pr?.level ?? 0) : (pr?.level ?? 1), street: node.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null };
+      state.properties[key] = { ownerId: p.id, level: pr?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null };
       return true;
     }
     case 'exchange': {
@@ -885,8 +882,18 @@ function applyCard(state, p, id, target) {
       pr.level = Math.max(1, pr.level - 1); return true;
     }
     case 'monster': {
-      const pr = state.properties[node?.id]; if (!pr) return false;
-      pr.level = Math.max(1, pr.level - 2); return true;
+      if (!node) return false;
+      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const plot = state.map.plots.find(x => x.id === key);
+      const street = plot?.street;
+      if (!street) return false;
+      let hit = 0;
+      for (const [id, pr] of Object.entries(state.properties)) {
+        if (pr.street !== street || pr.big) continue;
+        if (pr.level > 0) { pr.level -= 1; hit += 1; }
+      }
+      log(state, `怪兽卡：${street} 街所有小房屋各降 1 层（${hit} 栋）`);
+      return true;
     }
     case 'worker': {
       const pr = state.properties[node?.id]; if (!pr || pr.ownerId !== p.id) return false;

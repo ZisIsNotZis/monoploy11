@@ -4,7 +4,7 @@ export const teamOf = (p) => p.team;
 
 export function ownsStreet(state, ownerId, street) {
   return Object.entries(state.properties)
-    .filter(([, pr]) => pr.ownerId === ownerId && pr.street === street)
+    .filter(([, pr]) => pr.ownerId === ownerId && pr.street === street && !pr.big && pr.level > 0)
     .length;
 }
 
@@ -16,10 +16,11 @@ export function plotIdOf(state, ref) {
 export function rentFor(state, ref) {
   const cellId = plotIdOf(state, ref);
   const pr = state.properties[cellId];
-  const cell = state.map.nodes.find(n => n.plotId === cellId);
-  if (!pr || !cell) return 0;
+  const plot = state.map.plots.find(p => p.id === cellId);
+  if (!pr || !plot) return 0;
   if (pr.closed > 0) return 0;
   if (pr.big && (!pr.bigType || pr.bigType === 'park')) return 0;
+  if (!pr.big && !(pr.level > 0)) return 0;
   const level = Math.max(1, pr.level);
   const base = TUNING.rentBase[level] ?? TUNING.rentBase[1];
   const chain = pr.big ? 1 : Math.pow(TUNING.streetMultiplier, Math.max(0, ownsStreet(state, pr.ownerId, pr.street) - 1));
@@ -36,7 +37,7 @@ export function buyPrice(state, ref) {
 }
 
 export function buildCost(level) {
-  return TUNING.buildCost[level] ?? 0;
+  return TUNING.buildCost[level === 0 ? 1 : level] ?? 0;
 }
 
 export function assetsOf(state, p) {
@@ -44,7 +45,7 @@ export function assetsOf(state, p) {
   for (const id of p.properties) {
     const pr = state.properties[id];
     if (!pr) continue;
-    v += buyPrice(state, id) + TUNING.buildCost[pr.level] * 0.6;
+    v += buyPrice(state, id) + (pr.level > 0 ? TUNING.buildCost[pr.level] * 0.6 : 0);
   }
   return Math.round(v);
 }

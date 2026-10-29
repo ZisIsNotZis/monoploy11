@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=65';
+import { CARD_DEFS, current } from '../engine/game.js?v=66';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
