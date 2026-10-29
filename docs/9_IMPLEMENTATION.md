@@ -30,7 +30,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 | `src/data/maps/grid-manor.js` | 当前 25×17 网格地图（路面/地产/街区） |
 | `src/data/maps/test-manor.js` | 旧环图测试数据，只用于回归测试 |
 | `src/ui/render.js` | 网格棋盘、侧栏、日志、底部情境区、tooltip |
-| `test/*.test.js` | 40 项规则/地图测试 |
+| `test/*.test.js` | 41 项规则/地图测试 |
 
 ## 地图模型
 

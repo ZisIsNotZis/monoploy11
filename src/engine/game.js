@@ -292,6 +292,14 @@ export function endTurn(state) {
     state.landingBuilt = [];
   }
 
+  if (state.passPrompt) {
+    state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
+    state.passPrompt = null;
+    state.phase = 'resolve';
+    log(state, `${current(state).name} 经过${state.pending.type === 'bank' ? '银行' : '乐透'}，可以${state.pending.type === 'bank' ? '存取款' : '买一注'}`);
+    return state;
+  }
+
   const cur = current(state);
   if (cur?.status === '乌龟' && cur.statusDays <= 0) {
     cur.status = null;
@@ -390,7 +398,7 @@ export function roll(state, diceCount = 1) {
   if (state.phase === 'resolve' && !state.pending && state.passPrompt) {
     state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
   }
-  state.passPrompt = null;
+  if (!state.pending || state.pending.fromPass) state.passPrompt = null;
   return result;
 }
 

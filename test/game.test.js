@@ -443,3 +443,12 @@ test('passing a mysterious merchant does not open the merchant panel', () => {
   assert.notEqual(s.pending?.type, 'merchant');
   assert.ok(p.position !== '4,2');
 });
+
+test('passing a bank opens the bank panel after the landing is resolved', () => {
+  const s = createGame({ seed: 41 });
+  const p = current(s);
+  p.position = '2,9'; p.facing = '2,10'; p.lastNode = '2,8'; p.forcedDice = 5;
+  roll(s, 1);
+  assert.equal(s.pending?.type, 'bank');
+  assert.equal(s.pending?.fromPass, true);
+});
