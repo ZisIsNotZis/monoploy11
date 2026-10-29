@@ -99,3 +99,15 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 - 结盟/背叛、AI、16 张图、热斗/抢房未实现。
 - 体验层素材/语音/BGM 未实现。
 - 数值全是近似；乐透 10 天、银行 30 天为暂定。
+
+## 2026-10 UI 修订
+
+- 交叉点方向：`state.pending.type === 'direction'` 时，`renderBoard` 给合法路面加 `data-dir-cell` 与高亮箭头，点击调用 `actions.direction`。
+- 卡片点选：`actions.card` 遇到 `target === 'cell'` 时不弹选择器，设置 `state.mapPick = {index}`；地图所有路面加 `data-pick-cell`，点击调用 `actions.pickCell`，取消由 `cancel-pick` 处理。
+- `#hand` 在有待处理选择时加 `.choice`，让 `#choice` 成为全宽块；否则选择面板会缩成右侧一条。
+- 商店/神秘人/研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))`，卡面 `.shop-card` 是方形图 + 价格，不显示名字。
+- 侧栏拖动：`#sideGrip` 改 `--side-w`，`#desk` 与 `#side` 共用该变量；松手后重绘棋盘。
+- 落点 case 已拆开：bank/lottery/shop/stock/magic/news/merchant 各自打开自己的 pending；新闻、魔法屋不再无反应，乐透不再弹商店。
+- 空白路面不渲染 `.gicon`；放置物 `.occs` 默认占满格；特殊路面 + 放置物时各 70%，左上/右下叠放。
+- 金额飘字从 `[data-player]` 的地图 token 取 `getBoundingClientRect`，用 fixed 定位挂到 body。
+

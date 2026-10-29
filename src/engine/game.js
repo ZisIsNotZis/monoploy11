@@ -674,13 +674,22 @@ function resolveLanding(state, p) {
       return endTurn(state);
     }
     case 'bank':
+      state.pending = { type: 'bank', cellId: cell.id };
+      log(state, `${p.name} 进入银行`);
+      return state;
     case 'stock':
+      state.pending = { type: 'stock', cellId: cell.id };
+      log(state, `${p.name} 进入证券交易所`);
+      return state;
     case 'lottery':
+      state.pending = { type: 'lottery', cellId: cell.id };
+      log(state, `${p.name} 进入乐透`); 
+      return state;
     case 'shop':
       state.shopOffer = makeOffer(state, 9, [1_000, 2_000, 3_000, 4_000]);
       state.shopBought = 0; state.shopLimit = 3;
       state.pending = { type: 'shop', cellId: cell.id };
-      log(state, `${p.name} 进入 ${cell.label}`);
+      log(state, `${p.name} 进入商店`);
       return state;
     case 'merchant':
       state.shopOffer = makeOffer(state, 6, [1_000]);
@@ -689,7 +698,13 @@ function resolveLanding(state, p) {
       log(state, `${p.name} 遇到神秘人`);
       return state;
     case 'magic':
+      state.pending = { type: 'magic', cellId: cell.id };
+      log(state, `${p.name} 进入魔法屋`);
+      return state;
     case 'news':
+      state.pending = { type: 'news', cellId: cell.id };
+      log(state, `${p.name} 进入新闻`);
+      return state;
     default:
       if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
       if (state.passPrompt) {

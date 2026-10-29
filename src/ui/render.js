@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=53';
+import { CARD_DEFS, current } from '../engine/game.js?v=63';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -13,7 +13,7 @@ const KIND_TAG = {
 };
 const BIG_TAG = { commercial: '商', hotel: '饭', bookstore: '书', energy: '能', realestate: '地', research: '研', park: '公' };
 const BIG_NAME = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
-const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机', empty:'·' };
+const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机' };
 const OCC_ICON = { god:'神', dog:'狗', beggar:'乞', merchant:'秘', mine:'雷', dynamite:'炸', timebomb:'弹', banana:'绊', jelly:'冻', trap:'陷', roadblock:'障' };
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
@@ -41,7 +41,9 @@ export function render(root, state, actions) {
   renderPlayers(root.players, state, p);
   renderBoard(root.board, state, p);
   renderLog(root.log, state);
-  if (state.pending || state.phase === 'over') {
+  const choosing = !!state.pending || !!state.mapPick || state.phase === 'over';
+  root.hand.classList.toggle('choice', choosing);
+  if (choosing) {
     root.choice.hidden = false;
     root.cards.hidden = true;
     root.dice.hidden = true;
@@ -111,6 +113,8 @@ function renderBoard(el, state, currentP) {
   for (const plot of map.plots ?? []) for (const c of plot.cells) plotCells.set(`${c.x},${c.y}`, plot);
   const nodes = Object.fromEntries(map.nodes.map(n => [n.id, n]));
   const dir = currentP ? (currentP.facing ?? currentP.lastNode) : null;
+  const dirOptions = new Set(state.pending?.type === 'direction' ? state.pending.options : []);
+  const pickMode = !!state.mapPick;
   const cur = currentP ? nodes[currentP.position] : null;
   const tgt = dir ? nodes[dir] : null;
   const angle = cur && tgt ? Math.atan2(tgt.y - cur.y, tgt.x - cur.x) * 180 / Math.PI : null;
@@ -133,16 +137,22 @@ function renderBoard(el, state, currentP) {
   const roads = map.nodes.map(n => {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
-    const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '·' : '?');
+    const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '' : '?');
     const title = `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}${n.adjacentPlots?.length ? '｜邻接 ' + n.adjacentPlots.length + ' 块地产' : ''}`;
-    return `<div class="cell" data-cell="${n.id}" title="${title}"
+    const dirTarget = dirOptions.has(n.id);
+    const extra = dirTarget ? 'dir-target' : pickMode ? 'pick-target' : '';
+    const attr = dirTarget ? ` data-dir-cell="${n.id}"` : pickMode ? ` data-pick-cell="${n.id}"` : '';
+    const cur = state.map.nodes.find(x => x.id === currentP?.position);
+    const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
+    return `<div class="cell ${extra}${!ground ? ' no-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${title}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
-      <div class="gicon ${place ? 'small' : ''}">${ground}</div>
+      ${ground ? `<div class="gicon">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
+      ${dirTarget ? `<i class="dir-mark" style="--a:${da}deg"></i>` : ''}
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
         const a = t ? Math.atan2(t.y - n.y, t.x - n.x) * 180 / Math.PI : 0;
-        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
+        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
       }).join('')}</div>
     </div>`;
   }).join('');
@@ -154,6 +164,8 @@ function renderBoard(el, state, currentP) {
   el.style.justifyContent = 'center';
   el.innerHTML = `<div class="grid-fit" style="width:${Math.round(W * scale)}px;height:${Math.round(H * scale)}px">` +
     `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${plots}${roads}</div></div>`;
+  el.querySelectorAll('[data-dir-cell]').forEach(c => c.onclick = () => actions.direction(c.dataset.dirCell));
+  el.querySelectorAll('[data-pick-cell]').forEach(c => c.onclick = () => actions.pickCell(c.dataset.pickCell));
 }
 
 const short = n => n >= 1000 ? Math.round(n / 1000) + 'k' : String(n);
@@ -181,6 +193,12 @@ function renderChoice(el, state, p, actions) {
       <table class="rank"><thead><tr><th>#</th><th>角色</th><th>队伍</th><th>资产</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     return;
   }
+  if (state.mapPick) {
+    const name = CARD_DEFS[current(state).cards[state.mapPick.index]]?.name ?? '卡片';
+    el.innerHTML = `<h3>${name}</h3><p class="hint">直接点地图上高亮的路面</p><button data-act="cancel-pick">取消</button>`;
+    el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
+    return;
+  }
   const pending = state.pending;
   if (!pending) return;
   const box = (title, body) => `<h3>${title}</h3>${body}`;
@@ -197,8 +215,7 @@ function renderChoice(el, state, p, actions) {
     html = box('选择大型建筑', `<div class="offers">${['commercial','hotel','bookstore','energy','realestate','research']
       .map(t => `<button class="offer" data-big="${t}"><b>${BIG_NAME[t]}</b><span>${t === 'commercial' ? '转盘租金' : t === 'hotel' ? '强制住店' : t === 'bookstore' ? '离店得卡' : t === 'energy' ? '对手买卡更贵' : t === 'realestate' ? '己方租金减免' : '研发进阶卡'}</span></button>`).join('')}</div>`);
   } else if (pending.type === 'direction') {
-    html = box('选择方向', pending.options.map(id =>
-      `<button data-dir="${id}">${state.map.nodes.find(n => n.id === id).label}</button>`).join(''));
+    html = box('选择方向', `<p class="hint">直接点地图上高亮的路面</p>`);
   } else if (pending.type === 'bank') {
     html = box('银行', `<input id="amount" type="number" value="10000" step="1000">
       <div><button data-act="deposit">存款</button><button data-act="withdraw">取款</button>
@@ -208,11 +225,12 @@ function renderChoice(el, state, p, actions) {
       <button data-buy="${s.id}">买 10</button><button data-sell="${s.id}">卖 10</button></div>`).join('') +
       `<button data-act="leave">关闭</button>`);
   } else if (pending.type === 'lottery') {
-    html = box('乐透', `<p>票价 ${TUNING.lotteryTicket}；买 1–30 的号码，每 10 天开奖；奖池 ${state.lottery.jackpot}</p>
+    const mine = state.lottery.tickets.filter(t => t.playerId === p.id).length;
+    html = box(`乐透 · 已买 ${mine} 注`, `<p>票价 ${TUNING.lotteryTicket}；奖池 ${state.lottery.jackpot}</p>
       <div class="numgrid">${Array.from({ length: 30 }, (_, i) => {
         const n = i + 1, sold = state.lottery.sold.includes(n);
         return `<button data-lottery="${n}" ${sold ? 'disabled' : ''}>${n}</button>`;
-      }).join('')}</div><button data-act="skip">离开</button>`);
+      }).join('')}</div><button data-act="leave">离开</button>`);
   } else if (pending.type === 'shop' || pending.type === 'merchant' || pending.type === 'research') {
     const title = pending.type === 'shop' ? `商店 ${state.shopBought}/${state.shopLimit}` :
       pending.type === 'merchant' ? `神秘人 ${state.shopBought}/${state.shopLimit}` : `研究所 ${state.shopBought}/${state.shopLimit}`;
@@ -220,9 +238,11 @@ function renderChoice(el, state, p, actions) {
     const offers = (state.shopOffer ?? []).map((item, i) => {
       const price = pending.type === 'shop' && p.talents.includes('shop_discount') ? Math.round(item.price / 2) : item.price;
       const off = state.shopBought >= state.shopLimit ? 'disabled' : '';
-      return `<button class="offer" data-${key}="${i}" ${off}><b>${CARD_DEFS[item.id]?.name ?? item.id}</b><span>${price}</span></button>`;
+      const name = CARD_DEFS[item.id]?.name ?? item.id;
+      return `<button class="shop-card" data-${key}="${i}" ${off} title="${name}：${CARD_DESC[item.id] ?? ''}">
+        <span class="shop-art">${name.slice(0, 1)}</span><span class="shop-price">${price}</span></button>`;
     }).join('');
-    html = box(title, `<div class="offers">${offers}</div><button data-act="skip">离开</button>`);
+    html = box(title, `<div class="shop-grid">${offers}</div><button data-act="skip">离开</button>`);
   } else if (pending.type === 'magic') {
     html = box('魔法屋', `<button data-magic="money">获得 10000</button>
       <button data-magic="lose">随机对手 -10000</button>

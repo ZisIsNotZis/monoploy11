@@ -172,3 +172,44 @@ button { font: inherit; }
 #dice { order: 0; align-self: flex-end; flex-direction: row; border: 0; padding: 0 8px 4px 0; gap: 4px; }
 #cards { order: 1; display: flex; flex-direction: row; gap: 0; align-items: flex-end; justify-content: flex-start; overflow: visible; min-height: 82px; padding: 0 4px; flex: 0 0 auto; width: 100%; }
 .card { flex: 0 0 74px; transform-origin: 50% 100%; }
+
+/* 2026-10 交互修订：可调侧栏、地图目标、图标叠放、商店自适应 */
+#desk { grid-template-columns: minmax(0, 1fr) var(--side-w, 390px); }
+#side { width: var(--side-w, 390px); position: relative; }
+#sideGrip { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 30; }
+#sideGrip:hover { background: rgba(216, 161, 63, .35); }
+@media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) var(--side-w, 300px); } }
+
+.cell { cursor: default; }
+.cell.no-ground { background: #171b21; }
+.cell.has-occ { cursor: pointer; }
+.cell .gicon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; font-size: 22px; color: #d9dde5; pointer-events: none; }
+.cell .occs { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; color: #ffd166; font-size: 26px; line-height: 1; pointer-events: none; }
+.cell.has-occ .gicon { width: 70%; height: 70%; inset: 0 auto auto 0; font-size: 15px; opacity: .9; }
+.cell.has-occ .occs { width: 70%; height: 70%; inset: auto 0 0 auto; font-size: 15px; background: rgba(0,0,0,.18); border-radius: 3px; }
+.cell.dir-target { border-color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); z-index: 6; cursor: pointer; }
+.cell.dir-target:hover { background: #3a2f18; }
+.dir-mark { z-index: 8; position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid var(--gold); transform: translate(-50%, -50%) rotate(var(--a)); pointer-events: none; filter: drop-shadow(0 0 2px #000); }
+.cell.pick-target { border-color: #5aa9e6; box-shadow: inset 0 0 0 2px #5aa9e6; z-index: 6; cursor: crosshair; }
+.cell.pick-target:hover { background: #16283a; }
+
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 6px; align-items: start; margin: 4px 0 6px; }
+#choice .shop-card, #hand.choice .shop-card, .shop-card {
+  width: 100%; aspect-ratio: 1; padding: 3px 3px 2px; margin: 0; display: flex; flex-direction: column; gap: 1px;
+  align-items: stretch; justify-content: stretch; background: #20242b; border: 1px solid var(--line); border-radius: 5px;
+  overflow: hidden;
+}
+.shop-card:hover { border-color: #8a93a3; }
+.shop-card .shop-art { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; border-radius: 3px; background: repeating-linear-gradient(135deg, #2a303a 0 6px, #242a33 6px 12px); color: #9aa3b2; font-size: 20px; }
+.shop-card .shop-price { flex: 0 0 auto; text-align: center; color: var(--gold); font-size: 10px; line-height: 1.15; }
+.shop-card:disabled { opacity: .35; }
+
+.money-float.map-float { position: fixed; z-index: 80; font-size: 42px !important; font-weight: 800; line-height: 1; pointer-events: none; text-shadow: 0 2px 8px #000, 0 0 2px #000; animation: floatMapUp 1.2s ease-out forwards; }
+@keyframes floatMapUp {
+  from { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
+  to { opacity: 0; transform: translate(-50%, -100%) translateY(-46px); }
+}
+
+.money-float.map-float { right: auto !important; width: auto; white-space: nowrap; }
+.cell.no-ground .occs { font-size: 30px; }
+#sideGrip::after { content: ''; position: absolute; left: 3px; top: 50%; width: 2px; height: 34px; margin-top: -17px; border-radius: 1px; background: rgba(216,161,63,.55); }

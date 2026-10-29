@@ -2,8 +2,8 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=53';
-import { render } from './ui/render.js?v=53';
+} from './engine/game.js?v=63';
+import { render } from './ui/render.js?v=63';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 
@@ -30,6 +30,15 @@ const actions = {
     });
   },
   direction(id) { chooseDirection(state, id); rerender(); },
+  pickCell(id) {
+    if (!state?.mapPick) return;
+    const { index } = state.mapPick;
+    state.mapPick = null;
+    const before = snapshot();
+    useCard(state, index, id);
+    rerender();
+    showMoneyDelta(before);
+  },
   act(name) {
     const before = snapshot();
     if (name === 'buy') buyProperty(state);
@@ -37,18 +46,19 @@ const actions = {
     else if (name === 'skip') skipPending(state);
     else if (name === 'next' || name === 'leave') leavePending(state);
     else if (name === 'news') doNews(state);
+    else if (name === 'cancel-pick') { state.mapPick = null; rerender(); return; }
     else if (name === 'deposit') doBank(state, 'deposit', numberInput());
     else if (name === 'withdraw') doBank(state, 'withdraw', numberInput());
     rerender(); showMoneyDelta(before);
   },
   openStock() { openStock(state); rerender(); },
   openBank() { openBank(state); rerender(); },
-  stock(id, qty, side) { doStock(state, id, qty, side); rerender(); },
-  shop(index) { doShop(state, index); rerender(); },
-  research(index) { doResearch(state, index); rerender(); },
-  merchant(index) { doMerchant(state, index); rerender(); },
-  magic(effect) { doMagic(state, effect); rerender(); },
-  lottery(number) { doLottery(state, number); rerender(); },
+  stock(id, qty, side) { const before = snapshot(); doStock(state, id, qty, side); rerender(); showMoneyDelta(before); },
+  shop(index) { const before = snapshot(); doShop(state, index); rerender(); showMoneyDelta(before); },
+  research(index) { const before = snapshot(); doResearch(state, index); rerender(); showMoneyDelta(before); },
+  merchant(index) { const before = snapshot(); doMerchant(state, index); rerender(); showMoneyDelta(before); },
+  magic(effect) { const before = snapshot(); doMagic(state, effect); rerender(); showMoneyDelta(before); },
+  lottery(number) { const before = snapshot(); doLottery(state, number); rerender(); showMoneyDelta(before); },
   chooseBig(type) { doChooseBig(state, type); rerender(); },
   again() { showSetup(); },
   card(i) {
@@ -57,6 +67,11 @@ const actions = {
     if (!id) return;
     const def = CARD_DEFS[id];
     if (!def) return;
+    if (def.target === 'cell') {
+      state.mapPick = { index: i, kind: 'cell' };
+      rerender();
+      return;
+    }
     if (def.target !== 'self' && def.target !== 'all') {
       renderTargetPicker(state, p, i, def.target);
       return;
@@ -75,18 +90,22 @@ function snapshot() {
 
 function showMoneyDelta(before) {
   if (!before) return;
-  const rows = root.players.children;
-  state.players.forEach((p, i) => {
+  state.players.forEach(p => {
     const old = before.find(x => x.id === p.id);
     if (!old) return;
     const delta = (p.cash + p.deposit) - (old.cash + old.deposit);
     if (!delta) return;
-    const row = rows[i];
-    if (!row) return;
+    const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
+    const rect = tok?.getBoundingClientRect();
     const span = document.createElement('span');
-    span.className = 'money-float ' + (delta > 0 ? 'up' : 'down');
+    span.className = 'money-float map-float ' + (delta > 0 ? 'up' : 'down');
     span.textContent = (delta > 0 ? '+' : '') + delta.toLocaleString();
-    row.appendChild(span);
+    if (rect) {
+      span.style.position = 'fixed';
+      span.style.left = `${rect.left + rect.width / 2}px`;
+      span.style.top = `${rect.top - 4}px`;
+    }
+    document.body.appendChild(span);
     setTimeout(() => span.remove(), 1300);
   });
 }
@@ -146,6 +165,24 @@ function rerender() {
   if (state) render(root, state, actions);
 }
 
+function initSideResize() {
+  const side = $('#side'), grip = $('#sideGrip');
+  if (!grip) return;
+  let dragging = false;
+  grip.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    dragging = true;
+    grip.setPointerCapture(e.pointerId);
+  });
+  grip.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const w = Math.max(300, Math.min(680, window.innerWidth - e.clientX));
+    document.documentElement.style.setProperty('--side-w', `${Math.round(w)}px`);
+  });
+  grip.addEventListener('pointerup', () => { if (dragging) { dragging = false; rerender(); } });
+  grip.addEventListener('pointercancel', () => { dragging = false; });
+}
+
 function startGame() {
   const mode = $('#mode').value;
   const count = Number($('#count').value);
@@ -173,6 +210,7 @@ function showSetup() { $('#setup').hidden = false; }
 $('#boss').innerHTML = BOSSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 $('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'; };
 $('#start').onclick = startGame;
+initSideResize();
 showSetup();
 
 const qs = new URLSearchParams(location.search);

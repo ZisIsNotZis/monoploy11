@@ -250,3 +250,28 @@ test('grid map has adjacent plots, including 2x2 big plots', () => {
   assert.ok(plots.some(p => p.big && p.cells.length === 4));
   assert.ok(s.map.nodes.some(n => n.adjacentPlots.length >= 1));
 });
+
+
+test('landing on lotto/news/magic/shop opens the matching panel, not a shop for everything', () => {
+  for (const kind of ['shop', 'lottery', 'news', 'magic']) {
+    const s = createGame({ seed: 21 });
+    const cell = s.map.nodes.find(n => n.kind === kind);
+    const p = current(s);
+    s.pending = null; s.phase = 'action';
+    p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+    roll(s, 1);
+    assert.equal(s.pending?.type, kind, `${kind} should open ${kind}, got ${s.pending?.type}`);
+  }
+});
+
+test('lotto allows buying several different numbers in one visit', () => {
+  const s = createGame({ seed: 22 });
+  const p = current(s);
+  s.pending = { type: 'lottery' };
+  p.cash = 100_000;
+  doLottery(s, 3);
+  doLottery(s, 4);
+  assert.equal(s.pending.type, 'lottery');
+  assert.deepEqual(s.lottery.tickets.map(t => t.number), [3, 4]);
+  assert.equal(s.lottery.tickets.length, 2);
+});
