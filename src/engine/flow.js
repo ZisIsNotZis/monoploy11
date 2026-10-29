@@ -240,6 +240,7 @@ async function movePhase(state, p, steps, ui) {
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
+    if (p.stopNow) { p.stopNow = 0; return false; }
   }
   return false;
 }
@@ -340,7 +341,7 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
     if (forward) { p.position = forward.to; p.lastNode = cellId; }
     log(state, `${p.name} 踩到香蕉皮，向前滑 1 格`);
   }
-  else if (occ.kind === 'roadblock' || occ.kind === 'trap') { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停止移动`); }
+  else if (occ.kind === 'roadblock' || occ.kind === 'trap') { p.stopNow = 1; log(state, `${p.name} 碰到${occ.kind}，停止移动`); }
   else { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停留 1 天`); }
 }
 
