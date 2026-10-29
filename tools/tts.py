@@ -41,15 +41,36 @@ LINES = {
 }
 async def main():
     root = Path('assets/voice')
+    jobs = []
     for cid, voice in VOICES.items():
         out = root / cid
         out.mkdir(parents=True, exist_ok=True)
         for event, lines in LINES.items():
             for i, line in enumerate(lines):
                 path = out / f'{event}-{i}.mp3'
-                if path.exists():
+                if path.exists() and path.stat().st_size > 1000:
                     continue
-                await edge_tts.Communicate(line.replace('{n}', NAMES[cid]), voice).save(str(path))
-                print(path)
+                jobs.append((path, line.replace('{n}', NAMES[cid]), voice))
+    sem = asyncio.Semaphore(16)
+    async def one(job):
+        path, text, voice = job
+        async with sem:
+            tmp = path.with_suffix('.tmp')
+            for attempt in range(3):
+                try:
+                    await edge_tts.Communicate(text, voice).save(str(tmp))
+                    if not tmp.exists() or tmp.stat().st_size < 1000:
+                        raise RuntimeError('empty audio')
+                    tmp.replace(path)
+                    print(path, flush=True)
+                    return
+                except Exception as exc:
+                    tmp.unlink(missing_ok=True)
+                    if attempt == 2:
+                        print('FAILED', path, exc, flush=True)
+                    else:
+                        await asyncio.sleep(1 + attempt)
+    await asyncio.gather(*(one(j) for j in jobs))
+    print(f'done: {len(jobs)} missing at start')
 if __name__ == '__main__':
     asyncio.run(main())

@@ -5,7 +5,7 @@ let current = null;
 
 function fileFor(p, event, i) {
   const base = `./assets/voice/${p.charId}/${event}-${i}.mp3`;
-  return base;
+  return base + '?v=1';
 }
 
 export function speak(p, event, textOverride) {
@@ -26,8 +26,11 @@ export function speak(p, event, textOverride) {
     u.lang = 'zh-CN';
     u.rate = 1.05;
     const voice = VOICE_PROFILES[p.charId];
-    const found = speechSynthesis.getVoices().find(v => v.name.includes(voice?.split('-').pop() ?? ''));
-    if (found) u.voice = found;
+    const voices = speechSynthesis.getVoices();
+    const found = voices.find(v => voice && v.name.includes(voice.split('-').pop()))
+      || voices.find(v => (v.lang || '').toLowerCase().startsWith('zh'));
+    if (!found) return;
+    u.voice = found;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   };

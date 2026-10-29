@@ -1,11 +1,11 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=111';
+import { render } from './ui/render.js?v=112';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS, teamColor } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
-import { speak } from './ui/voice.js';
+import { speak } from './ui/voice.js?v=112';
 import { avatarSvg } from './ui/icons.js';
 
 const $ = s => document.querySelector(s);
