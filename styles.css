@@ -333,3 +333,12 @@ button { font: inherit; }
 .player-card-fields .team { width: 50%; margin-left: 0; justify-self: start; text-align: left; }
 .player-card-fields .ctrl { width: 48%; }
 #setup > .setup-row { justify-content: center; }
+/* 卡片宽度 = 头像 + 最宽控件；控件列不再留右侧空白 */
+#setupRows { gap: 7px; }
+.setup-player { width: 225px; flex: 0 0 225px; padding: 5px 6px; gap: 7px; }
+.player-card-avatar { width: 56px; height: 56px; flex-basis: 56px; }
+.player-card-fields { width: 148px; flex: 0 0 148px; display: flex; flex-direction: column; gap: 3px; }
+.player-card-fields .char { width: 100%; }
+.player-card-fields .team { width: 52%; }
+.player-card-fields .ctrl { width: 48%; }
+.player-card-fields select { padding: 3px 4px; }
