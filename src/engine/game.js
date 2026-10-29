@@ -397,7 +397,7 @@ export function applyCard(state, p, id, target) {
     case 'superdice': p.forcedDice = 12; return true;
     case 'turtle': if (!q) return false; q.status = '乌龟'; q.statusDays = 3; return true;
     case 'turn': if (!q) return false; { const adj = buildAdj(state.map); const exits = adj[q.position].map(e => e.to); q.facing = exits.find(x => x !== q.facing) ?? q.lastNode; return true; }
-    case 'stay': if (!q) return false; q.skipTurns += 1; return true;
+    case 'stay': if (!q) return false; q.skipMove = 1; return true;
     case 'sleep': if (!q) return false; q.status = '梦游'; q.statusDays = 2; return true;
     case 'hibernate': if (!q) return false; q.status = '冬眠'; q.statusDays = 2; return true;
     case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap': case 'timebomb':

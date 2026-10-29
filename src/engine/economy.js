@@ -90,6 +90,7 @@ export function pay(state, from, to, amount, reason) {
       doctor.cards.push(...from.cards);
       log(state, `神秘博士据为己有：接收 ${from.name} 的 ${from.cards.length} 张卡与 ${from.properties.length} 块地`);
     }
+    if (to) { if (reason === '租金') to.deposit += available; else to.cash += available; }
     from.cash = 0; from.deposit = 0; from.alive = false;
     for (const id of from.properties) { const pr = state.properties[id]; if (pr) pr.ownerId = null; }
     from.properties = []; from.cards = [];

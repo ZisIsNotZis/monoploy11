@@ -98,6 +98,7 @@ function finish(state, team) {
 async function playTurn(state, p, ui) {
   const diceCount = await actionPhase(state, p, ui);
   if (diceCount === null) return;
+  if (p.skipMove) { p.skipMove = 0; log(state, `${p.name} 停留，跳过本回合移动`); return; }
   let n;
   if (p.status === '乌龟') n = 1;
   else if (p.status === '冰冻') n = 0;
