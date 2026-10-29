@@ -160,15 +160,19 @@ function renderBoard(el, state, currentP) {
     `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${plots}${roads}</div></div>`;
 }
 
+const short = n => n >= 1000 ? Math.round(n / 1000) + 'k' : String(n);
+
 function renderPlayers(el, state, currentP) {
   el.innerHTML = state.players.map(p => {
     const cls = p.id === currentP?.id ? 'player cur' : 'player';
     return `<div class="${cls}" style="border-left-color:${p.color}">
-      <div class="ptitle"><span class="avatar" style="background:${p.color}">${p.name[0]}</span><span>${p.name}</span>
-        <span class="team">${p.team}${p.isBoss ? ` · T${p.bossTier}` : ''}</span></div>
-      <div class="prow">现金 ${p.cash.toLocaleString()} · 存款 ${p.deposit.toLocaleString()}</div>
-      <div class="prow">${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}${p.jail ? ' · 监禁' + p.jail : ''}${p.hospital ? ' · 住院' + p.hospital : ''}${(p.facing ?? p.lastNode) ? ' · 朝向 ' + (state.map.nodes.find(n => n.id === (p.facing ?? p.lastNode))?.label ?? '') : ''}</div>
-      <div class="slots"><span class="slot">神 <b>${p.god ?? '—'}</b></span><span class="slot">状态 <b>${p.status ?? '—'}</b></span><span class="slot">载具 <b>${p.vehicle ?? '—'}</b></span></div>
+      <div class="pline">
+        <span class="avatar" style="background:${p.color}">${p.name[0]}</span>
+        <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>
+        <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
+        <span class="pslots">神 ${p.god ?? '-'} 状 ${p.status ?? '-'} 载 ${p.vehicle ?? '-'}</span>
+        ${(p.jail || p.hospital) ? `<span class="bad">${p.jail ? '监' + p.jail : ''}${p.hospital ? '医' + p.hospital : ''}</span>` : ''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -262,7 +266,7 @@ function renderHand(root, state, p, actions) {
   root.cards.innerHTML = p.cards.map((id, i) => {
     const def = CARD_DEFS[id];
     const tip = `${def?.name ?? id}：${CARD_DESC[id] ?? ''}`;
-    return `<button class="card" data-card="${i}" title="${tip}">
+    return `<button class="card" data-card="${i}" style="--i:${i};z-index:${i}" title="${tip}">
       <div class="art">${(def?.name ?? id).slice(0, 1)}</div>
     </button>`;
   }).join('');

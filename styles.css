@@ -11,7 +11,7 @@ body {
 }
 button { font: inherit; }
 
-#desk { display: grid; grid-template-columns: minmax(0, 1fr) 270px; height: 100vh; }
+#desk { display: grid; grid-template-columns: minmax(0, 1fr) 390px; height: 100vh; }
 #board { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 
 #side {
@@ -94,7 +94,7 @@ button { font: inherit; }
 .rank th, .rank td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: left; }
 .big-msg { font-size: 14px; color: var(--gold); padding: 6px 0; }
 
-@media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) 230px; } }
+@media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) 300px; } }
 .player { position: relative; }
 .money-float { position: absolute; right: 4px; top: 10px; font-size: 12px; font-weight: 700; pointer-events: none; animation: floatUp 1.2s ease-out forwards; }
 .money-float.up { color: #59b36b; }
@@ -161,3 +161,15 @@ button { font: inherit; }
 #system .pill { padding: 1px 5px; }
 .player .prow { font-size: 9px; }
 .slots .slot { font-size: 8px; padding: 0 2px; }
+
+.pline { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; font-size: 10px; color: var(--muted); }
+.pline b { color: var(--text); font-size: 12px; }
+.pmeta { color: #9aa3b2; }
+.pslots { color: #7f8796; font-size: 9px; }
+.player { padding: 3px 0 4px 7px; }
+/* 底边：骰子一行靠右，卡片一行扇形叠放，错开 */
+#hand { flex-direction: column; gap: 0; min-height: 158px; }
+#dice { order: 0; align-self: flex-end; flex-direction: row; border: 0; padding: 0 8px 4px 0; gap: 4px; }
+#cards { order: 1; display: flex; align-items: flex-end; overflow: visible; min-height: 92px; padding: 0 6px 0 22px; flex: 0 0 auto; }
+.card { flex: 0 0 74px; margin-left: -46px; transform: translateY(calc(var(--i) * 1px)) rotate(calc((var(--i) - 1) * 2deg)); transform-origin: 50% 100%; }
+.card:first-child { margin-left: 0; }
