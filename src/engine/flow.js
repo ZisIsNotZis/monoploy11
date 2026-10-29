@@ -117,10 +117,10 @@ async function playTurn(state, p, ui) {
   while (true) {
     const stopped = await movePhase(state, p, steps, ui);
     if (state.over || !p.alive) return;
-    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; continue; }
+    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; p.trail = [p.position]; p.lastNode = null; continue; }
     if (!stopped) await landingPhase(state, p, ui);
     if (state.over || !p.alive) return;
-    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; continue; }
+    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; p.trail = [p.position]; p.lastNode = null; continue; }
     await groundPhase(state, p, ui);
     if (state.over || !p.alive) return;
     await postGodPhase(state, p, ui);
@@ -244,6 +244,7 @@ async function movePhase(state, p, steps, ui) {
     if (next === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
+    if (p.forceRestart != null) return false;
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
     if (p.stopNow) { p.stopNow = 0; return false; }
   }
@@ -252,6 +253,15 @@ async function movePhase(state, p, steps, ui) {
 
 async function bounceBack(state, p, ui) {
   const trail = p.trail ?? [];
+  if (trail.length < 3) {
+    p.bounceSteps = 0;
+    p.forceRestart = 2;
+    p.forceRandom = true;
+    p.trail = [p.position];
+    p.lastNode = null;
+    log(state, `${p.name} 被果冻墙弹飞，随机方向移动 2 格`);
+    return;
+  }
   const idx = Math.max(0, trail.length - 3);
   const target = trail[idx] ?? p.lastNode ?? p.position;
   const backCells = [];
@@ -266,7 +276,10 @@ async function bounceBack(state, p, ui) {
     if (ui?.step) await ui.step(state, p, cell);
   }
   p.bounceSteps = 0;
-  log(state, `${p.name} 被果冻墙沿原路弹回，立即停止移动`);
+  p.forceRestart = 0;
+  p.trail = [p.position];
+  p.lastNode = null;
+  log(state, `${p.name} 被果冻墙沿原路弹回，重新从移动阶段处理`);
 }
 
 function forceOneStep(state, p) {
@@ -349,13 +362,13 @@ async function passPhase(state, p, cellId, ui, isLast) {
     if (node.kind === 'card') { addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
     if (node.kind === 'bank') { await bankFlow(state, p, ui, true); }
     if (node.kind === 'lottery') { await lotteryFlow(state, p, ui); }
-    if (node.kind === 'teleport') { const to = portalDestination(state, cellId); if (to) { p.position = to; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); } }
+    if (node.kind === 'teleport') { const to = portalDestination(state, cellId); if (to) { p.position = to; p.trail = [to]; p.lastNode = null; p.forceRandom = true; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); } }
   }
   if (isLast) {
     const node = state.map.nodes.find(n => n.id === cellId);
     if (node?.kind === 'teleport') {
       const to = portalDestination(state, cellId);
-      if (to) { p.position = to; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); }
+      if (to) { p.position = to; p.trail = [to]; p.lastNode = null; p.forceRandom = true; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); }
     }
   }
   return false;
