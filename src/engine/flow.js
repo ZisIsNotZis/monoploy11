@@ -220,7 +220,7 @@ async function movePhase(state, p, steps, ui) {
     cameFrom = p.position;
     p.position = next;
     p.lastNode = cameFrom;
-    p.facing = next;
+    p.facing = nextForward(state, next, cameFrom);
     path.push(next);
     state.lastRoll.path = path;
     if (p.bombSteps > 0) {
@@ -238,6 +238,13 @@ async function movePhase(state, p, steps, ui) {
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
   }
   return false;
+}
+
+function nextForward(state, pos, cameFrom) {
+  const adj = buildAdj(state.map);
+  const exits = adj[pos].filter(e => edgeUsable(state.map, state.day, e));
+  const forward = exits.find(e => e.to !== cameFrom) ?? exits[0];
+  return forward?.to ?? pos;
 }
 
 function nextStep(state, p, cameFrom, first) {
@@ -472,11 +479,11 @@ async function directionPhase(state, p, ui) {
 async function bankFlow(state, p, ui) {
   const a = await ui.ask({ type: 'bank', player: p });
   if (!a || a.action === 'leave') return;
-  const keep = Math.max(0, Math.min(p.cash, Math.round(a.keep ?? p.cash)));
-  const deposit = p.cash - keep;
+  const total = p.cash + p.deposit;
+  const keep = Math.max(0, Math.min(total, Math.round(a.keep ?? p.cash)));
   p.cash = keep;
-  p.deposit += deposit;
-  log(state, `${p.name} 留下 ${keep} 现金，存入 ${deposit}`);
+  p.deposit = total - keep;
+  log(state, `${p.name} 留下 ${keep} 现金，银行存款 ${total - keep}`);
 }
 
 async function stockFlow(state, p, ui) {
@@ -619,13 +626,14 @@ async function remoteDiceFlow(state, p, ui, index, max = (1 + Math.max(0, p.vehi
   const path = pathWithin(state.map, p.position, target, max);
   if (!path || !path.length) return false;
   p.cards.splice(index, 1);
-  for (const id of path) {
+  for (let i = 0; i < path.length; i++) {
+    const id = path[i];
     p.lastNode = p.position; p.position = id;
+    p.facing = path[i + 1] ?? nextForward(state, id, p.lastNode);
     if (id === state.map.startId) p.cash += TUNING.salary;
-    const node = state.map.nodes.find(n => n.id === id);
-    if (node.kind === 'bank') await bankFlow(state, p, ui, true);
-    if (node.kind === 'lottery') await lotteryFlow(state, p, ui);
-    if (!p.alive) return true;
+    if (ui.step) await ui.step(state, p, id);
+    if (await passPhase(state, p, id, ui, i === path.length - 1)) return true;
+    if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
   }
   await landingPhase(state, p, ui);
   await groundPhase(state, p, ui);

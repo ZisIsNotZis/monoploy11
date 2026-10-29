@@ -273,9 +273,10 @@ function renderChoice(el, state, p, actions) {
     html = box('选择方向', `<p class="hint">直接点地图上高亮的路面</p>`);
   } else if (pending.type === 'bank') {
     const cash = p?.cash ?? 0;
-    html = box('银行', `<p class="hint">拖动选择留在身上的现金；其余全部存入银行。</p>
-      <input id="amount" type="range" min="0" max="${cash}" step="1000" value="${cash}">
-      <p class="hint">留下 <b id="amountOut">${cash.toLocaleString()}</b> 现金，存入 <b id="depositOut">0</b></p>
+    const total = cash + (p?.deposit ?? 0);
+    html = box('银行', `<p class="hint">拖动分配现金和存款：最左全存银行，最右全放现金。</p>
+      <input id="amount" type="range" min="0" max="${total}" step="1000" value="${cash}">
+      <p class="hint">现金 <b id="amountOut">${cash.toLocaleString()}</b> · 银行存款 <b id="depositOut">${(total - cash).toLocaleString()}</b></p>
       <div><button data-act="bank-confirm">确定</button><button data-act="leave">取消</button></div>`);
   } else if (pending.type === 'stock') {
     html = box('股票', state.stocks.map(s => `<div class="row">${s.name} ${s.price.toFixed(1)}
@@ -324,7 +325,7 @@ function renderChoice(el, state, p, actions) {
   el.querySelectorAll('button[data-magic]').forEach(b => b.onclick = () => actions.magic(b.dataset.magic));
   const amount = el.querySelector('#amount');
   if (amount && pending.type === 'bank') {
-    const max = p?.cash ?? 0;
+    const max = (p?.cash ?? 0) + (p?.deposit ?? 0);
     const out = () => { const v = Number(amount.value); el.querySelector('#amountOut').textContent = v.toLocaleString(); el.querySelector('#depositOut').textContent = (max - v).toLocaleString(); };
     amount.addEventListener('input', out);
   }
