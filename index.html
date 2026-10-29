@@ -13,27 +13,27 @@
   <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
   <div class="setup-row" id="bossRow" hidden><label>领主 <select id="boss"></select></label>
   <label>难度 <select id="tier"><option value="1">简单</option><option value="2">普通</option><option value="3">困难</option></select></label></div>
-  <div class="setup-row"><label>种子 <input id="seed" type="number" value="1"></label>
-  <button id="start">开始</button></div>
+  <div class="setup-row"><button id="start">开始</button></div>
   <p class="hint">热座：所有人由你操控；掷骰前可用卡，掷骰后回合结束。</p>
 </div>
 
 <main id="desk">
-  <section id="boardWrap">
-    <div id="hud"></div>
-    <section id="board" aria-label="棋盘"></section>
-  </section>
+  <section id="board" aria-label="棋盘"></section>
   <aside id="side">
+    <div id="system"></div>
     <div id="players"></div>
     <div id="actions"></div>
-    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+    </div>
+    <div id="logWrap">
+      <button id="logToggle">日志</button>
+      <ol id="log" hidden></ol>
+    </div>
   </aside>
 </main>
-
-<footer id="hand">
-  <div id="dice"></div>
-  <div id="cards"></div>
-</footer>
+<div id="modal" hidden></div>
 
 <script type="module" src="./src/main.js"></script>
 </body>

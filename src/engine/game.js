@@ -96,7 +96,7 @@ const CARD_LIST = [
   ['superdice', '超级骰子卡', 'self'], ['jelly', '果冻墙卡', 'cell'], ['randomdoor', '随意门卡', 'self'],
   ['portal', '传送门卡', 'player'], ['motorcycle', '机车卡', 'self'], ['car', '汽车卡', 'self'],
   ['robotdoll', '机器娃娃卡', 'self'], ['start', '启动卡', 'player'], ['mine', '地雷卡', 'cell'],
-  ['timebomb', '定时炸弹卡', 'player'], ['missile', '飞弹卡', 'player'], ['quantum', '量子飞弹卡', 'all'],
+  ['timebomb', '定时炸弹卡', 'cell'], ['missile', '飞弹卡', 'player'], ['quantum', '量子飞弹卡', 'all'],
   ['dynamite', '炸药卡', 'cell'], ['banana', '香蕉皮卡', 'cell'], ['trap', '陷阱卡', 'cell'],
   ['free', '免费卡', 'self'], ['audit', '查账卡', 'player'], ['equalpoor', '均贫卡', 'player'],
   ['equalrich', '均富卡', 'all'], ['pick', '拾取卡', 'player'], ['scheme', '谋划卡', 'player'],
@@ -261,13 +261,29 @@ export function roll(state, diceCount = 1) {
   const chaos = p.god === '糊涂神' && state.rng.float() < 0.3;
   const res = walk(state.map, state.day, p.position, p.facing, n, state.rng, { cameFrom: p.lastNode, chaos });
   for (const id of res.path) {
-    if (id === state.map.startId) p.cash += TUNING.salary;
-    const node = state.map.nodes.find(x => x.id === id);
-    if (node?.kind === 'start') log(state, `${p.name} 经过起点 +${TUNING.salary}`);
+    if (id === state.map.startId) {
+      p.cash += TUNING.salary;
+      log(state, `${p.name} 经过起点 +${TUNING.salary}`);
+    }
+    applyPass(state, p, id);
+    if (!p.alive) break;
+  }
+  // 定时炸弹：只有主动追上别人才能送出去
+  if (p.alive && p.god === '定时炸弹') {
+    for (const id of res.path) {
+      const other = state.players.find(q => q.alive && q.id !== p.id && q.position === id);
+      if (other) {
+        other.god = '定时炸弹'; other.godDays = p.godDays;
+        p.god = null; p.godDays = 0;
+        log(state, `${p.name} 追上 ${other.name}，把定时炸弹送了出去`);
+        break;
+      }
+    }
   }
   p.lastNode = res.path.length >= 2 ? res.path[res.path.length - 2] : p.position;
   p.position = res.landed;
   p.facing = null;
+  if (!p.alive) return endTurn(state);
   state.phase = 'resolve';
   if (res.pendingDirection) {
     state.pending = { type: 'direction', options: exitsOf(state, p.position, p.lastNode) };
@@ -299,6 +315,44 @@ export function chooseDirection(state, toId) {
 
 function label(state, id) {
   return state.map.nodes.find(n => n.id === id)?.label ?? id;
+}
+
+function applyPass(state, p, id) {
+  const cell = state.map.nodes.find(n => n.id === id);
+  if (!cell) return;
+  const placed = state.placements[id];
+  if (placed) {
+    delete state.placements[id];
+    const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[placed.kind];
+    if (hurt) {
+      log(state, `${p.name} 经过${placed.kind === 'mine' ? '地雷' : '炸药'}，损失 ${hurt}`);
+      damage(state, p, hurt, placed.kind);
+    } else if (placed.kind === 'timebomb') {
+      p.god = '定时炸弹'; p.godDays = 30;
+      log(state, `${p.name} 经过定时炸弹，被缠上了`);
+    } else {
+      p.skipTurns += 1;
+      log(state, `${p.name} 经过${placed.kind}，停留 1 回合`);
+    }
+    return;
+  }
+  if (cell.kind === 'card') {
+    addCard(state, p, randomCard(state.rng));
+    log(state, `${p.name} 经过卡片格，获得 1 张卡`);
+  } else if (cell.kind === 'bank') {
+    const bonus = Math.min(5_000, Math.round(p.deposit * 0.01));
+    if (bonus) { p.deposit += bonus; log(state, `${p.name} 经过银行，存款 +${bonus}`); }
+  } else if (cell.kind === 'lottery') {
+    if (p.cash >= TUNING.lotteryTicket) {
+      p.cash -= TUNING.lotteryTicket;
+      state.lottery.tickets.push(p.id);
+      log(state, `${p.name} 经过乐透，买了一张`);
+    }
+  }
+}
+
+function makeOffer(state, n, prices) {
+  return Array.from({ length: n }, () => ({ id: randomCard(state.rng), price: state.rng.pick(prices) }));
 }
 
 function drawLottery(state) {
@@ -377,20 +431,6 @@ function resolveLanding(state, p) {
     return endTurn(state);
   }
 
-  const placed = state.placements[cell.id];
-  if (placed) {
-    delete state.placements[cell.id];
-    const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[placed.kind];
-    if (hurt) {
-      log(state, `${p.name} 踩到${placed.kind === 'mine' ? '地雷' : '炸药'}，损失 ${hurt}`);
-      damage(state, p, hurt, placed.kind);
-    } else {
-      p.skipTurns += 1;
-      log(state, `${p.name} 踩到${placed.kind}，停留 1 回合`);
-    }
-    return endTurn(state);
-  }
-
   switch (cell.kind) {
     case 'property':
     case 'big': {
@@ -423,7 +463,8 @@ function resolveLanding(state, p) {
         return endTurn(state);
       }
       if (cell.bigType === 'research' && pr.ownerId === p.id) {
-        state.shopOffer = ['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor'];
+        state.shopOffer = ['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor'].map(id => ({ id, price: 5_000 }));
+        state.shopBought = 0; state.shopLimit = 1;
         state.pending = { type: 'research', cellId: cell.id };
         log(state, '研究所：选择要研发的进阶卡');
         return state;
@@ -456,8 +497,6 @@ function resolveLanding(state, p) {
       return endTurn(state);
     }
     case 'card':
-      addCard(state, p, randomCard(state.rng));
-      log(state, `${p.name} 获得 1 张卡片`);
       return endTurn(state);
     case 'god': {
       const gods = ['财神', '穷神', '福神', '衰神', '天使', '恶魔', '土地公', '糊涂神', '武神', '凶神'];
@@ -508,12 +547,14 @@ function resolveLanding(state, p) {
     case 'stock':
     case 'lottery':
     case 'shop':
-      state.shopOffer = Array.from({ length: 3 }, () => randomCard(state.rng));
+      state.shopOffer = makeOffer(state, 9, [1_000, 2_000, 3_000, 4_000]);
+      state.shopBought = 0; state.shopLimit = 3;
       state.pending = { type: 'shop', cellId: cell.id };
       log(state, `${p.name} 进入 ${cell.label}`);
       return state;
     case 'merchant':
-      state.shopOffer = Array.from({ length: 3 }, () => randomCard(state.rng));
+      state.shopOffer = makeOffer(state, 6, [1_000]);
+      state.shopBought = 0; state.shopLimit = 2;
       state.pending = { type: 'merchant', cellId: cell.id };
       log(state, `${p.name} 遇到神秘人`);
       return state;
@@ -660,7 +701,7 @@ function applyCard(state, p, id, target) {
     case 'turn': if (!q) return false; q.facing = q.lastNode; return true;
     case 'stay': if (!q) return false; q.skipTurns += 1; return true;
     case 'sleep': case 'hibernate': if (!q) return false; q.skipTurns += 2; return true;
-    case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap':
+    case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap': case 'timebomb':
       if (!node || state.placements[node.id]) return false;
       return place(state, node.id, { kind: id, ownerId: p.id });
     case 'randomdoor': {
@@ -680,7 +721,6 @@ function applyCard(state, p, id, target) {
       q.god = null; q.godDays = 0;
       damage(state, q, TUNING.bombDamage, '定时炸弹'); return true;
     }
-    case 'timebomb': if (!q) return false; q.god = '定时炸弹'; q.godDays = 30; return true;
     case 'missile': if (!q) return false; damage(state, q, TUNING.bombDamage, '飞弹'); return true;
     case 'quantum': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage * 1.5, '量子飞弹'); return true;
     case 'rushmissile': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage, '急速弹'); return true;
@@ -766,10 +806,17 @@ export function doStock(state, stockId, qty, side) {
   return state;
 }
 
+export function openStock(state) {
+  if (state.phase !== 'action' || state.pending) return state;
+  state.pending = { type: 'stock', free: true };
+  return state;
+}
+
 export function leaveStock(state) {
   if (state.pending?.type !== 'stock') return state;
+  const free = state.pending.free;
   state.pending = null;
-  return endTurn(state);
+  return free ? state : endTurn(state);
 }
 
 export function doLottery(state) {
@@ -811,48 +858,50 @@ export function doNews(state) {
   return endTurn(state);
 }
 
-export function doMerchant(state, cardId) {
+export function doMerchant(state, index) {
   if (state.pending?.type !== 'merchant') return state;
   const p = current(state);
-  const card = CARD_DEFS[cardId];
-  if (!card) return state;
-  const price = 1_000;
-  if (p.cash < price) return state;
-  p.cash -= price;
-  addCard(state, p, cardId);
+  const item = state.shopOffer?.[index];
+  if (!item) return state;
+  if (state.shopBought >= state.shopLimit) return state;
+  if (p.cash < item.price) return state;
+  p.cash -= item.price;
+  addCard(state, p, item.id);
+  state.shopBought += 1;
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
-  log(state, `${p.name} 从神秘人处花 ${price} 买到 ${card.name}`);
-  state.pending = null;
-  return endTurn(state);
+  log(state, `${p.name} 从神秘人处花 ${item.price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
+  return state;
 }
 
-export function doResearch(state, cardId) {
+export function doResearch(state, index) {
   if (state.pending?.type !== 'research') return state;
   const p = current(state);
-  if (!state.shopOffer?.includes(cardId)) return state;
-  const price = 5_000;
-  if (p.cash < price) return state;
-  p.cash -= price;
-  addCard(state, p, cardId);
-  log(state, `${p.name} 研发 ${CARD_DEFS[cardId].name}（${price}）`);
-  state.pending = null;
-  return endTurn(state);
+  const item = state.shopOffer?.[index];
+  if (!item) return state;
+  if (state.shopBought >= state.shopLimit) return state;
+  if (p.cash < item.price) return state;
+  p.cash -= item.price;
+  addCard(state, p, item.id);
+  state.shopBought += 1;
+  log(state, `${p.name} 研发 ${CARD_DEFS[item.id].name}（${item.price}）`);
+  return state;
 }
 
-export function doShop(state, cardId) {
+export function doShop(state, index) {
   if (state.pending?.type !== 'shop') return state;
   const p = current(state);
-  const card = CARD_DEFS[cardId];
-  if (!card) return state;
-  const price = Math.round(2_000 * (p.talents.includes('shop_discount') ? 0.5 : 1));
+  const item = state.shopOffer?.[index];
+  if (!item) return state;
+  if (state.shopBought >= state.shopLimit) return state;
+  const price = Math.round(item.price * (p.talents.includes('shop_discount') ? 0.5 : 1));
   if (p.cash < price) return state;
   p.cash -= price;
-  addCard(state, p, cardId);
+  addCard(state, p, item.id);
+  state.shopBought += 1;
   if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
-  log(state, `${p.name} 花 ${price} 买到 ${card.name}`);
-  state.pending = null;
-  return endTurn(state);
+  log(state, `${p.name} 花 ${price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
+  return state;
 }
 
 export function skipShop(state) {

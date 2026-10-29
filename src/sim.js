@@ -30,9 +30,9 @@ for (let g = 0; g < games; g++) {
     else if (s.pending?.type === 'magic') doMagic(s, s.rng.pick(['money', 'lose', 'card', 'jail']));
     else if (s.pending?.type === 'news') doNews(s);
     else if (s.pending?.type === 'lottery') doLottery(s);
-    else if (s.pending?.type === 'shop') doShop(s, s.shopOffer[0]);
-    else if (s.pending?.type === 'merchant') doMerchant(s, s.shopOffer[0]);
-    else if (s.pending?.type === 'research') doResearch(s, s.shopOffer[0]);
+    else if (s.pending?.type === 'shop') doShop(s, 0);
+    else if (s.pending?.type === 'merchant') doMerchant(s, 0);
+    else if (s.pending?.type === 'research') doResearch(s, 0);
     else if (s.pending?.type === 'bank') doBank(s, 'deposit', 1000);
     else if (s.pending?.type === 'stock') leaveStock(s);
     else if (s.pending) leavePending(s);

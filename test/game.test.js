@@ -58,8 +58,8 @@ test('a full hotseat game terminates without crashing', () => {
     } else if (s.pending?.type === 'magic') doMagic(s, 'money');
     else if (s.pending?.type === 'news') doNews(s);
     else if (s.pending?.type === 'lottery') doLottery(s);
-    else if (s.pending?.type === 'shop') doShop(s, s.shopOffer[0]);
-    else if (s.pending?.type === 'merchant') doMerchant(s, s.shopOffer[0]);
+    else if (s.pending?.type === 'shop') doShop(s, 0);
+    else if (s.pending?.type === 'merchant') doMerchant(s, 0);
     else if (s.pending?.type === 'bank') doBank(s, 'deposit', 1000);
     else if (s.pending?.type === 'stock') leaveStock(s);
     else if (s.pending) leavePending(s);
@@ -140,4 +140,28 @@ test('all 48 card definitions can be used without throwing', () => {
     if (def.target === 'street') target = 'A';
     assert.doesNotThrow(() => useCard(s, 0, target), `card ${id}`);
   }
+});
+
+test('passing a card cell grants a card', () => {
+  const s = createGame({ seed: 20 });
+  const p = current(s);
+  p.cards = [];
+  p.position = 'r20';
+  p.lastNode = 'r20';
+  p.facing = 'r21';
+  p.forcedDice = 1;
+  roll(s, 1);
+  assert.equal(p.cards.length, 1);
+});
+
+test('an active catcher can hand the timed bomb to another player', () => {
+  const s = createGame({ seed: 21 });
+  const p = current(s);
+  const q = s.players.find(x => x.id !== p.id);
+  p.position = 'r1'; p.lastNode = 'r0'; p.facing = 'r2'; p.forcedDice = 1;
+  p.god = '定时炸弹'; p.godDays = 10;
+  q.position = 'r2';
+  roll(s, 1);
+  assert.equal(q.god, '定时炸弹');
+  assert.equal(p.god, null);
 });
