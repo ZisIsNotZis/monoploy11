@@ -117,6 +117,7 @@ async function playTurn(state, p, ui) {
   if (state.over || !p.alive) return;
   if (!stopped) await landingPhase(state, p, ui);
   if (state.over || !p.alive) return;
+  if (p.forcedMoveDone) { p.forcedMoveDone = 0; return; }
   await groundPhase(state, p, ui);
   if (state.over || !p.alive) return;
   await postGodPhase(state, p, ui);
@@ -264,6 +265,44 @@ async function bounceBack(state, p, ui) {
   log(state, `${p.name} 被果冻墙沿原路弹回，立即停止移动`);
 }
 
+function forceOneStep(state, p) {
+  const adj = buildAdj(state.map);
+  const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
+  if (!exits.length) return null;
+  let next;
+  if (exits.length >= 3) {
+    const choices = exits.filter(e => e.to !== p.lastNode);
+    next = state.rng.pick(choices.length ? choices : exits).to;
+  } else if (p.facing && exits.some(e => e.to === p.facing)) {
+    next = p.facing;
+  } else {
+    const choices = exits.filter(e => e.to !== p.lastNode);
+    next = (choices[0] ?? exits[0]).to;
+  }
+  p.lastNode = p.position;
+  p.position = next;
+  p.trail = p.trail ?? [];
+  p.trail.push(next);
+  const forward = nextForward(state, next, p.lastNode);
+  p.facing = forward;
+  return next;
+}
+
+async function bananaChain(state, p, ui) {
+  let cellId = p.position;
+  for (let guard = 0; guard < 20; guard++) {
+    const occ = state.placements[cellId];
+    if (occ?.kind !== 'banana') break;
+    delete state.placements[cellId];
+    log(state, `${p.name} 踩到香蕉皮，强制向前移动 1 格`);
+    const next = forceOneStep(state, p);
+    if (!next) break;
+    if (ui.step) await ui.step(state, p, next);
+    cellId = next;
+  }
+  p.forcedMoveDone = 1;
+}
+
 function nextForward(state, pos, cameFrom) {
   const adj = buildAdj(state.map);
   const exits = adj[pos].filter(e => edgeUsable(state.map, state.day, e));
@@ -334,13 +373,6 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
   }
   else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 0; p.bombSteps = 30; }
   else if (occ.kind === 'jelly') { p.bounceSteps = 2; log(state, `${p.name} 碰到果冻墙，被弹回 2 格`); }
-  else if (occ.kind === 'banana') {
-    const adj = buildAdj(state.map);
-    const exits = adj[p.position] ?? [];
-    const forward = exits.find(e => e.to === p.facing) ?? exits[0];
-    if (forward) { p.position = forward.to; p.lastNode = cellId; }
-    log(state, `${p.name} 踩到香蕉皮，向前滑 1 格`);
-  }
   else if (occ.kind === 'roadblock' || occ.kind === 'trap') { p.stopNow = 1; log(state, `${p.name} 碰到${occ.kind}，停止移动`); }
   else { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停留 1 天`); }
 }
@@ -357,6 +389,7 @@ async function landingPhase(state, p, ui) {
   if (!cell) return;
   log(state, `${p.name} 停在 ${cell.label}`);
   const occ = state.placements[cell.id];
+  if (occ?.kind === 'banana') { await bananaChain(state, p, ui); return; }
   if (occ) {
     if (occ.kind === 'god' || occ.kind === 'dog' || occ.kind === 'beggar') await triggerObstacle(state, p, cell.id, occ, ui);
     else if (occ.kind === 'merchant') { delete state.placements[cell.id]; await merchantFlow(state, p, ui); }
