@@ -10,7 +10,7 @@ import { BOSSES } from './data/bosses.js';
 const $ = s => document.querySelector(s);
 const root = {
   system: $('#system'), players: $('#players'), board: $('#board'),
-  actions: $('#actions'), log: $('#log'), dice: $('#dice'), cards: $('#cards'),
+  log: $('#log'), dice: $('#dice'), cards: $('#cards'), hand: $('#hand'), choice: $('#choice'),
 };
 
 let state = null;
@@ -129,14 +129,17 @@ function renderTargetPicker(state, p, i, kind) {
       `<option value="${n.id}">${n.label}</option>`).join('')}</select>
       <button data-pickcell="1">确定</button>`;
   }
-  root.actions.innerHTML = `<h3>选择目标：${CARD_DEFS[id].name}</h3>${body}<button data-cancel="1">取消</button>`;
-  root.actions.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => {
+  root.choice.hidden = false;
+  root.cards.hidden = true;
+  root.dice.hidden = true;
+  root.choice.innerHTML = `<h3>选择目标：${CARD_DEFS[id].name}</h3>${body}<button data-cancel="1">取消</button>`;
+  root.choice.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => {
     if (b.dataset.target) useCard(state, i, b.dataset.target);
     rerender();
   });
-  const pick = root.actions.querySelector('button[data-pickcell]');
+  const pick = root.choice.querySelector('button[data-pickcell]');
   if (pick) pick.onclick = () => { useCard(state, i, $('#cellTarget').value); rerender(); };
-  root.actions.querySelector('[data-cancel]').onclick = () => rerender();
+  root.choice.querySelector('[data-cancel]').onclick = () => rerender();
 }
 
 function rerender() {

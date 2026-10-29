@@ -1,5 +1,5 @@
 :root {
-  --bg: #14161a; --panel: #1b1e24; --line: #333842; --text: #e6e8eb;
+  --bg: #14161a; --panel: #1b1e24; --line: #2b3038; --text: #e6e8eb;
   --muted: #8b93a1; --gold: #d8a13f;
 }
 * { box-sizing: border-box; }
@@ -101,3 +101,29 @@ button { font: inherit; }
 .money-float.down { color: #e05a5a; }
 @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
 .cell.path { outline: 2px solid #d8a13f; z-index: 4; }
+#log { flex: 1; max-height: none; }
+#hand.choice { display: block; overflow: auto; max-height: 52vh; min-height: 0; }
+#hand.choice h3 { margin: 2px 0 6px; color: var(--gold); font-size: 13px; }
+#hand.choice .offers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 4px 0; }
+#hand.choice .offer { display: flex; flex-direction: column; align-items: flex-start; font-size: 10px; padding: 4px 5px; }
+#hand.choice .offer b { font-size: 11px; }
+#hand.choice .offer span { color: var(--muted); }
+#hand.choice .numgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+#hand.choice .numgrid button { padding: 3px 0; font-size: 11px; }
+#hand.choice .numgrid button:disabled { opacity: .3; }
+#hand.choice input { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px; font: inherit; width: 100px; }
+#hand.choice button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; margin: 2px; cursor: pointer; }
+.money-float { font-size: 56px !important; top: 0; right: 8px; }
+#choice { flex: 1; overflow: auto; }
+#choice h3 { margin: 2px 0 6px; color: var(--gold); font-size: 13px; }
+#choice .offers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 4px 0; }
+#choice .offer { display: flex; flex-direction: column; align-items: flex-start; font-size: 10px; padding: 4px 5px; }
+#choice .offer b { font-size: 11px; }
+#choice .offer span { color: var(--muted); }
+#choice .numgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+#choice .numgrid button { padding: 3px 0; font-size: 11px; }
+#choice .numgrid button:disabled { opacity: .3; }
+#choice input { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px; font: inherit; width: 100px; }
+#choice button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; margin: 2px; cursor: pointer; }
+.cell { position: absolute; }
+.cell .face { position: absolute; right: -13px; bottom: 4px; color: #fff; font-size: 24px; text-shadow: 0 0 4px #000; pointer-events: none; z-index: 5; }

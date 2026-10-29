@@ -207,9 +207,30 @@ test('shop buys immediately and exits after three purchases', () => {
   s.pending = { type: 'shop' };
   s.shopOffer = Array.from({ length: 9 }, (_, i) => ({ id: 'mine', price: 1000 }));
   s.shopBought = 0; s.shopLimit = 3;
-  doShop(s, 0); doShop(s, 1);
+  doShop(s, 0);
+  assert.equal(s.shopOffer.length, 8);
+  doShop(s, 0);
   assert.equal(s.pending?.type, 'shop');
-  doShop(s, 2);
+  assert.equal(s.shopOffer.length, 7);
+  doShop(s, 0);
   assert.equal(s.pending, null);
   assert.equal(s.shopBought, 3);
+});
+
+test('a big property is two walkable cells sharing one property key', () => {
+  const big = TEST_MANOR.nodes.find(n => n.id === 'r10');
+  const twin = TEST_MANOR.nodes.find(n => n.id === 'br10');
+  assert.equal(big.propertyKey, 'r10');
+  assert.equal(twin.propertyKey, 'r10');
+  assert.ok(TEST_MANOR.edges.some(e => e.a === 'r10' && e.b === 'br10'));
+  assert.ok(TEST_MANOR.edges.some(e => e.a === 'br10' && e.b === 'r11'));
+});
+
+test('rent on either half of a big property uses the same owner', () => {
+  const s = createGame({ seed: 26 });
+  const p = current(s);
+  s.properties.r10 = { ownerId: p.id, level: 2, big: true, bigType: 'commercial', street: null };
+  p.properties.push('r10');
+  assert.equal(rentFor(s, 'br10'), rentFor(s, 'r10'));
+  assert.ok(rentFor(s, 'br10') > 0);
 });

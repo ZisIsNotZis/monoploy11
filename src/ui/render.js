@@ -42,9 +42,18 @@ export function render(root, state, actions) {
 
   renderPlayers(root.players, state, p);
   renderBoard(root.board, state, p);
-  renderActions(root.actions, state, p, actions);
   renderLog(root.log, state);
-  renderHand(root, state, p, actions);
+  if (state.pending || state.phase === 'over') {
+    root.choice.hidden = false;
+    root.cards.hidden = true;
+    root.dice.hidden = true;
+    renderChoice(root.choice, state, p, actions);
+  } else {
+    root.choice.hidden = true;
+    root.cards.hidden = false;
+    root.dice.hidden = false;
+    renderHand(root, state, p, actions);
+  }
 }
 
 function layout(map, W, H) {
@@ -57,13 +66,13 @@ function layout(map, W, H) {
     { nodes: [], span: H - margin * 2 - 70, horizontal: false, side: 3 },
   ];
   for (const n of map.nodes) if (n.ring !== undefined) sides[Math.floor(n.ring / 12)].nodes.push(n);
+  for (const s of sides) s.nodes.sort((a, b) => a.ring - b.ring);
   for (const s of sides) {
-    const total = s.nodes.reduce((a, n) => a + (n.kind === 'big' ? 2 : 1), 0);
+    const total = s.nodes.length;
     const unit = (s.span - gap * (s.nodes.length - 1)) / total;
     let cursor = margin;
     for (const n of s.nodes) {
-      const weight = n.kind === 'big' ? 2 : 1;
-      const len = weight * unit;
+      const len = unit;
       if (s.side === 0) coords[n.id] = { x: cursor, y: margin, w: len, h: 38 };
       if (s.side === 1) coords[n.id] = { x: W - margin - 62, y: cursor, w: 62, h: len };
       if (s.side === 2) coords[n.id] = { x: W - margin - (cursor - margin) - len, y: H - margin - 38, w: len, h: 38 };
@@ -86,7 +95,7 @@ function layout(map, W, H) {
 
 function cellTitle(n, pr, owner) {
   let s = `${n.label}：${CELL_HELP[n.kind] ?? ''}`;
-  if (n.kind === 'big') s = `${n.label}：大地产。${pr?.bigType ? BIG_NAME[pr.bigType] + '，' + BIG_HELP[pr.bigType] : '空地，第二次投资选择建筑'}`;
+  if (n.kind === 'big') s = `${pr?.bigType ? BIG_NAME[pr.bigType] : '大空地'}：${pr?.bigType ? BIG_HELP[pr.bigType] : '第二次投资选择建筑'}`;
   if (pr) s += `｜${owner?.name ?? '无主'} Lv.${pr.level}`;
   if (n.kind === 'god') s += '｜财神、穷神、福神、衰神、天使、恶魔、土地公、糊涂神、武神、凶神';
   return s;
@@ -103,22 +112,27 @@ function renderBoard(el, state, currentP) {
       stroke="${off ? '#7a2a2a' : e.kind === 'platform' ? '#8a6a2a' : '#333842'}"
       stroke-width="${e.kind === 'road' ? 2 : 3}" stroke-dasharray="${off ? '4 6' : e.kind === 'side' ? '6 4' : ''}" />`;
   }).join('');
+  const pos = currentP ? coords[currentP.position] : null;
+  const dir = currentP ? (currentP.facing ?? currentP.lastNode) : null;
+  const to = dir ? coords[dir] : null;
+  const angle = pos && to ? Math.atan2(to.cy - pos.cy, to.cx - pos.cx) * 180 / Math.PI : null;
   const cells = state.map.nodes.map(n => {
     const c = coords[n.id];
-    const pr = state.properties[n.id];
+    const key = n.propertyKey ?? n.id;
+    const pr = state.properties[key];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
-    const tag = KIND_TAG[n.kind] ?? '?';
-    const big = pr?.bigType ? BIG_TAG[pr.bigType] : '';
+    const big = pr?.bigType ? BIG_NAME[pr.bigType] : '';
     const border = owner ? owner.color : '#333842';
     const off = n.kind === 'platform' && !platformOn;
     const title = cellTitle(n, pr, owner);
     return `<div class="cell ${off ? 'off' : ''}" data-cell="${n.id}" style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;border-color:${border}" title="${title}">
-      <div class="tag">${tag}${big ? '·' + big : ''} ${n.label}</div>
+      <div class="tag">${n.kind === 'big' ? (big || '大空地') : n.label}</div>
       <div class="lvl">${pr ? 'Lv' + pr.level : ''}</div>
       ${place ? `<div class="place">${place.kind === 'mine' ? '雷' : place.kind === 'dynamite' ? '炸' : place.kind === 'timebomb' ? '弹' : '障'}</div>` : ''}
       <div class="tokens">${here.map(q => `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
+      ${n.id === currentP?.position && angle != null ? `<span class="face" style="transform:rotate(${angle}deg)">➤</span>` : ''}
     </div>`;
   }).join('');
   el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}`;
@@ -131,13 +145,13 @@ function renderPlayers(el, state, currentP) {
       <div class="ptitle"><span class="avatar" style="background:${p.color}">${p.name[0]}</span><span>${p.name}</span>
         <span class="team">${p.team}${p.isBoss ? ` · T${p.bossTier}` : ''}</span></div>
       <div class="prow">现金 ${p.cash.toLocaleString()} · 存款 ${p.deposit.toLocaleString()}</div>
-      <div class="prow">${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}${p.jail ? ' · 监禁' + p.jail : ''}${p.hospital ? ' · 住院' + p.hospital : ''}</div>
+      <div class="prow">${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}${p.jail ? ' · 监禁' + p.jail : ''}${p.hospital ? ' · 住院' + p.hospital : ''}${(p.facing ?? p.lastNode) ? ' · 朝向 ' + (state.map.nodes.find(n => n.id === (p.facing ?? p.lastNode))?.label ?? '') : ''}</div>
       <div class="slots"><span class="slot">神 <b>${p.god ?? '—'}</b></span><span class="slot">状态 <b>${p.status ?? '—'}</b></span><span class="slot">载具 <b>${p.vehicle ?? '—'}</b></span></div>
     </div>`;
   }).join('');
 }
 
-function renderActions(el, state, p, actions) {
+function renderChoice(el, state, p, actions) {
   if (state.phase === 'over') {
     const rows = [...state.players].sort((a, b) => assetsOf(state, b) - assetsOf(state, a))
       .map((x, i) => `<tr><td>${i + 1}</td><td>${x.name}</td><td>${x.team}</td><td>${assetsOf(state, x).toLocaleString()}</td><td>${x.alive ? '' : '破产'}</td></tr>`).join('');
@@ -146,10 +160,7 @@ function renderActions(el, state, p, actions) {
     return;
   }
   const pending = state.pending;
-  if (!pending) {
-    el.innerHTML = `<span class="hint">先用卡/银行/股票，再掷骰；掷骰后回合结束。</span>`;
-    return;
-  }
+  if (!pending) return;
   const box = (title, body) => `<h3>${title}</h3>${body}`;
   let html = '';
   if (pending.type === 'buy') {

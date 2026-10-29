@@ -8,9 +8,11 @@ export function ownsStreet(state, ownerId, street) {
     .length;
 }
 
+function propNode(state, key) { return state.map.nodes.find(n => n.id === key || n.propertyKey === key); }
+
 export function rentFor(state, cellId) {
-  const cell = state.map.nodes.find(n => n.id === cellId);
-  const pr = state.properties[cellId];
+  const cell = propNode(state, cellId);
+  const pr = state.properties[cellId] ?? state.properties[cell?.propertyKey];
   if (!pr || !cell) return 0;
   if (pr.closed > 0) return 0;
   if (pr.big && (!pr.bigType || pr.bigType === 'park')) return 0;
@@ -23,7 +25,7 @@ export function rentFor(state, cellId) {
 }
 
 export function buyPrice(state, cellId) {
-  const cell = state.map.nodes.find(n => n.id === cellId);
+  const cell = propNode(state, cellId);
   if (cell.kind === 'big') return 20_000;
   return 8_000;
 }

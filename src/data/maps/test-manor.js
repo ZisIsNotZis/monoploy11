@@ -80,6 +80,27 @@ addEdge('t1', 't2', 'side');
 addEdge('r5', 'p1', 'platform');
 addEdge('p1', 'r41', 'platform');
 
+// 大地产在逻辑上占两格：给每个大地产追加一个孪生节点，两格共享同一个 propertyKey。
+const bigs = nodes.filter(n => n.kind === 'big');
+for (const big of bigs) {
+  big.propertyKey = big.id;
+  const twin = {
+    ...big,
+    id: `b${big.id}`,
+    ring: big.ring + 0.5,
+    propertyKey: big.id,
+    bigGroup: big.id,
+    label: big.label,
+  };
+  nodes.push(twin);
+  const idx = edges.findIndex(e => e.a === big.id);
+  if (idx >= 0) {
+    const next = edges[idx].b;
+    edges[idx] = { a: big.id, b: twin.id, kind: 'road' };
+    edges.push({ a: twin.id, b: next, kind: 'road' });
+  }
+}
+
 export const TEST_MANOR = {
   id: 'test-manor',
   name: '测试庄园（全系统）',
