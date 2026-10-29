@@ -25,7 +25,7 @@ export function svgIcon(kind) {
   return ROAD[k] ? wrap(ROAD[k], 'road-icon') : null;
 }
 
-const wrapSt = (body) => wrap(body, 'structure-icon');
+const wrapSt = (body) => `<svg class="structure-icon" viewBox="0 0 64 64" fill="none" stroke="#e4d3b0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 /* ---------------- 小房屋 / 大建筑 ---------------- */
 function house(level) {
@@ -34,20 +34,49 @@ function house(level) {
   const y = 56 - h;
   let windows = '';
   for (let i = 0; i < lv; i++) windows += `<rect x="${24 + (i % 2) * 10}" y="${y + 8 + Math.floor(i / 2) * 8}" width="5" height="5"/>`;
-  return wrapSt(`<path d="M10 56h44"/><path d="M16 ${y}h32v${56 - y}H16z"/><path d="M12 ${y}h40L32 ${y - 10}z"/><rect x="27" y="45" width="10" height="11"/>${windows}${lv >= 4 ? '<path d="M24 20h16M32 14v20"/>' : ''}`);
+  return wrapSt(`<path d="M10 56h44"/><path d="M16 ${y}h32v${56 - y}H16z"/><path d="M12 ${y}h40L32 ${y - 10}z"/><rect x="27" y="45" width="10" height="11"/>${windows}${lv >= 2 ? '<path d="M18 50h5v5h-5zM41 50h5v5h-5z"/>' : ''}${lv >= 3 ? '<path d="M20 ' + (y + 8) + 'h5v5h-5z"/>' : ''}${lv >= 4 ? '<path d="M24 20h16M32 14v20"/>' : ''}${lv >= 5 ? '<path d="M32 6v8M28 10h8"/>' : ''}`);
 }
 function big(type, level) {
   const lv = Math.max(1, Math.min(5, level || 1));
-  if (type === 'park') return wrap('<path d="M8 56h48"/><path d="M32 56V34"/><circle cx="32" cy="24" r="14"/><path d="M22 30c4-8 16-8 20 0"/><path d="M16 56h32"/><path d="M18 48h10M36 48h10"/>');
+  if (type === 'park') return wrapSt('<path d="M8 56h48"/><path d="M32 56V34"/><circle cx="32" cy="24" r="14"/><path d="M22 30c4-8 16-8 20 0"/><path d="M16 56h32"/><path d="M18 48h10M36 48h10"/>');
   const base = '<path d="M8 56h48"/>';
-  if (type === 'commercial') return wrapSt(`${base}<path d="M10 22h44v34H10z"/><path d="M10 22l6-10h32l6 10"/><path d="M18 30h28M18 40h28M18 50h28"/>${lv >= 3 ? '<circle cx="32" cy="10" r="4"/>' : ''}${lv >= 4 ? '<path d="M14 18v-4M50 18v-4"/>' : ''}`);
-  if (type === 'hotel') return wrapSt(`${base}<path d="M16 56V18h32v38"/><path d="M16 30h32M16 42h32"/><path d="M24 18v38M40 18v38"/><path d="M20 12h24"/>${lv >= 3 ? '<path d="M22 6h20"/>' : ''}${lv >= 5 ? '<circle cx="32" cy="36" r="4"/>' : ''}`);
-  if (type === 'bookstore') return wrapSt(`${base}<path d="M12 22h40v34H12z"/><path d="M12 22l8-10h24l8 10"/><path d="M20 32h24v14H20zM24 32v14M36 32v14"/>${lv >= 3 ? '<path d="M16 26h32"/>' : ''}${lv >= 4 ? '<path d="M22 38h20"/>' : ''}`);
-  if (type === 'energy') return wrapSt(`${base}<path d="M12 56V26h14v30M38 56V20h14v36"/><path d="M19 18v8M45 12v8"/><path d="M20 38h6M38 32h14"/><path d="M32 26l-6 12h7l-2 10 8-14h-7z"/>`);
-  if (type === 'realestate') return wrapSt(`${base}<path d="M10 56V18h44v38"/><path d="M16 26h8v8h-8zM26 26h8v8h-8zM36 26h8v8h-8zM16 38h8v8h-8zM26 38h8v8h-8zM36 38h8v8h-8z"/><path d="M26 56V46h12v10"/>${lv >= 4 ? '<path d="M32 8v10"/>' : ''}`);
-  if (type === 'research') return wrapSt(`${base}<path d="M12 56V30h40v26"/><path d="M20 30V18h24v12"/><path d="M32 8v10"/><circle cx="32" cy="12" r="3"/><path d="M20 40h24M20 48h24"/>${lv >= 3 ? '<path d="M16 24h32"/>' : ''}${lv >= 4 ? '<circle cx="32" cy="44" r="4"/>' : ''}`);
-  return wrapSt(`${base}<path d="M12 56h40"/><path d="M16 56V24l16-10 16 10v32"/><path d="M24 56V38h16v18"/>`);
+  if (type === 'commercial') return wrapSt(`${base}<path d="M10 22h44v34H10z"/><path d="M10 22l6-10h32l6 10"/><path d="M18 30h28M18 40h28M18 50h28"/>`
+    + `${lv >= 2 ? '<path d="M14 26h36M18 22v8M46 22v8"/>' : ''}`
+    + `${lv >= 3 ? '<circle cx="32" cy="10" r="4"/><path d="M28 10h8M32 6v8"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M14 18v-5M50 18v-5M12 13h6M46 13h6"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M10 22l6-10h32l6 10M18 50h28"/><path d="M24 54v-4M32 54v-4M40 54v-4"/>' : ''}`);
+  if (type === 'hotel') return wrapSt(`${base}<path d="M16 56V18h32v38"/><path d="M16 30h32M16 42h32"/><path d="M24 18v38M40 18v38"/><path d="M20 12h24"/>`
+    + `${lv >= 2 ? '<path d="M20 36v12M32 36v12M44 36v12"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M22 6h20M32 2v4"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M12 24h6M46 24h6"/><circle cx="32" cy="36" r="3"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M14 14h36M20 10h24"/><path d="M18 54h28"/>' : ''}`);
+  if (type === 'bookstore') return wrapSt(`${base}<path d="M12 22h40v34H12z"/><path d="M12 22l8-10h24l8 10"/><path d="M20 32h24v14H20zM24 32v14M36 32v14"/>`
+    + `${lv >= 2 ? '<path d="M16 26h32M18 38h28"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M20 18h24"/><circle cx="32" cy="14" r="3"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M16 44h32M24 50h16"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M26 36h12v6H26z"/><path d="M16 54h32"/>' : ''}`);
+  if (type === 'energy') return wrapSt(`${base}<path d="M12 56V26h14v30M38 56V20h14v36"/><path d="M19 18v8M45 12v8"/><path d="M20 38h6M38 32h14"/><path d="M32 26l-6 12h7l-2 10 8-14h-7z"/>`
+    + `${lv >= 2 ? '<path d="M8 30h6M8 40h6M8 50h6"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M40 24h10M40 30h10M40 36h10"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M12 20h14M38 14h14"/><circle cx="19" cy="20" r="3"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M16 56V14h8v42M44 56V10h8v46"/><path d="M32 8v10M28 12h8"/>' : ''}`);
+  if (type === 'realestate') return wrapSt(`${base}<path d="M10 56V18h44v38"/><path d="M16 26h8v8h-8zM26 26h8v8h-8zM36 26h8v8h-8zM16 38h8v8h-8zM26 38h8v8h-8zM36 38h8v8h-8z"/><path d="M26 56V46h12v10"/>`
+    + `${lv >= 2 ? '<path d="M16 20h32M18 48h28"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M10 18l4-6h36l4 6"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M32 8v10M26 14h12"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M12 56V12h40v44"/><path d="M20 20h8v8h-8zM36 20h8v8h-8z"/>' : ''}`);
+  if (type === 'research') return wrapSt(`${base}<path d="M12 56V30h40v26"/><path d="M20 30V18h24v12"/><path d="M32 8v10"/><circle cx="32" cy="12" r="3"/><path d="M20 40h24M20 48h24"/>`
+    + `${lv >= 2 ? '<path d="M16 36h32M16 44h32"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M24 18v12M32 18v12M40 18v12"/>' : ''}`
+    + `${lv >= 4 ? '<circle cx="32" cy="44" r="4"/><path d="M32 40v-8"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M16 30l16-14 16 14"/><path d="M32 16V6M26 10h12"/>' : ''}`);
+  return wrapSt(`${base}<path d="M12 56h40"/><path d="M16 56V24l16-10 16 10v32"/><path d="M24 56V38h16v18"/>`
+    + `${lv >= 2 ? '<path d="M20 32h24M20 44h24"/>' : ''}`
+    + `${lv >= 3 ? '<path d="M16 24l16-10 16 10"/>' : ''}`
+    + `${lv >= 4 ? '<path d="M24 18h16M32 12v6"/>' : ''}`
+    + `${lv >= 5 ? '<path d="M12 56V18h40v38"/><path d="M32 6v12"/>' : ''}`);
 }
+
 export function structureSvg(plot, pr) {
   if (!plot) return '';
   if (plot.big) {
