@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>大富翁 11 · 文字复刻</title>
+<title>Monopoly 11</title>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div id="setup">
-  <h1>大富翁 11 · 文字复刻</h1>
-  <div class="setup-row"><label>模式 <select id="mode"><option value="free">自由乱战</option><option value="boss">领主战</option></select></label>
+  <h1>Monopoly 11</h1>
+  <div class="setup-row"><label>模式 <select id="mode"><option value="free">自由乱战</option><option value="boss">特殊角色</option></select></label>
   <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
-  <div class="setup-row" id="bossRow" hidden><label>领主 <select id="boss"></select></label>
+  <div class="setup-row" id="bossRow" hidden><label>角色 <select id="boss"></select></label>
   <label>难度 <select id="tier"><option value="1">简单</option><option value="2">普通</option><option value="3">困难</option></select></label></div>
   <div class="setup-row"><label><input type="checkbox" id="testcards"> 测试卡组</label><button id="start">开始</button></div>
-  <p class="hint">热座：所有人由你操控；掷骰前可用卡，掷骰后回合结束。</p>
+  <p class="hint">所有人由你操控；行动阶段可用卡，掷骰后进入移动和结算。</p>
 </div>
 
 <main id="desk">

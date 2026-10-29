@@ -26,10 +26,6 @@ export function createGame(config = {}) {
   const rng = makeRng(seed);
   const participants = config.participants ?? defaultParticipants();
   const order = participants.map((p, i) => ({ ...p, id: `p${i + 1}` }));
-  // 领主先手；否则 1..N
-  const bossIdx = order.findIndex(p => p.isBoss);
-  if (bossIdx > 0) order.unshift(...order.splice(bossIdx, 1));
-
   const players = order.map((p, i) => {
     const char = CHARACTER_BY_ID[p.charId] ?? CHARACTERS[0];
     return {
@@ -69,10 +65,6 @@ export function createGame(config = {}) {
     p.lastNode = null;
   });
 
-  for (const p of players) {
-    if (!p.isBoss) continue;
-    p.cash = 200_000; p.deposit = 100_000;
-  }
   const fixedHand = Array.isArray(config.startingHand) ? config.startingHand : null;
   for (let i = 0; i < (fixedHand ? fixedHand.length : TUNING.startingCards); i++) {
     for (const p of players) p.cards.push(fixedHand ? fixedHand[i] : randomCard(rng));
@@ -92,9 +84,9 @@ function defaultParticipants() {
 }
 
 function makeStocks(rng) {
-  const names = ['橙天', '蓝海', '绿野'];
+  const names = ['银行股', '地产股', '科技股', '能源股', '媒体股', '医药股', '消费股', '交通股'];
   return names.map((name, i) => ({
-    id: `s${i}`, name, price: 50 + Math.round(rng.float() * 50),
+    id: `s${i}`, name, price: 50,
     drift: TUNING.stockDrift, vol: TUNING.stockVolatility,
   }));
 }
@@ -118,6 +110,17 @@ const CARD_LIST = [
   ['green', '绿化卡', 'all'], ['disaster', '灾祸卡', 'all'], ['godfavor', '神眷卡', 'self'],
 ];
 const ADVANCED = new Set(['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor']);
+export const CARD_PRICES = {
+  buyland: 3000, exchange: 2500, rebuild: 3000, close: 4000, truck: 3500, monster: 5000,
+  worker: 3000, inflate: 4000, remotedice: 2500, turtle: 2000, turn: 2000, stay: 2500,
+  sleep: 3000, hibernate: 3500, roadblock: 1500, superdice: 3000, jelly: 2000, randomdoor: 3000,
+  portal: 3000, motorcycle: 4000, car: 6000, robotdoll: 4000, start: 2500, mine: 3000,
+  timebomb: 4000, missile: 5000, quantum: 8000, dynamite: 3000, banana: 1500, trap: 2000,
+  free: 2500, audit: 2000, equalpoor: 3000, equalrich: 5000, pick: 3000, scheme: 4000,
+  magic: 3000, invitegod: 2500, sendgod: 2000, samefate: 2000, transfer: 3000, wuxie: 3000,
+  rushmissile: 10000, glory: 10000, predicament: 10000, green: 10000, disaster: 10000, godfavor: 10000,
+};
+
 const RECIPES = {
   missile: 'rushmissile', inflate: 'glory', close: 'predicament',
   sendgod: 'green', monster: 'disaster', invitegod: 'godfavor',
@@ -176,8 +179,11 @@ export function releaseFrom(state, p, kind) {
   }
 }
 
-export function makeOffer(state, n, prices) {
-  return Array.from({ length: n }, () => ({ id: randomCard(state.rng), price: state.rng.pick(prices) }));
+export function makeOffer(state, n, kind = 'shop') {
+  const advanced = kind === 'research';
+  const pool = state.rng.shuffle(CARD_LIST.filter(([id]) => advanced ? ADVANCED.has(id) : !ADVANCED.has(id)).map(([id]) => id));
+  const mult = kind === 'merchant' ? 0.5 : 1;
+  return pool.slice(0, n).map(id => ({ id, price: Math.round((CARD_PRICES[id] ?? 2000) * mult) }));
 }
 
 export function drawLottery(state) {
@@ -352,7 +358,7 @@ export function applyCard(state, p, id, target) {
     case 'close': {
       const street = String(target ?? '');
       for (const pr of Object.values(state.properties)) {
-        if (pr.street === street) pr.closed = 3;
+        if (pr.street === street) pr.closed = 5;
       }
       return true;
     }
@@ -481,17 +487,28 @@ export function place(state, cellId, obj) {
 export function cardName(id) { return CARD_DEFS[id]?.name ?? CARD_POOL.find(c => c.id === id)?.name ?? id; }
 
 export function runNewsEvent(state, p) {
-  const kind = state.rng.pick(['boom', 'bust', 'grant', 'storm']);
-  if (kind === 'boom') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
-  if (kind === 'bust') { state.priceIndex = Math.max(1, +(state.priceIndex - 0.1).toFixed(2)); log(state, '新闻：物价下跌 0.1'); }
-  if (kind === 'grant') { p.cash += 15_000; log(state, `新闻：${p.name} 获得补助 15000`); }
-  if (kind === 'storm') { for (const q of state.players.filter(q => q.alive)) q.cash = Math.max(0, q.cash - 3_000); log(state, '新闻：风暴，所有人 -3000'); }
+  const kind = state.rng.pick(['price','boom','bust','prize','fine','hospital','jail','cards','losecard','allgain','allpay','teleport']);
+  const k = state.priceIndex;
+  if (kind === 'price') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
+  if (kind === 'boom') { for (const s of state.stocks) s.price = Math.max(1, Math.round(s.price * 1.1)); log(state, '新闻：股市大涨'); }
+  if (kind === 'bust') { for (const s of state.stocks) s.price = Math.max(1, Math.round(s.price * 0.9)); log(state, '新闻：股市大跌'); }
+  if (kind === 'prize') { p.cash += Math.round(20_000 * k); log(state, `新闻：${p.name} 中奖 ${Math.round(20_000 * k)}`); }
+  if (kind === 'fine') { const amount = Math.round(10_000 * k); pay(state, p, null, amount, '新闻罚款'); log(state, `新闻：${p.name} 被罚款 ${amount}`); }
+  if (kind === 'hospital') { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `新闻：${p.name} 住院`); }
+  if (kind === 'jail') { p.jail = TUNING.jailTurns; p.position = state.map.facility?.jail ?? p.position; log(state, `新闻：${p.name} 入狱`); }
+  if (kind === 'cards') { addCard(state, p, randomCard(state.rng)); addCard(state, p, randomCard(state.rng)); log(state, `新闻：${p.name} 获得 2 张卡`); }
+  if (kind === 'losecard') { if (p.cards.length) p.cards.splice(state.rng.int(p.cards.length), 1); log(state, `新闻：${p.name} 失去 1 张卡`); }
+  if (kind === 'allgain') { const amount = Math.round(10_000 * k); for (const q of state.players.filter(q => q.alive)) q.cash += amount; log(state, `新闻：所有人获得 ${amount}`); }
+  if (kind === 'allpay') { const amount = Math.round(10_000 * k); for (const q of state.players.filter(q => q.alive)) pay(state, q, null, amount, '新闻共同支出'); log(state, `新闻：所有人支付 ${amount}`); }
+  if (kind === 'teleport') {
+    const cells = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform' && !state.placements[n.id]);
+    if (cells.length) { p.position = state.rng.pick(cells).id; log(state, `新闻：${p.name} 被传送到 ${p.position}`); }
+  }
 }
 
 export function tickStocks(state) {
   for (const s of state.stocks) {
-    const shock = (state.rng.float() - 0.5) * 2 * s.vol;
-    s.price = Math.max(1, +(s.price * (1 + s.drift + shock)).toFixed(2));
+    s.price = Math.max(1, Math.round(s.price * (0.9 + state.rng.float() * 0.2)));
   }
 }
 

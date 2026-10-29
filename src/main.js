@@ -95,9 +95,9 @@ function applyPromptToState(p) {
       const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
       state.mapPick = { max: p.max, cells, cardId: p.cardId };
     } else if (p.kind === 'street' || p.kind === 'plot') {
-      state.mapPick = { plot: true, value: p.kind };
+      state.mapPick = { plot: true, value: p.kind, filter: p.plotFilter, playerId: p.player?.id };
     }
-    state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, players: p.players };
+    state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, label: p.label, players: p.players };
     return;
   }
   if (p.type === 'buy') { state.pending = { type: 'buy', cellId: p.plot.id, price: p.price, label: p.plot.big ? '大空地' : '小地产' }; return; }
@@ -107,12 +107,25 @@ function applyPromptToState(p) {
   if (p.type === 'bank') { state.pending = { type: 'bank' }; return; }
   if (p.type === 'stock') { state.pending = { type: 'stock' }; return; }
   if (p.type === 'lottery') { state.pending = { type: 'lottery' }; return; }
-  if (p.type === 'shop' || p.type === 'merchant') {
+  if (p.type === 'shop' || p.type === 'merchant' || p.type === 'research') {
     state.shopOffer = p.offers; state.shopBought = p.bought; state.shopLimit = p.limit;
     state.pending = { type: p.type };
     return;
   }
-  if (p.type === 'magic') { state.pending = { type: 'magic' }; return; }
+  if (p.type === 'magic') { state.pending = { type: 'magic', options: p.options ?? [] }; return; }
+}
+
+function plotAllowed(plot) {
+  const filter = state.mapPick?.filter;
+  if (!filter) return true;
+  const pr = state.properties[plot.id];
+  const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+  const playerId = state.mapPick?.playerId;
+  const player = state.players.find(q => q.id === playerId);
+  if (!player || !pr || plot.big || !(pr.level > 0)) return false;
+  if (filter === 'teamBuiltSmall') return owner?.team === player.team && !pr.closed;
+  if (filter === 'enemyBuiltSmall') return owner && owner.team !== player.team;
+  return true;
 }
 
 const actions = {
@@ -122,9 +135,9 @@ const actions = {
   stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
   direction(id) { answer(id); },
   pickCell(id) { answer(id); },
-  pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (plot) answer(state.mapPick?.value === 'street' ? plot.street : id); },
+  pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (!plot) return; if (!plotAllowed(plot)) return; answer(state.mapPick?.value === 'street' ? plot.street : id); },
   chooseBig(type) { answer(type); },
-  magic(effect) { answer({ effect }); },
+  magic(id) { answer({ id }); },
   lottery(number) { answer({ action: 'buy', number }); },
   shop(index) { answer({ action: 'buy', index }); },
   merchant(index) { answer({ action: 'buy', index }); },
@@ -162,7 +175,8 @@ function startGame() {
     participants.push({ name: b.name, charId: CHARACTERS[0].id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
   }
   const startingHand = $('#testcards').checked ? ['remotedice', 'roadblock', 'jelly', 'turn'] : undefined;
-  state = startSession({ seed: 1, participants, startingHand });
+  const seed = Number(new URLSearchParams(location.search).get('seed')) || (Date.now() % 1_000_000_000);
+  state = startSession({ seed, participants, startingHand });
   $('#setup').hidden = true;
   runGame(state, ui).then(() => ui.render(state));
 }

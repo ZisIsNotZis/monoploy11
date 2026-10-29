@@ -16,7 +16,7 @@ function autoUI() {
       if (p.type === 'stock') return { action: 'leave' };
       if (p.type === 'lottery') return { action: 'leave' };
       if (p.type === 'shop' || p.type === 'merchant') return { action: 'leave' };
-      if (p.type === 'magic') return { effect: 'money' };
+      if (p.type === 'magic') return { id: 'cash' };
       if (p.type === 'target') return null;
       return null;
     },
@@ -48,7 +48,7 @@ test('equal-poor card resolves on a valid target and leaves the hand', async () 
       if (x.type === 'chooseBig') return null;
       if (x.type === 'direction') return x.options[0];
       if (x.type === 'bank' || x.type === 'stock' || x.type === 'lottery' || x.type === 'shop' || x.type === 'merchant') return { action: 'leave' };
-      if (x.type === 'magic') return { effect: 'money' };
+      if (x.type === 'magic') return { id: 'cash' };
       return null;
     },
   };

@@ -14,7 +14,7 @@ const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpo
 
 export function startSession(config) {
   const state = createGame(config);
-  state.day = 0;
+  state.day = 1;
   state.phase = 'action';
   return state;
 }
@@ -24,47 +24,57 @@ export async function runGame(state, ui) {
     const p = current(state);
     const skipped = beginTurn(state, p);
     ui.render(state);
-    if (skipped) {
-      if (!nextPlayer(state)) break;
-      continue;
-    }
-    await playTurn(state, p, ui);
+    if (!skipped) await playTurn(state, p, ui);
     if (state.over) break;
+    endPlayerTurn(state, p);
     if (!nextPlayer(state)) break;
   }
 }
 
 function beginTurn(state, p) {
   if (!p || !p.alive) return true;
-  state.day += 1;
-  if (state.day > 1 && (state.day - 1) % TUNING.priceIndexEveryDays === 0) {
-    state.priceIndex = +(state.priceIndex + TUNING.priceIndexStep).toFixed(2);
-    log(state, `物价指数上涨到 ${state.priceIndex.toFixed(2)}`);
-  }
-  applyMonthly(state, p);
-  tickStocks(state);
-  drawLottery(state);
-  spawnOccupants(state);
-  tickTimers(state);
-  tickGod(state, p);
-
-  if (p.statusDays > 0) {
-    const was = p.status;
-    p.statusDays -= 1;
-    if (p.statusDays <= 0) { p.status = null; p.statusDays = 0; log(state, `${p.name} 的 ${was} 状态结束`); }
-    if (was === '梦游' || was === '冬眠') { log(state, `${p.name} 正在${was}，跳过本回合`); return true; }
-  }
-  if (p.skipTurns > 0) { p.skipTurns -= 1; log(state, `${p.name} 跳过本回合`); return true; }
-  if (p.jail > 0) { p.jail -= 1; if (p.jail === 0) releaseFrom(state, p, 'jail'); return true; }
-  if (p.hospital > 0) { p.hospital -= 1; if (p.hospital === 0) releaseFrom(state, p, 'hospital'); return true; }
-  while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
   state.phase = 'action';
+  if (p.statusDays > 0 && (p.status === '梦游' || p.status === '冬眠')) {
+    log(state, `${p.name} 正在${p.status}，跳过本回合`);
+    return true;
+  }
+  if (p.jail > 0) { log(state, `${p.name} 在监狱中，跳过本回合`); return true; }
+  if (p.hospital > 0) { log(state, `${p.name} 在医院中，跳过本回合`); return true; }
+  if (p.skipTurns > 0) { log(state, `${p.name} 停留，跳过本回合`); return true; }
+  while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
   log(state, `—— 第 ${state.day} 天 · ${p.name} 的回合 ——`);
   return false;
 }
 
+function endPlayerTurn(state, p) {
+  if (!p) return;
+  if (p.statusDays > 0) {
+    p.statusDays -= 1;
+    if (p.statusDays <= 0) { log(state, `${p.name} 的 ${p.status} 状态结束`); p.status = null; }
+  }
+  tickGod(state, p);
+  if (p.jail > 0) { p.jail -= 1; if (p.jail === 0) releaseFrom(state, p, 'jail'); }
+  if (p.hospital > 0) { p.hospital -= 1; if (p.hospital === 0) releaseFrom(state, p, 'hospital'); }
+  if (p.skipTurns > 0) p.skipTurns -= 1;
+}
+
+function advanceDay(state) {
+  state.day += 1;
+  if ((state.day - 1) % TUNING.priceIndexEveryDays === 0) {
+    state.priceIndex = +(state.priceIndex + TUNING.priceIndexStep).toFixed(2);
+    log(state, `物价指数上涨到 ${state.priceIndex.toFixed(2)}`);
+  }
+  for (const p of state.players) if (p.alive) applyMonthly(state, p);
+  tickStocks(state);
+  drawLottery(state);
+  spawnOccupants(state);
+  tickTimers(state);
+}
+
 function nextPlayer(state) {
-  if (state.day >= state.config.dayLimit) { finishByAssets(state); return false; }
+  const last = state.turn === state.order.length - 1;
+  if (last) advanceDay(state);
+  if (state.day > state.config.dayLimit) { finishByAssets(state); return false; }
   const teams = new Set(state.players.filter(p => p.alive).map(p => p.team));
   if (teams.size <= 1) { finish(state, [...teams][0] ?? null); return false; }
   state.turn = (state.turn + 1) % state.order.length;
@@ -168,13 +178,13 @@ async function movePhase(state, p, steps, ui) {
     cameFrom = p.position;
     p.position = next;
     p.lastNode = cameFrom;
-    p.facing = nextForward(state, next, cameFrom);
+    p.facing = next;
     path.push(next);
     state.lastRoll.path = path;
     if (next === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
-    if (!p.alive) return true;
+    if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
   }
   return false;
 }
@@ -182,18 +192,17 @@ async function movePhase(state, p, steps, ui) {
 function nextStep(state, p, cameFrom, first) {
   const adj = buildAdj(state.map);
   const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
+  if (!exits.length) return null;
   let choices = exits.filter(e => e.to !== cameFrom);
   if (!choices.length) choices = exits;
-  if (!choices.length) return null;
+  if (exits.length <= 1) return exits[0].to;
+  if (exits.length === 2) {
+    if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
+    const forward = choices.find(e => e.to === p.facing) ?? choices[0] ?? exits[0];
+    return forward.to;
+  }
   if (first && p.facing && choices.some(e => e.to === p.facing)) return p.facing;
   return state.rng.pick(choices).to;
-}
-
-function nextForward(state, pos, cameFrom) {
-  const adj = buildAdj(state.map);
-  const exits = adj[pos].filter(e => edgeUsable(state.map, state.day, e));
-  const forward = exits.filter(e => e.to !== cameFrom);
-  return (forward[0] ?? exits[0])?.to ?? null;
 }
 
 async function passPhase(state, p, cellId, ui, isLast) {
@@ -225,8 +234,9 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
 
 async function dogEffect(state, p) {
   if (p.vehicle || p.talents.includes('immune_beggar_dog')) { log(state, `${p.name} 躲过了野狗`); return; }
-  if (state.rng.float() < 0.5) { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 回合`); }
-  else { log(state, `${p.name} 被野狗咬，损失 ${TUNING.dogFine}`); pay(state, p, null, TUNING.dogFine, '野狗'); }
+  p.hospital = TUNING.hospitalTurns;
+  p.position = state.map.facility?.hospital ?? p.position;
+  log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 天`);
 }
 
 async function landingPhase(state, p, ui) {
@@ -239,7 +249,7 @@ async function landingPhase(state, p, ui) {
     else if (occ.kind === 'merchant') { delete state.placements[cell.id]; await merchantFlow(state, p, ui); }
     else if (!['god','dog','beggar','merchant'].includes(occ.kind)) await triggerObstacle(state, p, cell.id, occ, ui);
   }
-  if (!p.alive) return;
+  if (!p.alive || p.jail > 0 || p.hospital > 0) return;
   switch (cell.kind) {
     case 'card': addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
     case 'tax': { const amount = Math.round(p.cash * TUNING.taxRate); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
@@ -248,11 +258,12 @@ async function landingPhase(state, p, ui) {
     case 'beggar': if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); break;
     case 'hospitalGate': case 'hospital': p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 住院 ${p.hospital} 回合`); break;
     case 'jailGate': case 'jail': p.jail = TUNING.jailTurns; p.position = state.map.facility?.jail ?? p.position; log(state, `${p.name} 入狱 ${p.jail} 回合`); break;
-    case 'event': { const delta = state.rng.pick([-10_000,-5_000,5_000,10_000,20_000]); p.cash = Math.max(0, p.cash + delta); log(state, `${p.name} 遇到事件，现金 ${delta >= 0 ? '+' : ''}${delta}`); break; }
+    case 'event': runNewsEvent(state, p); break;
     case 'teleport': { const walkable = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform'); p.position = state.rng.pick(walkable).id; log(state, `${p.name} 被随机传送到 ${p.position}`); break; }
     case 'bank': await bankFlow(state, p, ui, false); break;
     case 'lottery': await lotteryFlow(state, p, ui); break;
     case 'shop': await shopFlow(state, p, ui, 'shop'); break;
+    case 'research': await shopFlow(state, p, ui, 'research'); break;
     case 'magic': await magicFlow(state, p, ui); break;
     case 'news': runNewsEvent(state, p); break;
     default: break;
@@ -270,23 +281,25 @@ async function groundPhase(state, p, ui) {
       if (await ui.ask({ type: 'buy', player: p, plot, price: buyPrice(state, id) })) buyPlot(state, p, id, plot);
       continue;
     }
-    if (pr.ownerId === p.id) {
+    const owner = state.players.find(q => q.id === pr.ownerId);
+    if (owner?.team === p.team) {
       if (pr.big && !pr.bigType) {
         const type = await ui.ask({ type: 'chooseBig', player: p, plot });
         if (type) chooseBig(state, p, id, type);
       } else if (pr.level < TUNING.maxLevel) {
-        if (await ui.ask({ type: 'build', player: p, plot, cost: buildCost(pr.level) })) buildPlot(state, p, id);
+        const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level) * state.priceIndex;
+        if (await ui.ask({ type: 'build', player: p, plot, cost })) buildPlot(state, p, id);
       }
       continue;
     }
-    const owner = state.players.find(q => q.id === pr.ownerId);
-    if (owner?.team === p.team || pr.bigType === 'park' || p.god === '财神') continue;
+    if (pr.bigType === 'park' || p.god === '财神') continue;
     let rent = rentFor(state, id);
-    if (pr.bigType === 'commercial') rent = Math.round(rent * (1 + state.rng.float() * 2));
-    if (pr.bigType === 'hotel') { rent = Math.round(rent * 0.6); p.skipTurns += 1; }
+    if (pr.bigType === 'commercial') rent = Math.round(3_000 * pr.level * state.priceIndex * (1 + state.rng.int(6)));
+    if (pr.bigType === 'hotel') { rent = Math.round(1_000 * pr.level * state.priceIndex); p.skipTurns += 2; }
+    const realestate = p.properties.map(x => state.properties[x]).find(x => x?.bigType === 'realestate');
+    if (realestate) rent = Math.round(rent * Math.max(0.5, 1 - 0.1 * realestate.level));
     if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
     if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
-    if (p.properties.some(x => state.properties[x]?.bigType === 'realestate')) rent = Math.round(rent * 0.7);
     if (p.god === '穷神') rent *= 2;
     if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' || owner.bossId === 'yuanyuan' ? 1.5 : 1));
     log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
@@ -307,17 +320,22 @@ export function buyPlot(state, p, id, plot) {
 
 export function buildPlot(state, p, id) {
   const pr = state.properties[id]; const plot = state.map.plots.find(x => x.id === id);
-  const cost = buildCost(pr.level);
-  if (!pr || p.cash < cost || pr.level >= TUNING.maxLevel) return;
+  if (!pr || pr.level >= TUNING.maxLevel) return;
+  const cost = Math.round((pr.big ? 30_000 : buildCost(pr.level)) * state.priceIndex);
+  if (p.cash < cost) return;
   p.cash -= cost; pr.level += 1;
   log(state, `${p.name} 将 ${plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）`);
 }
 
-function chooseBig(state, p, id, type) {
+function chooseBig(state, p, id, type, free = false) {
   const pr = state.properties[id];
-  if (!pr || pr.ownerId !== p.id || !['commercial','hotel','bookstore','energy','realestate','research'].includes(type)) return;
+  const owner = pr ? state.players.find(q => q.id === pr.ownerId) : null;
+  if (!pr || owner?.team !== p.team || !['commercial','hotel','bookstore','energy','realestate','research'].includes(type)) return;
+  const cost = free ? 0 : Math.round(30_000 * state.priceIndex);
+  if (p.cash < cost) return;
+  p.cash -= cost;
   pr.bigType = type; pr.level = 1;
-  log(state, `${p.name} 建起 ${BIG_NAMES[type]}`);
+  log(state, `${p.name} 建起 ${BIG_NAMES[type]}${cost ? `（花费 ${cost}）` : '（免费）'}`);
 }
 
 async function postGodPhase(state, p, ui) {
@@ -328,22 +346,24 @@ async function postGodPhase(state, p, ui) {
     for (const id of ids) {
       const pr = state.properties[id]; const plot = state.map.plots.find(x => x.id === id);
       if (!pr || !plot) continue;
-      if (p.god === '福神' && pr.ownerId !== p.id) continue;
+      const owner = state.players.find(q => q.id === pr.ownerId);
+      if (p.god === '福神' && owner?.team !== p.team) continue;
       if (plot.big) {
-        if (pr.ownerId === p.id && !pr.bigType) {
+        if (owner?.team === p.team && !pr.bigType) {
           const type = await ui.ask({ type: 'chooseBig', player: p, plot });
-          if (type) chooseBig(state, p, id, type);
+          if (type) chooseBig(state, p, id, type, true);
         }
         continue;
       }
-      if (pr.level < TUNING.maxLevel && (pr.ownerId === p.id || p.god === '天使')) { pr.level += 1; upgraded.push(id); log(state, `${p.god}让 ${labelForPlot(state,id)} 免费加盖 1 层`); }
+      if (pr.level < TUNING.maxLevel && (owner?.team === p.team || p.god === '天使')) { pr.level += 1; upgraded.push(id); log(state, `${p.god}让 ${labelForPlot(state,id)} 免费加盖 1 层`); }
     }
   }
   if (p.god === '土地公') {
     for (const id of ids) {
       const plot = state.map.plots.find(x => x.id === id);
       const pr = state.properties[id] ?? { level: 0, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
-      if (pr.ownerId === p.id) continue;
+      const owner = state.players.find(q => q.id === pr.ownerId);
+      if (owner?.team === p.team) continue;
       const old = state.players.find(q => q.id === pr.ownerId);
       if (old) old.properties = old.properties.filter(x => x !== id);
       pr.ownerId = p.id; state.properties[id] = pr; p.properties.push(id);
@@ -351,7 +371,7 @@ async function postGodPhase(state, p, ui) {
     if (ids.length) log(state, `${p.name} 的土地公收走了相邻地产`);
   }
   if (p.god === '凶神') {
-    for (const id of upgraded) { const pr = state.properties[id]; if (pr && pr.ownerId === p.id && !pr.big && pr.level > 0) pr.level -= 1; }
+    for (const id of upgraded) { const pr = state.properties[id]; if (pr && !pr.big && pr.level > 0) { const owner = state.players.find(q => q.id === pr.ownerId); if (owner?.team === p.team) pr.level -= 1; } }
   }
 }
 
@@ -397,14 +417,14 @@ async function lotteryFlow(state, p, ui) {
 }
 
 async function shopFlow(state, p, ui, kind) {
-  state.shopOffer = kind === 'shop' ? makeOffer(state, 9, [1_000, 2_000, 3_000, 4_000]) : makeOffer(state, 6, [1_000]);
+  state.shopOffer = makeOffer(state, kind === 'shop' ? 9 : 6, kind);
   const limit = kind === 'shop' ? 3 : 2;
   let bought = 0;
   while (bought < limit) {
     const a = await ui.ask({ type: kind, player: p, offers: state.shopOffer, bought, limit });
     if (!a || a.action === 'leave') return;
     const item = state.shopOffer[a.index]; if (!item) continue;
-    const price = kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.5 : 1)) : item.price;
+    const price = kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.7 : 1)) : item.price;
     if (p.cash < price) continue;
     p.cash -= price; addCard(state, p, item.id); state.shopOffer.splice(a.index, 1); bought += 1;
     if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));
@@ -415,14 +435,55 @@ async function shopFlow(state, p, ui, kind) {
 async function merchantFlow(state, p, ui) { return shopFlow(state, p, ui, 'merchant'); }
 
 async function magicFlow(state, p, ui) {
-  const a = await ui.ask({ type: 'magic', player: p });
-  if (!a) return;
   const others = state.players.filter(q => q.alive && q.id !== p.id);
-  if (a.effect === 'money') p.cash += 10_000;
-  if (a.effect === 'lose' && others.length) pay(state, state.rng.pick(others), null, 10_000, '魔法屋');
-  if (a.effect === 'card') addCard(state, p, randomCard(state.rng));
-  if (a.effect === 'jail' && others.length) { const q = state.rng.pick(others); q.jail = TUNING.jailTurns; q.position = state.map.facility?.jail ?? q.position; }
-  log(state, `${p.name} 使用魔法屋：${a.effect}`);
+  const teamPlots = Object.entries(state.properties).filter(([id, pr]) => {
+    const owner = state.players.find(q => q.id === pr.ownerId);
+    return owner?.team === p.team && !pr.big && pr.level > 0 && !pr.closed;
+  }).map(([id]) => id);
+  const enemyPlots = Object.entries(state.properties).filter(([id, pr]) => {
+    const owner = state.players.find(q => q.id === pr.ownerId);
+    return owner && owner.team !== p.team && !pr.big && pr.level > 0;
+  }).map(([id]) => id);
+  const jailable = others.filter(q => q.jail <= 0 && q.hospital <= 0);
+  const options = [
+    { id: 'cards', name: '获得三张卡片', desc: '随机获得 3 张基础卡', disabled: false },
+    { id: 'cash', name: '天降横财', desc: `现金 +${TUNING.magicCash}`, disabled: false },
+    { id: 'build', name: '免费加盖', desc: '己方一处已建成小地产 +1 级', disabled: !teamPlots.length },
+    { id: 'demolish', name: '强制降级', desc: '对手一处已建成小地产 −1 级', disabled: !enemyPlots.length },
+    { id: 'god', name: '神仙附身', desc: '随机神仙附身 3 天', disabled: false },
+    { id: 'jail', name: '牢狱之灾', desc: '指定对手入狱 2 天', disabled: !jailable.length },
+  ];
+  while (true) {
+    const a = await ui.ask({ type: 'magic', player: p, options });
+    if (!a) return;
+    let target = null;
+    if (a.id === 'build' || a.id === 'demolish') {
+      target = await ui.ask({ type: 'target', player: p, cardId: 'magic', label: a.name, kind: 'plot', plotFilter: a.id === 'build' ? 'teamBuiltSmall' : 'enemyBuiltSmall' });
+      if (!target) continue;
+    } else if (a.id === 'jail') {
+      target = await ui.ask({ type: 'target', player: p, cardId: 'magic', label: a.name, kind: 'player', players: jailable });
+      if (!target) continue;
+    }
+    if (a.id === 'cards') { for (let i = 0; i < 3; i++) addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 魔法屋获得 3 张卡`); }
+    if (a.id === 'cash') { p.cash += TUNING.magicCash; log(state, `${p.name} 魔法屋获得 ${TUNING.magicCash}`); }
+    if (a.id === 'build') {
+      const pr = state.properties[target];
+      if (!pr || !teamPlots.includes(target)) continue;
+      pr.level = Math.min(TUNING.maxLevel, pr.level + 1); log(state, `${p.name} 魔法屋免费加盖 ${labelForPlot(state, target)} 到 Lv.${pr.level}`);
+    }
+    if (a.id === 'demolish') {
+      const pr = state.properties[target];
+      if (!pr || !enemyPlots.includes(target)) continue;
+      pr.level = Math.max(0, pr.level - 1); log(state, `${p.name} 魔法屋把 ${labelForPlot(state, target)} 降到 Lv.${pr.level}`);
+    }
+    if (a.id === 'god') { const gods = ['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']; attachGod(state, p, state.rng.pick(gods)); }
+    if (a.id === 'jail') {
+      const q = state.players.find(x => x.id === target);
+      if (!q) continue;
+      q.jail = TUNING.jailTurns; q.position = state.map.facility?.jail ?? q.position; log(state, `${p.name} 把 ${q.name} 送进监狱`);
+    }
+    return;
+  }
 }
 
 async function remoteDiceFlow(state, p, ui, index) {

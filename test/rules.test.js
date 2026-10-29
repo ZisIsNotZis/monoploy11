@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { GRID_MANOR } from '../src/data/maps/grid-manor.js';
 import { validateMap } from '../src/engine/board-v2.js';
 import { createGame, current, drawLottery, useCard } from '../src/engine/game.js';
+import { pay } from '../src/engine/economy.js';
 import { buyPlot, buildPlot } from '../src/engine/flow.js';
 import { rentFor } from '../src/engine/economy.js';
 
@@ -61,4 +62,33 @@ test('test starting hand is copied to every player', () => {
   const hand = ['remotedice', 'roadblock', 'jelly', 'turn'];
   const s = createGame({ seed: 65, startingHand: hand });
   assert.ok(s.players.every(p => JSON.stringify(p.cards) === JSON.stringify(hand)));
+});
+
+test('forced payment uses cash then deposit and only bankrupts when both are empty', () => {
+  const s = createGame({ seed: 71 });
+  const p = current(s);
+  p.cash = 100; p.deposit = 100;
+  assert.equal(pay(s, p, null, 150, '税'), true);
+  assert.equal(p.cash, 0);
+  assert.equal(p.deposit, 50);
+  assert.equal(p.alive, true);
+  assert.equal(pay(s, p, null, 200, '税'), false);
+  assert.equal(p.cash, 0);
+  assert.equal(p.deposit, 0);
+  assert.equal(p.alive, false);
+});
+
+test('teammates can build and upgrade each other’s plots', () => {
+  const s = createGame({ seed: 72 });
+  const [a, b] = s.players;
+  b.team = a.team;
+  const id = s.map.plots.find(p => !p.big).id;
+  s.properties[id] = { ownerId: a.id, level: 0, street: s.map.plots.find(p => p.id === id).street, big: false, bigType: null };
+  a.properties = [id];
+  b.cash = 100_000;
+  buildPlot(s, b, id);
+  assert.equal(s.properties[id].level, 1);
+  buildPlot(s, b, id);
+  assert.equal(s.properties[id].level, 2);
+  assert.equal(s.properties[id].ownerId, a.id);
 });

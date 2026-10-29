@@ -145,12 +145,20 @@ function renderBoard(el, state, currentP, actions) {
     const w = (plot.big ? 2 : 1) * S;
     const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
     const pickPlot = state.mapPick?.plot;
+    const filter = state.mapPick?.filter;
+    const filterPlayer = state.players.find(q => q.id === state.mapPick?.playerId);
+    let pickAllowed = true;
+    if (filter) {
+      const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+      pickAllowed = !!pr && !!filterPlayer && !plot.big && pr.level > 0 && (filter === 'teamBuiltSmall' ? owner?.team === filterPlayer.team && !pr.closed : filter === 'enemyBuiltSmall' ? !!owner && owner.team !== filterPlayer.team : true);
+    }
+    const pickClass = pickPlot && pickAllowed ? 'pick-target' : (pickPlot ? 'pick-blocked' : '');
     const marks = [
       pr?.closed > 0 ? `<b class="mark stop">停${pr.closed}</b>` : '',
       pr?.inflate > 0 ? `<b class="mark inflate">涨${pr.inflate}</b>` : '',
     ].join('');
     const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
-    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickPlot ? 'pick-target' : ''} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
+    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
       <div class="picon">${glyph}</div>${level}${marks}
     </div>`;
@@ -230,7 +238,7 @@ function renderChoice(el, state, p, actions) {
     return;
   }
   if (state.mapPick) {
-    const name = CARD_DEFS[state.mapPick.cardId]?.name ?? '卡片';
+    const name = state.mapPick?.label ?? CARD_DEFS[state.mapPick.cardId]?.name ?? '卡片';
     const hint = state.mapPick?.plot ? '直接点地图上的地产选择目标' : '直接点地图上高亮的路面';
     el.innerHTML = `<h3>${name}</h3><p class="hint">${hint}</p><button data-act="cancel-pick">取消</button>`;
     el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
@@ -246,7 +254,7 @@ function renderChoice(el, state, p, actions) {
     } else if (pending.kind === 'player') {
       html = box('选择目标', (pending.players ?? state.players.filter(q => q.alive)).map(q => `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
     } else {
-      html = box('选择目标', '<p class="hint">请直接点地图上的地产，按它所在的街区选目标</p><button data-act="cancel-pick">取消</button>');
+      html = box(pending.label ?? '选择目标', '<p class="hint">请直接点地图上的地产</p><button data-act="cancel-pick">取消</button>');
     }
   } else  if (pending.type === 'buy') {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
@@ -283,7 +291,7 @@ function renderChoice(el, state, p, actions) {
       pending.type === 'merchant' ? `神秘人 ${state.shopBought}/${state.shopLimit}` : `研究所 ${state.shopBought}/${state.shopLimit}`;
     const key = pending.type;
     const offers = (state.shopOffer ?? []).map((item, i) => {
-      const price = pending.type === 'shop' && p.talents.includes('shop_discount') ? Math.round(item.price / 2) : item.price;
+      const price = pending.type === 'shop' && p.talents.includes('shop_discount') ? Math.round(item.price * 0.7) : item.price;
       const off = state.shopBought >= state.shopLimit ? 'disabled' : '';
       const name = CARD_DEFS[item.id]?.name ?? item.id;
       return `<button class="shop-card" data-${key}="${i}" ${off} title="${name}：${CARD_DESC[item.id] ?? ''}">
@@ -291,10 +299,7 @@ function renderChoice(el, state, p, actions) {
     }).join('');
     html = box(title, `<div class="shop-grid">${offers}</div><button data-act="skip">离开</button>`);
   } else if (pending.type === 'magic') {
-    html = box('魔法屋', `<button data-magic="money">获得 10000</button>
-      <button data-magic="lose">随机对手 -10000</button>
-      <button data-magic="card">获得 1 张卡</button>
-      <button data-magic="jail">随机对手入狱</button>`);
+    html = box('魔法屋', `<div class="offers">${(pending.options ?? []).map(o => `<button class="offer" data-magic="${o.id}" ${o.disabled ? 'disabled' : ''}><b>${o.name}</b><span>${o.desc}</span></button>`).join('')}</div>`);
   } else if (pending.type === 'news') {
     html = box('新闻', `<button data-act="news">看新闻</button>`);
   } else {
