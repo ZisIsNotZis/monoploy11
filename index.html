@@ -9,12 +9,21 @@
 <body>
 <div id="setup">
   <h1>Monopoly 11</h1>
-  <div class="setup-row"><label>模式 <select id="mode"><option value="free">自由乱战</option><option value="boss">特殊角色</option></select></label>
-  <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
-  <div class="setup-row" id="bossRow" hidden><label>角色 <select id="boss"></select></label>
-  <label>难度 <select id="tier"><option value="1">简单</option><option value="2">普通</option><option value="3">困难</option></select></label></div>
-  <div class="setup-row"><label><input type="checkbox" id="testcards"> 测试卡组</label><button id="start">开始</button></div>
-  <p class="hint">所有人由你操控；行动阶段可用卡，掷骰后进入移动和结算。</p>
+  <div class="setup-grid">
+    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+    <label>地图 <select id="map"><option value="grid-manor">骑士庄园</option></select></label>
+    <label>种子 <input id="seed" type="number" value="1"></label>
+    <label>初始现金 <input id="startingCash" type="number" value="100000" step="10000"></label>
+    <label>初始存款 <input id="startingDeposit" type="number" value="100000" step="10000"></label>
+    <label>初始手牌 <input id="startingCards" type="number" value="3" min="0"></label>
+    <label>手牌上限 <input id="handLimit" type="number" value="8" min="1"></label>
+    <label>天数上限 <input id="dayLimit" type="number" value="100" min="1"></label>
+    <label class="check"><input type="checkbox" id="testcards"> 测试卡组</label>
+  </div>
+  <div class="setup-head"><span>控制</span><span>角色</span><span>队伍</span></div>
+  <div id="setupRows"></div>
+  <div class="setup-row"><button id="start">开始</button></div>
+  <p class="hint">队伍选同一个编号就是组队；每名参赛者可选人类或 AI。角色就是身份，没有额外名字。</p>
 </div>
 
 <main id="desk">
@@ -32,6 +41,6 @@
   </aside>
 </main>
 
-<script type="module" src="./src/main.js?v=90"></script>
+<script type="module" src="./src/main.js?v=91"></script>
 </body>
 </html>

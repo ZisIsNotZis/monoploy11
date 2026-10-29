@@ -1,9 +1,10 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=90';
+import { render } from './ui/render.js?v=91';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS } from './engine/game.js';
+import { aiAnswer } from './engine/ai.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -68,6 +69,9 @@ const ui = {
     await new Promise(r => setTimeout(r, 500));
   },
   ask(prompt) {
+    if (prompt.player?.controller === 'ai') {
+      return new Promise(resolve => setTimeout(() => resolve(aiAnswer(prompt, state)), 220));
+    }
     return new Promise(resolve => {
       active = { prompt, resolve };
       applyPromptToState(prompt);
@@ -160,42 +164,64 @@ const actions = {
 
 function numberInput() { return Number($('#amount')?.value ?? 0); }
 
-function startGame() {
-  const mode = $('#mode').value;
+function characterOptions(selected) {
+  const normal = CHARACTERS.map(c => `<option value="char:${c.id}" ${selected === `char:${c.id}` ? 'selected' : ''}>${c.name}</option>`).join('');
+  const special = BOSSES.flatMap(b => [1,2,3].map(t => `<option value="boss:${b.id}:${t}">${b.name} · ${['简单','普通','困难'][t-1]}</option>`)).join('');
+  return `<optgroup label="角色">${normal}</optgroup><optgroup label="技能档位">${special}</optgroup>`;
+}
+
+function renderSetupRows() {
   const count = Number($('#count').value);
-  const participants = [];
-  if (mode === 'free') {
-    for (let i = 0; i < count; i++) {
-      const c = CHARACTERS[i % CHARACTERS.length];
-      participants.push({ name: c.name, charId: c.id, team: `t${i + 1}`, controller: 'human' });
+  const box = $('#setupRows');
+  box.innerHTML = Array.from({ length: count }, (_, i) => {
+    const char = CHARACTERS[i % CHARACTERS.length];
+    const teams = Array.from({ length: count }, (_, j) => `<option value="t${j+1}" ${i === j ? 'selected' : ''}>队伍 ${j+1}</option>`).join('');
+    return `<div class="setup-player">
+      <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai">AI</option></select>
+      <select class="char" data-i="${i}">${characterOptions(`char:${char.id}`)}</select>
+      <select class="team" data-i="${i}">${teams}</select>
+    </div>`;
+  }).join('');
+}
+
+function startGame() {
+  const rows = [...document.querySelectorAll('.setup-player')];
+  const participants = rows.map((row, i) => {
+    const controller = row.querySelector('.ctrl').value;
+    const team = row.querySelector('.team').value;
+    const value = row.querySelector('.char').value;
+    if (value.startsWith('boss:')) {
+      const [, bossId, tier] = value.split(':');
+      const b = BOSSES.find(x => x.id === bossId);
+      return { name: b?.name ?? bossId, charId: bossId, team, controller, isBoss: true, bossId, bossTier: Number(tier) };
     }
-  } else {
-    for (let i = 0; i < Math.max(1, count - 1); i++) {
-      const c = CHARACTERS[i % CHARACTERS.length];
-      participants.push({ name: c.name, charId: c.id, team: 'ch', controller: 'human' });
-    }
-    const b = BOSSES.find(x => x.id === $('#boss').value) ?? BOSSES[0];
-    participants.push({ name: b.name, charId: b.id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
-  }
+    const charId = value.slice(5);
+    const c = CHARACTERS.find(x => x.id === charId);
+    return { name: c?.name ?? charId, charId, team, controller };
+  });
   const startingHand = $('#testcards').checked ? ['remotedice', 'roadblock', 'jelly', 'turn'] : undefined;
-  const seed = Number(new URLSearchParams(location.search).get('seed')) || (Date.now() % 1_000_000_000);
-  state = startSession({ seed, participants, startingHand });
+  const seed = Number($('#seed').value) || 1;
+  state = startSession({
+    seed, participants, startingHand,
+    startingCash: Number($('#startingCash').value),
+    startingDeposit: Number($('#startingDeposit').value),
+    startingCards: Number($('#startingCards').value),
+    handLimit: Number($('#handLimit').value),
+    dayLimit: Number($('#dayLimit').value),
+    mapId: $('#map').value,
+  });
   $('#setup').hidden = true;
   runGame(state, ui).then(() => ui.render(state));
 }
 
 function showSetup() { $('#setup').hidden = false; }
-
-$('#boss').innerHTML = BOSSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-$('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'; };
+$('#count').onchange = renderSetupRows;
 $('#start').onclick = startGame;
+renderSetupRows();
 showSetup();
 
 const qs = new URLSearchParams(location.search);
-if (qs.get('mode')) $('#mode').value = qs.get('mode');
-if (qs.get('count')) $('#count').value = qs.get('count');
-if (qs.get('boss')) $('#boss').value = qs.get('boss');
-if (qs.get('tier')) $('#tier').value = qs.get('tier');
+if (qs.get('count')) { $('#count').value = qs.get('count'); renderSetupRows(); }
+if (qs.get('seed')) $('#seed').value = qs.get('seed');
 if (qs.get('testcards')) $('#testcards').checked = true;
-$('#bossRow').hidden = $('#mode').value !== 'boss';
 if (qs.get('start')) startGame();

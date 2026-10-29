@@ -41,7 +41,7 @@ export function createGame(config = {}) {
       deposit: config.startingDeposit ?? TUNING.startingDeposit,
       cards: [], position: map.startId, facing: null,
       jail: 0, hospital: 0, god: null, godDays: 0, status: null, statusDays: 0,
-      vehicle: null, alive: true, properties: [], handLimit: p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : TUNING.handLimit,
+      vehicle: null, alive: true, properties: [], handLimit: p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : (config.handLimit ?? TUNING.handLimit),
       talents: char.talents.map(t => t.id),
       freeCard: false, forcedDice: null, skipTurns: 0,
     };
@@ -71,7 +71,7 @@ export function createGame(config = {}) {
   });
 
   const fixedHand = Array.isArray(config.startingHand) ? config.startingHand : null;
-  for (let i = 0; i < (fixedHand ? fixedHand.length : TUNING.startingCards); i++) {
+  for (let i = 0; i < (fixedHand ? fixedHand.length : (config.startingCards ?? TUNING.startingCards)); i++) {
     for (const p of players) p.cards.push(fixedHand ? fixedHand[i] : randomCard(rng));
   }
   log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
