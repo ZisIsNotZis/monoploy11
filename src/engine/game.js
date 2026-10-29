@@ -250,7 +250,9 @@ function finish(state, team) {
 export function roll(state, diceCount = 1) {
   if (state.phase !== 'action') return state;
   const p = current(state);
-  const dice = Math.min(TUNING.maxDice, Math.max(1, diceCount));
+  const allowed = Math.min(TUNING.maxDice, 1 + Math.max(0, p.vehicle ?? 0));
+  if (diceCount > allowed) return state;
+  const dice = Math.max(1, diceCount);
   const n = p.forcedDice ?? Array.from({ length: dice }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
   p.forcedDice = null;
   state.stats.rolls += 1;
@@ -268,24 +270,27 @@ export function roll(state, diceCount = 1) {
   p.facing = null;
   state.phase = 'resolve';
   if (res.pendingDirection) {
-    state.pending = { type: 'direction', options: exitsOf(state, p.position) };
+    state.pending = { type: 'direction', options: exitsOf(state, p.position, p.lastNode) };
     log(state, `${p.name} 正好停在交叉点，请选择方向`);
     return state;
   }
   return resolveLanding(state, p);
 }
 
-function exitsOf(state, id) {
+function exitsOf(state, id, lastNode = null) {
   const adj = buildAdj(state.map);
-  return adj[id].map(e => e.to).filter(to => {
+  const all = adj[id].map(e => e.to).filter(to => {
     const n = state.map.nodes.find(x => x.id === to);
     return n.kind !== 'teleport';
   });
+  const forward = all.filter(to => to !== lastNode);
+  return forward.length ? forward : all;
 }
 
 export function chooseDirection(state, toId) {
   if (state.pending?.type !== 'direction') return state;
   const p = current(state);
+  if (toId === p.lastNode) return state;
   p.facing = toId;
   state.pending = null;
   log(state, `${p.name} 选择朝 ${label(state, toId)} 方向`);

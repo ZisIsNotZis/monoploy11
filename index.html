@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<header id="topbar"><span id="status">大富翁 11 · 文字复刻</span><button id="reset">重开</button></header>
 <div id="setup">
   <h1>大富翁 11 · 文字复刻</h1>
   <div class="setup-row"><label>模式 <select id="mode"><option value="free">自由乱战</option><option value="boss">领主战</option></select></label>
@@ -18,15 +17,24 @@
   <button id="start">开始</button></div>
   <p class="hint">热座：所有人由你操控；掷骰前可用卡，掷骰后回合结束。</p>
 </div>
+
 <main id="desk">
-  <aside id="players"></aside>
-  <section id="board" aria-label="棋盘"></section>
+  <section id="boardWrap">
+    <div id="hud"></div>
+    <section id="board" aria-label="棋盘"></section>
+  </section>
   <aside id="side">
+    <div id="players"></div>
     <div id="actions"></div>
     <ol id="log"></ol>
   </aside>
 </main>
-<footer id="hand"></footer>
+
+<footer id="hand">
+  <div id="dice"></div>
+  <div id="cards"></div>
+</footer>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

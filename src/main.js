@@ -7,10 +7,18 @@ import { render } from './ui/render.js';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 
+window.addEventListener('error', (e) => {
+  const pre = document.createElement('pre');
+  pre.id = 'errbox';
+  pre.style.cssText = 'position:fixed;z-index:99;left:8px;top:8px;max-width:90vw;white-space:pre-wrap;background:#400;color:#fff;padding:8px;font-size:12px';
+  pre.textContent = `ERR: ${e.message}\n${e.error?.stack ?? ''}`;
+  document.body.appendChild(pre);
+});
+
 const $ = s => document.querySelector(s);
 const root = {
-  status: $('#status'), players: $('#players'), board: $('#board'),
-  actions: $('#actions'), log: $('#log'), hand: $('#hand'),
+  hud: $('#hud'), players: $('#players'), board: $('#board'),
+  actions: $('#actions'), log: $('#log'), dice: $('#dice'), cards: $('#cards'),
 };
 
 let state = null;
@@ -116,7 +124,6 @@ function showSetup() {
 $('#boss').innerHTML = BOSSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 $('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'; };
 $('#start').onclick = startGame;
-$('#reset').onclick = showSetup;
 showSetup();
 
 const qs = new URLSearchParams(location.search);

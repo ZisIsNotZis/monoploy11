@@ -4,65 +4,117 @@
   --line: #333842;
   --text: #e6e8eb;
   --muted: #8b93a1;
-  --p1: #e05a5a;
-  --p2: #4f9de0;
-  --p3: #59b36b;
-  --p4: #d8a13f;
+  --gold: #d8a13f;
 }
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.45 ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 138px;
 }
-#topbar { padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
-#desk { display: grid; grid-template-columns: 220px minmax(0, 1fr) 320px; height: calc(100vh - 44px); }
-#players, #side { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 8px; }
-#side { border-right: 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
-#board { position: relative; overflow: auto; padding: 12px; }
-#actions { min-height: 120px; }
-#log { flex: 1; overflow: auto; margin: 8px 0 0; padding: 0 0 0 18px; color: var(--muted); }
-#hand { border-top: 1px solid var(--line); min-height: 84px; padding: 8px 12px; display: flex; gap: 8px; overflow-x: auto; }
-.cell { position: absolute; width: 84px; height: 52px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; font-size: 11px; padding: 3px; }
-.cell .tag { color: var(--muted); }
-@media (max-width: 900px) {
-  #desk { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; height: auto; }
-  #players { display: flex; gap: 8px; overflow-x: auto; }
+button { font: inherit; }
+
+/* 顶栏取消，状态浮在地图上 */
+#desk { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 0; }
+#boardWrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+#hud {
+  position: absolute; z-index: 3; left: 14px; top: 10px;
+  display: flex; gap: 14px; align-items: center;
+  color: var(--muted); font-size: 12px; pointer-events: none;
 }
-.cell { width: 62px; height: 38px; font-size: 10px; line-height: 1.15; overflow: visible; z-index: 1; }
-.cell .tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfd3da; }
-.cell .lvl { position: absolute; right: 2px; top: 1px; color: #e0b050; font-size: 9px; }
-.cell .place { position: absolute; left: 2px; bottom: 1px; color: #e05a5a; font-size: 9px; }
-.cell .tokens { position: absolute; right: 1px; bottom: 0; display: flex; gap: 1px; }
-.tok { width: 13px; height: 13px; border-radius: 50%; color: #111; font-size: 8px; display: inline-flex; align-items: center; justify-content: center; }
-.cell.off { opacity: .45; border-style: dashed; }
-.player { border: 1px solid var(--line); border-left-width: 3px; border-radius: 4px; padding: 6px; margin-bottom: 6px; }
-.player.cur { background: #262b34; }
-.ptitle { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+#hud .pill { background: rgba(20,22,26,.72); border: 1px solid var(--line); border-radius: 3px; padding: 2px 7px; }
+#hud button { pointer-events: auto; background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; cursor: pointer; }
+
+/* 右侧浮空栏：不加整块背景 */
+#side { min-height: 0; overflow: auto; padding: 10px 12px 10px 6px; background: transparent; }
+#players { display: flex; flex-direction: column; gap: 6px; }
+.player {
+  border-left: 3px solid var(--line);
+  padding: 3px 0 4px 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,.025), transparent 70%);
+}
+.player.cur { background: linear-gradient(90deg, rgba(255,255,255,.07), transparent 80%); }
+.ptitle { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #111; font-weight: 700; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.35); }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .team { color: var(--muted); font-size: 10px; margin-left: auto; }
 .boss { color: #e05a5a; font-size: 10px; border: 1px solid #e05a5a; border-radius: 3px; padding: 0 2px; }
 .prow { color: var(--muted); font-size: 11px; }
 .bad { color: #e05a5a; font-size: 11px; }
-#actions h3 { margin: 4px 0 6px; font-size: 13px; }
-#actions button, #hand button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; margin: 2px; cursor: pointer; font: inherit; }
-#actions button:hover, #hand button:hover { border-color: #6a7280; }
-#actions .dice button { font-size: 14px; padding: 8px 14px; }
-.hint, .handhint { color: var(--muted); font-size: 11px; }
-.big-msg { font-size: 16px; color: #e0b050; padding: 12px; }
+.slots { display: flex; gap: 6px; margin-top: 3px; }
+.slot { min-width: 54px; border: 1px dashed var(--line); border-radius: 3px; padding: 1px 4px; font-size: 10px; color: var(--muted); }
+.slot b { color: var(--text); font-weight: 500; }
+
+#actions { margin: 10px 0 6px; }
+#actions h3 { margin: 4px 0 6px; font-size: 13px; color: var(--gold); }
+#actions button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; margin: 2px; cursor: pointer; }
+#actions button:hover { border-color: #6a7280; }
+#actions .dice button { font-size: 14px; padding: 7px 13px; }
+.hint { color: var(--muted); font-size: 11px; }
 .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
-.card { min-width: 88px; }
-#hand { align-items: center; }
-#topbar { display: flex; align-items: center; gap: 12px; }
-#topbar button { margin-left: auto; background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
-#setup { position: fixed; inset: 0; z-index: 10; background: rgba(12,14,18,.94); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+
+#log { margin: 6px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; }
+#log li { margin-bottom: 2px; }
+
+/* 底边栏：骰子 + 手牌 */
+#hand { display: flex; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--line); background: #191c22; min-height: 0; }
+#dice { flex: 0 0 150px; order: 2; border-left: 1px solid var(--line); padding-left: 10px; }
+#dice h3 { margin: 0 0 6px; font-size: 11px; color: var(--muted); font-weight: 500; }
+#dice button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; margin: 0 4px 4px 0; cursor: pointer; }
+#dice button:disabled { opacity: .35; cursor: not-allowed; }
+#dice .hint { font-size: 10px; }
+#cards { display: flex; gap: 7px; overflow-x: auto; align-items: stretch; min-width: 0; order: 1; flex: 1; }
+.card {
+  flex: 0 0 96px; height: 116px; border: 1px solid var(--line); border-radius: 5px;
+  background: #20242b; color: var(--text); padding: 4px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+}
+.card:hover { border-color: #8a93a3; }
+.card .art { flex: 1; border-radius: 3px; background: repeating-linear-gradient(135deg, #2a303a 0 6px, #242a33 6px 12px); display: flex; align-items: center; justify-content: center; color: #6d7685; font-size: 22px; }
+.card .name { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .meta { font-size: 9px; color: var(--muted); display: flex; justify-content: space-between; }
+.handhint { align-self: flex-end; color: var(--muted); font-size: 10px; padding-left: 6px; }
+
+/* 棋盘 */
+#board { position: absolute; inset: 0; overflow: hidden; }
+.board-inner { position: relative; }
+.cell {
+  position: absolute; width: 62px; height: 38px; border: 1px solid var(--line);
+  background: var(--panel); border-radius: 4px; font-size: 10px; line-height: 1.15;
+  padding: 2px; z-index: 1;
+}
+.cell .tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfd3da; }
+.cell .lvl { position: absolute; right: 2px; top: 1px; color: var(--gold); font-size: 9px; }
+.cell .place { position: absolute; left: 2px; bottom: 1px; color: #e05a5a; font-size: 9px; }
+.cell .tokens { position: absolute; right: 1px; bottom: 0; display: flex; gap: 1px; align-items: flex-end; }
+.tok { width: 13px; height: 13px; border-radius: 50%; color: #111; font-size: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,.35); }
+.tok.cur { outline: 2px solid #fff; outline-offset: 1px; z-index: 2; }
+.cell.off { opacity: .45; border-style: dashed; }
+
+/* 开局弹层 */
+#setup { position: fixed; inset: 0; z-index: 10; background: rgba(12,14,18,.96); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 #setup h1 { font-size: 22px; font-weight: 600; }
 .setup-row { display: flex; gap: 16px; align-items: center; }
 #setup select, #setup input { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px; font: inherit; }
 #setup button { background: #2f6a4a; color: #fff; border: 0; border-radius: 4px; padding: 8px 24px; cursor: pointer; font: inherit; }
-#setup[hidden] { display: none; }
+[hidden] { display: none !important; }
+
 .rank { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; }
 .rank th, .rank td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: left; }
-[hidden] { display: none !important; }
-.board-inner { position: relative; }
+.big-msg { font-size: 15px; color: var(--gold); padding: 8px 0; }
+
+@media (max-width: 900px) {
+  body { grid-template-rows: minmax(0, 1fr) 120px; }
+  #desk { grid-template-columns: minmax(0, 1fr) 240px; }
+  #side { font-size: 12px; }
+}
+#cards::-webkit-scrollbar, #side::-webkit-scrollbar { height: 6px; width: 6px; }
+#cards::-webkit-scrollbar-thumb, #side::-webkit-scrollbar-thumb { background: #333842; border-radius: 3px; }
+#cards { padding-bottom: 2px; }
+.side-head { display: flex; align-items: center; color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+.side-head button { margin-left: auto; background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; cursor: pointer; }

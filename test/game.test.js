@@ -98,6 +98,24 @@ test('two-player free game is legal and can end', () => {
   assert.equal(s.phase, 'action');
 });
 
+test('cannot choose the direction you came from at an intersection', () => {
+  const s = createGame({ seed: 18 });
+  const p = current(s);
+  p.lastNode = 'r4';
+  s.pending = { type: 'direction', options: ['r6', 'p1'] };
+  chooseDirection(s, 'r4');
+  assert.equal(s.pending.type, 'direction');
+});
+
+test('a walking character cannot roll two dice', () => {
+  const s = createGame({ seed: 19 });
+  const p = current(s);
+  p.vehicle = 0;
+  const before = p.position;
+  roll(s, 2);
+  assert.equal(p.position, before);
+});
+
 test('time bomb occupies the god slot and overrides a god', () => {
   const s = createGame({ seed: 15 });
   const p = s.players[0];
