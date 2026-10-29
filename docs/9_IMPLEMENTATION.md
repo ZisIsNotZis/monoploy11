@@ -9,7 +9,6 @@ python3 serve.py          # no-store 静态服务，端口 8000
 # http://127.0.0.1:8000/
 node --test
 node src/sim.js --games 100 --seed 1
-node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 ```
 
 - 无构建步骤、无运行时依赖。
@@ -78,7 +77,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 方向选择由 `ui.ask({type:'direction'})` 驱动，main 把它映射成侧栏提示和地图高亮，点路面调用 `actions.direction` 并 resolve。卡牌目标由 `ui.ask({type:'target', kind})` 驱动：`kind='cell'` 点路面、`kind='plot'` 点地产、`kind='street'` 点地产取街区、`kind='player'` 点角色。`state.mapPick` 只负责渲染高亮，不承担引擎流程。
 
-商店、神秘人和研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))` 自动排列；`.shop-card` 是方形卡面加价格，不渲染卡名和效果，名字与说明放在 tooltip。手牌间距按数量动态计算，少时散开，多时负 margin 加轻微旋转，不横向滚动。
+商店、神秘人和研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))` 自动排列；`.shop-card` 是方形卡面加价格，不渲染卡名和效果，卡名与说明放在 tooltip。手牌间距按数量动态计算，少时散开，多时负 margin 加轻微旋转，不横向滚动。
 
 棋盘由 `renderBoard` 画路面 `.cell` 和地产 `.prop`；大地产只画一个 2×2 `.prop`，路面东西画在 `.occs`，人物 `.tok` 带方向指针。空白路面不渲染 `.gicon`，放置物默认占满整格；特殊路面和放置物同时存在时各缩到 70%，一个左上、一个右下叠放。金额飘字从 `[data-player]` 的 token 取 `getBoundingClientRect`，用 fixed 定位挂到 body。`main.js` 的 `actions` 是唯一 UI 到引擎的入口，`rerender()` 全量重绘。
 
