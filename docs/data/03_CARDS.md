@@ -694,17 +694,17 @@
 | 编号 | 站点 | URL | 用途 |
 |---|---|---|---|
 | S1 | 游民星空（规则介绍/角色图鉴） | https://www.gamersky.com/handbook/202210/1526713_6.shtml | “查账卡、均贫卡、魔术卡、均富卡，对角色无效”及有 角色 的局规则 |
-| S2 | 本仓库 `02_角色ES.md`（同批资料整理，内部交叉引用） | docs/data/02_角色ES.md | 神秘博士手牌上限、章鱼王技能、槽位 |
+| S2 | 本仓库 `02_ROLE_TIERS.md`（同批资料整理，内部交叉引用） | docs/data/02_ROLE_TIERS.md | 神秘博士手牌上限、章鱼王技能、槽位 |
 | S3 | richman.fandom.com（均贫卡，经 Bing 摘要读取） | https://richman.fandom.com/zh/wiki/均貧卡 | 均贫卡不能对角色使用、可反向使用 |
 | S4 | richman.fandom.com（进阶卡页，经 Bing 摘要读取） | https://richman.fandom.com/zh/wiki/綠化卡 ・ https://richman.fandom.com/zh/wiki/災禍卡 ・ https://richman.fandom.com/zh/wiki/急速飛彈卡 ・ https://richman.fandom.com/zh/wiki/神眷卡 ・ https://richman.fandom.com/zh/wiki/輝煌卡 ・ https://richman.fandom.com/zh/wiki/窘困卡 | 五合一材料、困难角色不可合成（仅绿化/灾祸/急速三页读到）、神眷可跨附身 |
 | S5 | richman.fandom.com（大富翁11/策略，经 Bing 摘要读取） | https://richman.fandom.com/zh/wiki/大富翁11/策略 | 大多数卡使用距离=周围半径5格；均贫/均富可反向、查账不可 |
 | S6 | richman.fandom.com（购地卡，经 Bing 摘要读取） | https://richman.fandom.com/zh/wiki/購地卡 | 购地卡需支付原价、无主地可用 |
 | S7 | richman.fandom.com（查封卡/免罪卡，经 Bing 摘要读取） | https://richman.fandom.com/zh/wiki/查封卡 ・ https://richman.fandom.com/zh/wiki/免罪卡 | 停业卡=查封卡、无懈卡=免罪卡 |
 | S8 | 本仓库 `04_GODS.md`（同批资料整理，内部交叉引用） | docs/data/04_GODS.md | 宫本/忍太郎/金贝贝天赋与卡片的交互 |
-| S9 | 本仓库 `02_角色ES.md` 战术段（内部交叉引用） | docs/data/02_角色ES.md | 乌龟卡/控制卡拖 角色 |
-| S10 | 本仓库 `02_角色ES.md`（章鱼王技能表，内部交叉引用） | docs/data/02_角色ES.md | 章鱼王三档技能 |
+| S9 | 本仓库 `02_ROLE_TIERS.md` 战术段（内部交叉引用） | docs/data/02_ROLE_TIERS.md | 乌龟卡/控制卡拖 角色 |
+| S10 | 本仓库 `02_ROLE_TIERS.md`（章鱼王技能表，内部交叉引用） | docs/data/02_ROLE_TIERS.md | 章鱼王三档技能 |
 | S11 | 游侠网（图文攻略·第 21 页 大型建筑介绍） | https://gl.ali213.net/html/2022-10/934689_21.html | 研究所/书店/能源中心机制 |
-| S12 | 本仓库 `02_角色ES.md`「角色槽位」（内部交叉引用） | docs/data/02_角色ES.md | 定时炸弹占神仙/道具槽、送神/启动可处理 |
+| S12 | 本仓库 `02_ROLE_TIERS.md`「角色槽位」（内部交叉引用） | docs/data/02_ROLE_TIERS.md | 定时炸弹占神仙/道具槽、送神/启动可处理 |
 | S13 | 大富翁11 官方网站（卡片/比赛参数） | https://rmxi.softstargames.com.tw/ | 商店买卡、神秘人、物价提升天数 |
 | S14 | 3DM（全卡片效果 1–6，游戏内界面截图） | https://www.3dmgame.com/gl/3870044_23.html（同前缀 _24–_28） | 48 张卡的效果原文 |
 | S15 | 游侠网（卡片效果一览表，两张长图） | https://gl.ali213.net/html/2022-10/937591.html | 48 张卡效果交叉核对 |
