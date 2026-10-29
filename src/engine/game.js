@@ -903,7 +903,7 @@ export function useCard(state, index, target) {
   const def = CARD_DEFS[id];
   if (!def) return state;
   if (def.target !== 'self' && def.target !== 'all' && !target) return state;
-  if (TARGET_RANGE_5.has(id) && target) {
+  if (TARGET_RANGE_5.has(id) && target && !(id === 'turn' && p.talents.includes('turn_card_infinite'))) {
     const q = targetPlayer(state, p, target);
     if (!q) return state;
     if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, 5)) return state;

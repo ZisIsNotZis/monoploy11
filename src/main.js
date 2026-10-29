@@ -134,7 +134,7 @@ function renderTargetPicker(state, p, i, kind) {
   let body = '';
   if (kind === 'player') {
     const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
-    body = state.players.filter(q => q.alive && q.id !== p.id && (!range5.has(id) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5))).map(q =>
+    body = state.players.filter(q => q.alive && q.id !== p.id && (!range5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5))).map(q =>
       `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('');
   } else if (kind === 'street') {
     body = ['A', 'B', 'C', 'D'].map(s => `<button data-target="${s}">${s} 街</button>`).join('');
