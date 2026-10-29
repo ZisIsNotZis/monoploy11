@@ -4,7 +4,7 @@ import { CHARACTER_BY_ID, CHARACTERS } from '../data/characters.js';
 import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
 import { GRID_MANOR } from '../data/maps/grid-manor.js';
-import { walk, validateMap, buildAdj, isPlatformActive, nearestStable } from './board-v2.js';
+import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
 
 const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
@@ -106,12 +106,12 @@ function makeStocks(rng) {
 const CARD_LIST = [
   ['buyland', '购地卡', 'cell'], ['exchange', '换屋卡', 'cell'], ['rebuild', '改建卡', 'cell'],
   ['close', '停业卡', 'street'], ['truck', '工程车卡', 'cell'], ['monster', '怪兽卡', 'cell'],
-  ['worker', '机器工人卡', 'cell'], ['inflate', '涨价卡', 'street'], ['remotedice', '遥控骰子卡', 'self'],
+  ['worker', '机器工人卡', 'cell'], ['inflate', '涨价卡', 'street'], ['remotedice', '遥控骰子卡', 'cell'],
   ['turtle', '乌龟卡', 'player'], ['turn', '转向卡', 'player'], ['stay', '停留卡', 'player'],
   ['sleep', '梦游卡', 'player'], ['hibernate', '冬眠卡', 'player'], ['roadblock', '路障卡', 'cell'],
   ['superdice', '超级骰子卡', 'self'], ['jelly', '果冻墙卡', 'cell'], ['randomdoor', '随意门卡', 'self'],
   ['portal', '传送门卡', 'player'], ['motorcycle', '机车卡', 'self'], ['car', '汽车卡', 'self'],
-  ['robotdoll', '机器娃娃卡', 'self'], ['start', '启动卡', 'player'], ['mine', '地雷卡', 'cell'],
+  ['robotdoll', '机器娃娃卡', 'cell'], ['start', '启动卡', 'player'], ['mine', '地雷卡', 'cell'],
   ['timebomb', '定时炸弹卡', 'cell'], ['missile', '飞弹卡', 'player'], ['quantum', '量子飞弹卡', 'all'],
   ['dynamite', '炸药卡', 'cell'], ['banana', '香蕉皮卡', 'cell'], ['trap', '陷阱卡', 'cell'],
   ['free', '免费卡', 'self'], ['audit', '查账卡', 'player'], ['equalpoor', '均贫卡', 'player'],
@@ -307,6 +307,17 @@ export function roll(state, diceCount = 1) {
   state.lastRoll = { playerId: p.id, value: n, path: [] };
   const res = walk(state.map, state.day, p.position, p.facing, n, state.rng, { cameFrom: p.lastNode, chaos });
   state.lastRoll = { playerId: p.id, value: n, path: res.path };
+  const jellyIndex = res.path.findIndex(id => state.placements[id]?.kind === 'jelly');
+  if (jellyIndex >= 0) {
+    const original = res.path;
+    const back = jellyIndex >= 2 ? original[jellyIndex - 2] : p.position;
+    delete state.placements[original[jellyIndex]];
+    res.path = original.slice(0, jellyIndex);
+    res.landed = back;
+    res.bounced = true;
+    res.bounceFrom = original[jellyIndex];
+    log(state, `${p.name} 撞上果冻墙，被弹回 2 格到 ${label(state, back)}`);
+  }
   for (const id of res.path) {
     if (id === state.map.startId) {
       p.cash += TUNING.salary;
@@ -327,9 +338,16 @@ export function roll(state, diceCount = 1) {
       }
     }
   }
-  p.lastNode = res.path.length >= 2 ? res.path[res.path.length - 2] : p.position;
+  if (res.bounced) {
+    const original = state.lastRoll.path;
+    const i = original.indexOf(res.bounceFrom);
+    p.lastNode = i >= 3 ? original[i - 3] : null;
+    p.facing = i >= 1 ? original[i - 1] : p.facing;
+  } else {
+    p.lastNode = res.path.length >= 2 ? res.path[res.path.length - 2] : p.position;
+    p.facing = res.pendingDirection ? null : nextForward(state.map, p.position, p.lastNode);
+  }
   p.position = res.landed;
-  p.facing = res.pendingDirection ? null : nextForward(state.map, p.position, p.lastNode);
   if (!p.alive) return endTurn(state);
   state.phase = 'resolve';
   p.pendingDirection = res.pendingDirection ? exitsOf(state, p.position, p.lastNode) : null;
@@ -380,6 +398,8 @@ function applyPass(state, p, id) {
     } else if (placed.kind === 'timebomb') {
       p.god = '定时炸弹'; p.godDays = 30;
       log(state, `${p.name} 经过定时炸弹，被缠上了`);
+    } else if (placed.kind === 'jelly') {
+      log(state, `${p.name} 碰到果冻墙，被弹开`);
     } else {
       p.skipTurns += 1;
       log(state, `${p.name} 经过${placed.kind}，停留 1 回合`);
@@ -891,7 +911,11 @@ function applyCard(state, p, id, target) {
       return true;
     }
     case 'worker': {
-      const pr = state.properties[node?.id]; if (!pr || pr.ownerId !== p.id) return false;
+      if (!node) return false;
+      const path = pathWithin(state.map, p.position, node.id, 5);
+      if (!path) return false;
+      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const pr = state.properties[key]; if (!pr || pr.ownerId !== p.id) return false;
       pr.level = Math.min(TUNING.maxLevel, pr.level + 1); return true;
     }
     case 'inflate': {
@@ -899,7 +923,30 @@ function applyCard(state, p, id, target) {
       for (const pr of Object.values(state.properties)) if (pr.street === street) pr.inflate = 6;
       return true;
     }
-    case 'remotedice': p.forcedDice = 7; return true;
+    case 'remotedice': {
+      if (!node) return false;
+      const max = (1 + Math.max(0, p.vehicle ?? 0)) * 6;
+      const path = pathWithin(state.map, p.position, node.id, max);
+      if (!path || path.length === 0) return false;
+      const prev = path.length >= 2 ? path[path.length - 2] : p.position;
+      for (const id of path) {
+        if (id === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
+        applyPass(state, p, id);
+        if (!p.alive) break;
+      }
+      if (!p.alive) return true;
+      p.lastNode = prev;
+      p.position = node.id;
+      p.facing = nextForward(state.map, p.position, p.lastNode);
+      state.lastRoll = { playerId: p.id, value: path.length, path };
+      state.phase = 'resolve';
+      resolveLanding(state, p);
+      if (state.phase === 'resolve' && !state.pending && state.passPrompt) {
+        state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
+      }
+      state.passPrompt = null;
+      return true;
+    }
     case 'superdice': p.forcedDice = 12; return true;
     case 'turtle': if (!q) return false; q.forcedDice = 1; return true;
     case 'turn': if (!q) return false; q.facing = q.lastNode; return true;
@@ -919,7 +966,17 @@ function applyCard(state, p, id, target) {
     }
     case 'motorcycle': p.vehicle = 1; return true;
     case 'car': p.vehicle = 2; return true;
-    case 'robotdoll': state.placements = {}; return true;
+    case 'robotdoll': {
+      if (!node) return false;
+      const path = pathWithin(state.map, p.position, node.id, 10);
+      if (!path || path.length === 0) return false;
+      let cleared = 0;
+      for (const id of path) {
+        if (state.placements[id]) { delete state.placements[id]; cleared += 1; }
+      }
+      log(state, `机器娃娃沿路径清除了 ${cleared} 个障碍物`);
+      return true;
+    }
     case 'start': {
       if (!q || q.god !== '定时炸弹') return false;
       q.god = null; q.godDays = 0;

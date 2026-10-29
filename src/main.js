@@ -2,10 +2,11 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=70';
-import { render } from './ui/render.js?v=70';
+} from './engine/game.js?v=72';
+import { render } from './ui/render.js?v=72';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
+import { reachableWithin } from './engine/board-v2.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -68,7 +69,11 @@ const actions = {
     const def = CARD_DEFS[id];
     if (!def) return;
     if (def.target === 'cell') {
-      state.mapPick = { index: i, kind: 'cell' };
+      let max = null;
+      if (id === 'remotedice') max = (1 + Math.max(0, p.vehicle ?? 0)) * 6;
+      if (id === 'robotdoll') max = 10;
+      if (id === 'worker') max = 5;
+      state.mapPick = { index: i, kind: 'cell', max, cells: max ? [...reachableWithin(state.map, p.position, max)] : null };
       rerender();
       return;
     }

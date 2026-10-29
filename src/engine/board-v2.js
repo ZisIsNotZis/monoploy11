@@ -137,3 +137,43 @@ export function walk(map, day, from, facing, steps, rng, opts = {}) {
   const pendingDirection = !forced && steps > 0 && degree >= 3 && path.length > 0;
   return { path, landed: cur, teleported, pendingDirection };
 }
+
+export function pathWithin(map, from, to, maxSteps) {
+  if (from === to) return [];
+  const adj = buildAdj(map);
+  const byId = Object.fromEntries(map.nodes.map(n => [n.id, n]));
+  const q = [[from, []]];
+  const seen = new Set([from]);
+  while (q.length) {
+    const [id, path] = q.shift();
+    if (path.length >= maxSteps) continue;
+    for (const e of adj[id]) {
+      const next = e.to;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      const np = [...path, next];
+      if (next === to) return np;
+      if (byId[next]?.kind !== 'platform') q.push([next, np]);
+      else q.push([next, np]);
+    }
+  }
+  return null;
+}
+
+export function reachableWithin(map, from, maxSteps) {
+  const adj = buildAdj(map);
+  const seen = new Set([from]);
+  const out = new Set();
+  const q = [[from, 0]];
+  while (q.length) {
+    const [id, d] = q.shift();
+    if (d >= maxSteps) continue;
+    for (const e of adj[id]) {
+      if (seen.has(e.to)) continue;
+      seen.add(e.to);
+      out.add(e.to);
+      q.push([e.to, d + 1]);
+    }
+  }
+  return out;
+}

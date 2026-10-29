@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=70';
+import { CARD_DEFS, current } from '../engine/game.js?v=72';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -15,6 +15,7 @@ const BIG_TAG = { commercial: '商', hotel: '饭', bookstore: '书', energy: '�
 const BIG_NAME = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机' };
 const OCC_ICON = { god:'神', dog:'狗', beggar:'乞', merchant:'秘', mine:'雷', dynamite:'炸', timebomb:'弹', banana:'绊', jelly:'冻', trap:'陷', roadblock:'障' };
+const GOD_ICON = { 财神:'财', 穷神:'穷', 福神:'福', 衰神:'衰', 天使:'天', 恶魔:'恶', 土地公:'土', 糊涂神:'糊', 武神:'武', 凶神:'凶' };
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
   start: '经过或停留领取工资', property: '小地产：买地、加盖、收租',
@@ -116,6 +117,7 @@ function renderBoard(el, state, currentP, actions) {
   const dir = currentP ? (currentP.facing ?? currentP.lastNode) : null;
   const dirOptions = new Set(state.pending?.type === 'direction' ? state.pending.options : []);
   const pickMode = !!state.mapPick;
+  const pickCells = state.mapPick?.cells ? new Set(state.mapPick.cells) : null;
   const cur = currentP ? nodes[currentP.position] : null;
   const tgt = dir ? nodes[dir] : null;
   const angle = cur && tgt ? Math.atan2(tgt.y - cur.y, tgt.x - cur.x) * 180 / Math.PI : null;
@@ -141,14 +143,15 @@ function renderBoard(el, state, currentP, actions) {
     const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '' : '?');
     const title = `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}${n.adjacentPlots?.length ? '｜邻接 ' + n.adjacentPlots.length + ' 块地产' : ''}`;
     const dirTarget = dirOptions.has(n.id);
-    const extra = dirTarget ? 'dir-target' : pickMode ? 'pick-target' : '';
-    const attr = dirTarget ? ` data-dir-cell="${n.id}"` : pickMode ? ` data-pick-cell="${n.id}"` : '';
+    const canPick = pickMode && (!pickCells || pickCells.has(n.id));
+    const extra = dirTarget ? 'dir-target' : canPick ? 'pick-target' : '';
+    const attr = dirTarget ? ` data-dir-cell="${n.id}"` : canPick ? ` data-pick-cell="${n.id}"` : '';
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
     return `<div class="cell ${extra}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${title}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon">${ground}</div>` : ''}
-      ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
+      ${place ? `<div class="occs" title="${place.name ?? place.kind}">${place.kind === 'god' ? (GOD_ICON[place.name] ?? '神') : (OCC_ICON[place.kind] ?? '?')}</div>` : ''}
       ${dirTarget ? `<i class="dir-mark" style="--a:${da}deg"></i>` : ''}
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;

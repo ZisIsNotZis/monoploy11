@@ -399,3 +399,37 @@ test('凶神 knocks down a house upgraded during ground handling', () => {
   buildProperty(s);
   assert.equal(s.properties[id].level, 0, '凶神 should knock the newly built house down');
 });
+
+test('jelly wall knocks the walker back two cells', () => {
+  const s = createGame({ seed: 37 });
+  const p = current(s);
+  s.placements['7,2'] = { kind: 'jelly' };
+  p.position = '3,2'; p.facing = '4,2'; p.lastNode = '2,2'; p.forcedDice = 4;
+  roll(s, 1);
+  assert.equal(p.position, '5,2');
+  assert.equal(s.placements['7,2'], undefined);
+});
+
+test('remote dice moves to any selected cell within range', () => {
+  const s = createGame({ seed: 38 });
+  const p = current(s);
+  p.position = '3,2'; p.facing = '4,2'; p.lastNode = '2,2';
+  p.cards = ['remotedice'];
+  useCard(s, 0, '7,2');
+  assert.equal(p.position, '7,2');
+  assert.ok(!p.cards.includes('remotedice'));
+});
+
+test('robot doll clears obstacles only along its chosen path', () => {
+  const s = createGame({ seed: 39 });
+  const p = current(s);
+  p.position = '3,2'; p.facing = '4,2'; p.lastNode = '2,2';
+  s.placements['5,2'] = { kind: 'jelly' };
+  s.placements['7,2'] = { kind: 'dog' };
+  s.placements['8,2'] = { kind: 'roadblock' };
+  p.cards = ['robotdoll'];
+  useCard(s, 0, '6,2');
+  assert.equal(s.placements['5,2'], undefined);
+  assert.equal(s.placements['7,2']?.kind, 'dog');
+  assert.equal(s.placements['8,2']?.kind, 'roadblock');
+});
