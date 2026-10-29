@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=79';
+import { CARD_DEFS, current } from '../engine/game.js?v=80';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -232,7 +232,15 @@ function renderChoice(el, state, p, actions) {
   if (!pending) return;
   const box = (title, body) => `<h3>${title}</h3>${body}`;
   let html = '';
-  if (pending.type === 'buy') {
+  if (pending.type === 'target') {
+    if (pending.kind === 'cell') {
+      html = box('选择目标', '<p class="hint">直接点地图上高亮的路面</p><button data-act="cancel-pick">取消</button>');
+    } else if (pending.kind === 'player') {
+      html = box('选择目标', state.players.filter(q => q.alive && q.id !== current(state).id).map(q => `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
+    } else {
+      html = box('选择目标', ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'].map(x => `<button data-target="${x}">${x} 街</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
+    }
+  } else  if (pending.type === 'buy') {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
     const label = plot?.big ? '大空地' : '小地产';
     html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
@@ -286,6 +294,7 @@ function renderChoice(el, state, p, actions) {
   }
   el.innerHTML = html;
   el.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => actions.act(b.dataset.act));
+  el.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => actions.pickCell ? actions.pickCell(b.dataset.target) : null);
   el.querySelectorAll('button[data-dir]').forEach(b => b.onclick = () => actions.direction(b.dataset.dir));
   el.querySelectorAll('button[data-big]').forEach(b => b.onclick = () => actions.chooseBig(b.dataset.big));
   el.querySelectorAll('button[data-buy]').forEach(b => b.onclick = () => actions.stock(b.dataset.buy, 10, 'buy'));

@@ -9,9 +9,9 @@ import { TUNING } from '../src/data/tuning.js';
 
 test('test map validates', () => assert.deepEqual(validateMap(TEST_MANOR), []));
 
-test('game starts with 4 hotseat players on day 1', () => {
+test('game starts with 4 hotseat players before the first turn', () => {
   const s = createGame({ seed: 3 });
-  assert.equal(s.day, 1);
+  assert.equal(s.day, 0);
   assert.equal(s.players.length, 4);
   assert.ok(s.players.every(p => p.cash === TUNING.startingCash));
 });

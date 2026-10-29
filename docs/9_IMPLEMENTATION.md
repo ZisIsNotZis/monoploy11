@@ -22,7 +22,8 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 | `index.html` | 单页入口；右侧栏 + 棋盘 + 开局层 |
 | `styles.css` | 全部样式；网格、侧栏、卡片、日志 |
 | `src/main.js` | UI 事件、开局、热座、动画、金钱飘字、目标选择 |
-| `src/engine/game.js` | 规则内核：开局、回合、移动、落点、卡/神/建筑/商店/银行/乐透/股票/领主 |
+| `src/engine/game.js` | 状态创建、卡片/神仙/经济/地图效果等规则内核 |
+| `src/engine/flow.js` | 当前回合引擎：异步大循环、逐格移动、落点顺序、UI 选择 await |
 | `src/engine/board-v2.js` | 图模型辅助：邻接、校验、移动、死路反弹、机关板 |
 | `src/engine/economy.js` | 租金、买价、资产、付款、租金进存款 |
 | `src/engine/rng.js` | 种子 RNG |
@@ -60,16 +61,9 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 ## 回合与结算
 
-1. `startTurn`：天数+1、物价、月息、股票、乐透开奖、随机刷新路面东西、处理监禁/住院/跳过。
-2. 回合开始弃牌到 8。
-3. 行动阶段：用卡、股票、银行（若可用）。
-4. `roll`：按载具取 1–3 骰；`walk` 生成路径后由 `continueWalk` 逐格推进；每格立即处理经过事件、地面道具、加卡、扣钱；中途死亡立即停止；经过银行/乐透时暂停在该格，关闭面板后继续剩余移动；定时炸弹可主动送给追上的人。
-5. `resolveLanding` 顺序：
-   - `handleOccupant`：脚下东西（神仙/狗/乞丐/神秘人/道具）。
-   - 路面类型：card/bank/lottery/shop/magic/news/tax/event/hospital/jail/teleport。
-   - `adjacentPlots`：`resolveAdjacentPlots`，有主收租、队友免租、无主逐块入队、自己的地产加盖/大建筑选择。
-   - `pendingDirection`：如果停在交叉点，记录方向选项，等以上结算结束后由 `advanceTurn` 弹出方向选择。
-6. `advanceTurn` 只做正常流程收口：有待处理选择时直接返回等待；还有 `moving` 时先继续走完；还有 `landingCell` 就处理相邻地产，还有 `postGodCell` 就处理事后神；最后才处理方向或换人。代码里不存在中途结束回合的入口。
+入口是 `runGame(state, ui)`，一个异步大循环：`beginTurn` → `playTurn` → `nextPlayer`，直到 `state.over`。`playTurn` 按顺序 `await` 行动阶段、掷骰、逐格移动、落点、相邻地产、事后神、方向；没有 `endTurn`/`advanceTurn`，也没有哪个普通处理函数能中途换人。
+
+`ui` 只提供 `render(state)` 和 `ask(prompt) => Promise`。银行、商店、买地、加盖、大建筑、方向、卡牌目标都通过 `await ui.ask` 等待玩家；银行存取在 `bankFlow` 里循环，存/取不结束移动，只有离开才返回移动循环。移动由 `movePhase` 逐格 `await`：每格先处理经过道具，再处理银行/乐透/卡片，死亡就 `return`，不处理后续格。落点后依次 `landingPhase`、`groundPhase`、`postGodPhase`、`directionPhase`；这些函数只返回状态，不负责换人。
 
 ## 经济
 

@@ -77,7 +77,7 @@ export function createGame(config = {}) {
     for (const p of players) p.cards.push(randomCard(rng));
   }
   log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
-  startTurn(state);
+  state.phase = 'action';
   return state;
 }
 
@@ -90,7 +90,7 @@ function defaultParticipants() {
   ];
 }
 
-function nextForward(map, pos, lastNode) {
+export function nextForward(map, pos, lastNode) {
   const adj = buildAdj(map);
   const forward = adj[pos].filter(e => e.to !== lastNode);
   return (forward[0] ?? adj[pos][0])?.to ?? null;
@@ -231,7 +231,7 @@ export function startTurn(state) {
   return state;
 }
 
-function applyMonthly(state, p) {
+export function applyMonthly(state, p) {
   if (state.day % 30 !== 0) return;
   const rate = p.isBoss && p.bossId === 'yuanyuan' ? 0.15 : TUNING.monthlyInterest;
   const interest = Math.round(p.deposit * rate);
@@ -239,7 +239,7 @@ function applyMonthly(state, p) {
   log(state, `${p.name} 存款利息 +${interest}`);
 }
 
-function tickGod(state, p) {
+export function tickGod(state, p) {
   if (!p.god) return;
   p.godDays -= 1;
   if (p.godDays <= 0) {
@@ -253,7 +253,7 @@ function tickGod(state, p) {
   }
 }
 
-function releaseFrom(state, p, kind) {
+export function releaseFrom(state, p, kind) {
   const gate = kind === 'jail' ? state.map.facility?.jail : state.map.facility?.hospital;
   p.position = gate ?? state.map.startId;
   log(state, `${p.name} 从${kind === 'jail' ? '监狱' : '医院'}出来了`);
@@ -431,7 +431,7 @@ function continueWalk(state) {
   return finishWalk(state, p, mv.res);
 }
 
-function exitsOf(state, id, lastNode = null) {
+export function exitsOf(state, id, lastNode = null) {
   const adj = buildAdj(state.map);
   const all = adj[id].map(e => e.to).filter(to => {
     const n = state.map.nodes.find(x => x.id === to);
@@ -488,11 +488,11 @@ function applyPass(state, p, id) {
   }
 }
 
-function makeOffer(state, n, prices) {
+export function makeOffer(state, n, prices) {
   return Array.from({ length: n }, () => ({ id: randomCard(state.rng), price: state.rng.pick(prices) }));
 }
 
-function drawLottery(state) {
+export function drawLottery(state) {
   if (state.day % 10 !== 0) return;
   if (state.lottery.lastDrawDay === state.day) return;
   state.lottery.lastDrawDay = state.day;
@@ -510,7 +510,7 @@ function drawLottery(state) {
   state.lottery.sold = [];
 }
 
-function tickTimers(state) {
+export function tickTimers(state) {
   for (const pr of Object.values(state.properties)) {
     if (pr.closed > 0) pr.closed -= 1;
     if (pr.inflate > 0) pr.inflate -= 1;
@@ -551,7 +551,7 @@ export function attachGod(state, p, name) {
   }
 }
 
-function resolveAdjacentPlots(state, p, cell) {
+export function resolveAdjacentPlots(state, p, cell) {
   const ids = cell.adjacentPlots ?? [];
   const unowned = [];
   for (const id of ids) {
@@ -591,14 +591,14 @@ function resolveAdjacentPlots(state, p, cell) {
   return state.pending ? state : advanceTurn(state);
 }
 
-function labelForPlot(state, id) {
+export function labelForPlot(state, id) {
   const plot = state.map.plots.find(x => x.id === id);
   if (!plot) return id;
   if (plot.big) return state.properties[id]?.bigType ? BIG_NAMES[state.properties[id].bigType] : '大空地';
   return '小地产';
 }
 
-function handleOccupant(state, p, cell) {
+export function handleOccupant(state, p, cell) {
   const occ = state.placements[cell.id];
   if (!occ) return false;
   delete state.placements[cell.id];
@@ -627,7 +627,7 @@ function handleOccupant(state, p, cell) {
   return false;
 }
 
-function spawnOccupants(state) {
+export function spawnOccupants(state) {
   if (state.day < 3) return;
   if (state.rng.float() > 0.55) return;
   const cells = state.map.nodes.filter(n => !state.placements[n.id] && n.kind !== 'teleport' && n.kind !== 'platform' && n.kind !== 'hospital' && n.kind !== 'jail');
@@ -644,9 +644,9 @@ function spawnOccupants(state) {
   log(state, `路面上随机出现了 ${occ.kind}${occ.name ? '：' + occ.name : ''}`);
 }
 
-const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
+export const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 
-function applyPostGods(state, p, cell) {
+export function applyPostGods(state, p, cell) {
   const ids = cell.adjacentPlots ?? [];
   const upgraded = [];
   const take = (id) => {
@@ -932,7 +932,7 @@ function targetNode(state, id) {
   return state.map.nodes.find(n => n.id === id) ?? null;
 }
 
-function applyCard(state, p, id, target) {
+export function applyCard(state, p, id, target) {
   const node = targetNode(state, target);
   const q = targetPlayer(state, p, target);
   switch (id) {
@@ -1204,7 +1204,7 @@ export function doMagic(state, effect) {
   return advanceTurn(state);
 }
 
-function runNewsEvent(state, p) {
+export function runNewsEvent(state, p) {
   const kind = state.rng.pick(['boom', 'bust', 'grant', 'storm']);
   if (kind === 'boom') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
   if (kind === 'bust') { state.priceIndex = Math.max(1, +(state.priceIndex - 0.1).toFixed(2)); log(state, '新闻：物价下跌 0.1'); }

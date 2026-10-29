@@ -1,9 +1,5 @@
-import {
-  createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
-  doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
-  doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=79';
-import { render } from './ui/render.js?v=79';
+import { startSession, runGame } from './engine/flow.js';
+import { render } from './ui/render.js?v=80';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin, pathWithin } from './engine/board-v2.js';
@@ -15,168 +11,85 @@ const root = {
 };
 
 let state = null;
-let busy = false;
+let active = null; // { prompt, resolve }
 
-const actions = {
-  roll(n) {
-    if (!state || busy) return;
-    busy = true;
-    const before = snapshot();
-    animateDice(280).then(() => {
-      roll(state, n);
+function rerender() { if (state) render(root, state, actions); }
+
+const ui = {
+  render: rerender,
+  ask(prompt) {
+    return new Promise(resolve => {
+      active = { prompt, resolve };
+      applyPromptToState(prompt);
       rerender();
-      showMoneyDelta(before);
-      busy = false;
     });
-  },
-  direction(id) { chooseDirection(state, id); rerender(); },
-  pickCell(id) {
-    if (!state?.mapPick) return;
-    const { index } = state.mapPick;
-    state.mapPick = null;
-    const before = snapshot();
-    useCard(state, index, id);
-    rerender();
-    showMoneyDelta(before);
-  },
-  act(name) {
-    const before = snapshot();
-    if (name === 'buy') buyProperty(state);
-    else if (name === 'build') buildProperty(state);
-    else if (name === 'skip') skipPending(state);
-    else if (name === 'next' || name === 'leave') leavePending(state);
-    else if (name === 'news') doNews(state);
-    else if (name === 'cancel-pick') { state.mapPick = null; rerender(); return; }
-    else if (name === 'deposit') doBank(state, 'deposit', numberInput());
-    else if (name === 'withdraw') doBank(state, 'withdraw', numberInput());
-    rerender(); showMoneyDelta(before);
-  },
-  openStock() { openStock(state); rerender(); },
-  openBank() { openBank(state); rerender(); },
-  stock(id, qty, side) { const before = snapshot(); doStock(state, id, qty, side); rerender(); showMoneyDelta(before); },
-  shop(index) { const before = snapshot(); doShop(state, index); rerender(); showMoneyDelta(before); },
-  research(index) { const before = snapshot(); doResearch(state, index); rerender(); showMoneyDelta(before); },
-  merchant(index) { const before = snapshot(); doMerchant(state, index); rerender(); showMoneyDelta(before); },
-  magic(effect) { const before = snapshot(); doMagic(state, effect); rerender(); showMoneyDelta(before); },
-  lottery(number) { const before = snapshot(); doLottery(state, number); rerender(); showMoneyDelta(before); },
-  chooseBig(type) { doChooseBig(state, type); rerender(); },
-  again() { showSetup(); },
-  card(i) {
-    const p = current(state);
-    const id = p.cards[i];
-    if (!id) return;
-    const def = CARD_DEFS[id];
-    if (!def) return;
-    if (def.target === 'cell') {
-      let max = null;
-      if (id === 'remotedice') max = (1 + Math.max(0, p.vehicle ?? 0)) * 6;
-      if (id === 'robotdoll') max = 10;
-      if (id === 'worker') max = 5;
-      state.mapPick = { index: i, kind: 'cell', max, cells: max ? [...reachableWithin(state.map, p.position, max)] : null };
-      rerender();
-      return;
-    }
-    if (def.target !== 'self' && def.target !== 'all') {
-      renderTargetPicker(state, p, i, def.target);
-      return;
-    }
-    const before = snapshot();
-    useCard(state, i, null);
-    rerender();
-    showMoneyDelta(before);
   },
 };
 
-function snapshot() {
-  if (!state) return [];
-  return state.players.map(p => ({ id: p.id, cash: p.cash, deposit: p.deposit }));
+function answer(value) {
+  if (!active) return;
+  const { resolve } = active;
+  active = null;
+  state.pending = null;
+  state.mapPick = null;
+  resolve(value);
 }
 
-function showMoneyDelta(before) {
-  if (!before) return;
-  state.players.forEach(p => {
-    const old = before.find(x => x.id === p.id);
-    if (!old) return;
-    const delta = (p.cash + p.deposit) - (old.cash + old.deposit);
-    if (!delta) return;
-    const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
-    const rect = tok?.getBoundingClientRect();
-    const span = document.createElement('span');
-    span.className = 'money-float map-float ' + (delta > 0 ? 'up' : 'down');
-    span.textContent = (delta > 0 ? '+' : '') + delta.toLocaleString();
-    if (rect) {
-      span.style.position = 'fixed';
-      span.style.left = `${rect.left + rect.width / 2}px`;
-      span.style.top = `${rect.top - 4}px`;
+function applyPromptToState(p) {
+  state.pending = null;
+  state.mapPick = null;
+  if (!p) return;
+  if (p.type === 'action') return;
+  if (p.type === 'target') {
+    if (p.kind === 'cell') {
+      const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
+      state.mapPick = { max: p.max, cells };
     }
-    document.body.appendChild(span);
-    setTimeout(() => span.remove(), 1300);
-  });
+    state.pending = { type: 'target', kind: p.kind, cardId: p.cardId };
+    return;
+  }
+  if (p.type === 'buy') { state.pending = { type: 'buy', cellId: p.plot.id, price: p.price, label: p.plot.big ? '大空地' : '小地产' }; return; }
+  if (p.type === 'build') { state.pending = { type: 'build', cellId: p.plot.id, cost: p.cost, label: p.plot.big ? '大空地' : '小地产' }; return; }
+  if (p.type === 'chooseBig') { state.pending = { type: 'chooseBig', cellId: p.plot.id }; return; }
+  if (p.type === 'direction') { state.pending = { type: 'direction', options: p.options }; return; }
+  if (p.type === 'bank') { state.pending = { type: 'bank' }; return; }
+  if (p.type === 'stock') { state.pending = { type: 'stock' }; return; }
+  if (p.type === 'lottery') { state.pending = { type: 'lottery' }; return; }
+  if (p.type === 'shop' || p.type === 'merchant') {
+    state.shopOffer = p.offers; state.shopBought = p.bought; state.shopLimit = p.limit;
+    state.pending = { type: p.type };
+    return;
+  }
+  if (p.type === 'magic') { state.pending = { type: 'magic' }; return; }
 }
 
-function animateDice(ms) {
-  return new Promise(resolve => {
-    const start = Date.now();
-    const timer = setInterval(() => {
-      root.dice.innerHTML = `<button>${1 + Math.floor(Math.random() * 6)}</button>`;
-      if (Date.now() - start > ms) {
-        clearInterval(timer);
-        resolve();
-      }
-    }, 55);
-  });
-}
+const actions = {
+  roll(n) { answer({ action: 'roll', dice: n }); },
+  card(i) { answer({ action: 'card', index: i }); },
+  openStock() { answer({ action: 'stock' }); },
+  stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
+  direction(id) { answer(id); },
+  pickCell(id) { answer(id); },
+  chooseBig(type) { answer(type); },
+  magic(effect) { answer({ effect }); },
+  lottery(number) { answer({ action: 'buy', number }); },
+  shop(index) { answer({ action: 'buy', index }); },
+  merchant(index) { answer({ action: 'buy', index }); },
+  research(index) { answer({ action: 'buy', index }); },
+  act(name) {
+    if (!active) return;
+    const p = active.prompt;
+    if (name === 'buy' || name === 'build') return answer(true);
+    if (name === 'skip') return answer(false);
+    if (name === 'leave') return answer({ action: 'leave' });
+    if (name === 'news') return answer(true);
+    if (name === 'deposit' || name === 'withdraw') return answer({ action: name, amount: numberInput() });
+    if (name === 'cancel-pick') return answer(null);
+  },
+  openBank() {},
+};
 
 function numberInput() { return Number($('#amount')?.value ?? 0); }
-
-function renderTargetPicker(state, p, i, kind) {
-  const id = p.cards[i];
-  let body = '';
-  if (kind === 'player') {
-    const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
-    body = state.players.filter(q => q.alive && q.id !== p.id && (!range5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5))).map(q =>
-      `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('');
-  } else if (kind === 'street') {
-    body = ['A', 'B', 'C', 'D'].map(s => `<button data-target="${s}">${s} 街</button>`).join('');
-  } else if (kind === 'cell') {
-    body = `<select id="cellTarget">${state.map.nodes.map(n =>
-      `<option value="${n.id}">${n.label}</option>`).join('')}</select>
-      <button data-pickcell="1">确定</button>`;
-  }
-  root.choice.hidden = false;
-  root.cards.hidden = true;
-  root.dice.hidden = true;
-  root.choice.innerHTML = `<h3>选择目标：${CARD_DEFS[id].name}</h3>${body}<button data-cancel="1">取消</button>`;
-  root.choice.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => {
-    if (b.dataset.target) useCard(state, i, b.dataset.target);
-    rerender();
-  });
-  const pick = root.choice.querySelector('button[data-pickcell]');
-  if (pick) pick.onclick = () => { useCard(state, i, $('#cellTarget').value); rerender(); };
-  root.choice.querySelector('[data-cancel]').onclick = () => rerender();
-}
-
-function rerender() {
-  if (state) render(root, state, actions);
-}
-
-function initSideResize() {
-  const side = $('#side'), grip = $('#sideGrip');
-  if (!grip) return;
-  let dragging = false;
-  grip.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    dragging = true;
-    grip.setPointerCapture(e.pointerId);
-  });
-  grip.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    const w = Math.max(300, Math.min(680, window.innerWidth - e.clientX));
-    document.documentElement.style.setProperty('--side-w', `${Math.round(w)}px`);
-  });
-  grip.addEventListener('pointerup', () => { if (dragging) { dragging = false; rerender(); } });
-  grip.addEventListener('pointercancel', () => { dragging = false; });
-}
 
 function startGame() {
   const mode = $('#mode').value;
@@ -195,9 +108,9 @@ function startGame() {
     const b = BOSSES.find(x => x.id === $('#boss').value) ?? BOSSES[0];
     participants.push({ name: b.name, charId: CHARACTERS[0].id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
   }
-  state = createGame({ seed: 1, participants });
+  state = startSession({ seed: 1, participants });
   $('#setup').hidden = true;
-  rerender();
+  runGame(state, ui).then(() => ui.render(state));
 }
 
 function showSetup() { $('#setup').hidden = false; }
@@ -205,7 +118,6 @@ function showSetup() { $('#setup').hidden = false; }
 $('#boss').innerHTML = BOSSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
 $('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'; };
 $('#start').onclick = startGame;
-initSideResize();
 showSetup();
 
 const qs = new URLSearchParams(location.search);
@@ -215,5 +127,3 @@ if (qs.get('boss')) $('#boss').value = qs.get('boss');
 if (qs.get('tier')) $('#tier').value = qs.get('tier');
 $('#bossRow').hidden = $('#mode').value !== 'boss';
 if (qs.get('start')) startGame();
-if (qs.get('vehicle') && state) current(state).vehicle = Number(qs.get('vehicle'));
-if (qs.get('autoRoll')) actions.roll(Number(qs.get('autoRoll')));
