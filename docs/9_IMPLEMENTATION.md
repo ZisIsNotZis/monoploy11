@@ -271,7 +271,7 @@ voice.speak(player, event, text?) -> Promise<{audio, text}> // 单句语音，�
 - 人类玩家不额外等待 AI 停顿，但点完按钮后仍等当前气泡结束。
 - `prefers-reduced-motion` 关闭飘字和气泡的出现动画，不改变语义等待时长；飘字仍在 2.4s 后由 JS 移除，文字仍然可见。
 
-当前债务：新闻/事件仍只有日志，没有 2.4s 的侧栏横幅；买地/建造/收租由 `flow.js` 调用 `ui.say`，其余暂停统一收口在 UI 的 `ask`/`step`；地图机关状态显示未接。
+当前债务：地图机关状态显示未接；买地/建造由 `flow.js` 调用 `ui.say`，其余暂停统一收口在 UI 的 `ask`/`step`。新闻/事件已经通过 `state.lastNews` 触发 2.4s 侧栏横幅。
 
 ## 测试覆盖
 

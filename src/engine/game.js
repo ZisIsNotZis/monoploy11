@@ -507,6 +507,7 @@ export function place(state, cellId, obj) {
 export function cardName(id) { return CARD_DEFS[id]?.name ?? CARD_POOL.find(c => c.id === id)?.name ?? id; }
 
 export function runNewsEvent(state, p) {
+  const logStart = state.log.length;
   const kind = state.rng.pick(['price','boom','bust','prize','fine','hospital','jail','cards','losecard','allgain','allpay','teleport']);
   const k = state.priceIndex;
   if (kind === 'price') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
@@ -524,6 +525,8 @@ export function runNewsEvent(state, p) {
     const cells = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform' && !state.placements[n.id]);
     if (cells.length) { p.position = state.rng.pick(cells).id; log(state, `新闻：${p.name} 被传送到 ${p.position}`); }
   }
+  const text = state.log.slice(logStart).map(x => x.text).filter(x => x.startsWith('新闻')).join(' / ');
+  if (text) state.lastNews = { seq: (state.lastNews?.seq ?? 0) + 1, text };
 }
 
 export function tickStocks(state) {

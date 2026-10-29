@@ -1,15 +1,43 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=115';
+import { render } from './ui/render.js?v=130';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS, teamColor } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
 import { EXPERIENCE, aiPauseMs, CSS_TIMINGS } from './data/experience.js';
-import { say, flushSpeech } from './ui/speech.js?v=115';
-import { avatarSvg } from './ui/icons.js?v=115';
+import { say, flushSpeech } from './ui/speech.js?v=130';
+import { avatarSvg } from './ui/icons.js?v=130';
 
 const $ = s => document.querySelector(s);
+// 右侧栏可拖动：宽度写进 CSS 变量，棋盘随之缩放。
+const sideGrip = $('#sideGrip');
+if (sideGrip) {
+  let dragging = false;
+  sideGrip.addEventListener('pointerdown', e => {
+    dragging = true;
+    sideGrip.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const w = Math.max(300, Math.min(620, window.innerWidth - e.clientX));
+    document.documentElement.style.setProperty('--side-w', `${Math.round(w)}px`);
+  });
+  const stop = () => {
+    if (!dragging) return;
+    dragging = false;
+    try { localStorage.setItem('monopoly11:side-w', getComputedStyle(document.documentElement).getPropertyValue('--side-w')); } catch {}
+    if (state) rerender();
+  };
+  window.addEventListener('pointerup', stop);
+  window.addEventListener('pointercancel', stop);
+  try {
+    const saved = localStorage.getItem('monopoly11:side-w');
+    if (saved) document.documentElement.style.setProperty('--side-w', saved);
+  } catch {}
+}
+
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 for (const [name, value] of Object.entries(CSS_TIMINGS)) document.documentElement.style.setProperty(name, value);
 const root = {
@@ -21,6 +49,7 @@ let state = null;
 let active = null; // { prompt, resolve }
 let lastMoney = null;
 let lastSnap = null;
+let lastNews = 0;
 
 function spawnFloat(p, text, kind) {
   const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
@@ -39,6 +68,15 @@ function spawnFloat(p, text, kind) {
 function rerender() {
   if (!state) return;
   render(root, state, actions);
+  if (state.lastNews?.seq && state.lastNews.seq !== lastNews) {
+    lastNews = state.lastNews.seq;
+    const side = document.querySelector('#side');
+    const banner = document.createElement('div');
+    banner.className = 'news-banner';
+    banner.textContent = state.lastNews.text;
+    side?.appendChild(banner);
+    setTimeout(() => banner.remove(), EXPERIENCE.newsMs);
+  }
   if (!lastMoney) {
     lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
     lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital, props: p.properties.length, built: p.properties.reduce((n, id) => n + (state.properties[id]?.level ?? 0), 0) }]));

@@ -547,7 +547,7 @@ async function postGodPhase(state, p, ui) {
   if (p.god === '福神' || p.god === '天使') {
     for (const id of ids) {
       const pr = state.properties[id]; const plot = state.map.plots.find(x => x.id === id);
-      if (!pr || !plot) continue;
+      if (!pr || !plot || !pr.ownerId) continue;
       const owner = state.players.find(q => q.id === pr.ownerId);
       if (p.god === '福神' && owner?.team !== p.team) continue;
       if (plot.big) {
@@ -564,6 +564,7 @@ async function postGodPhase(state, p, ui) {
     for (const id of ids) {
       const plot = state.map.plots.find(x => x.id === id);
       const pr = state.properties[id] ?? { level: 0, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
+      if (!pr.ownerId) continue;
       const owner = state.players.find(q => q.id === pr.ownerId);
       if (owner?.team === p.team) continue;
       const old = state.players.find(q => q.id === pr.ownerId);

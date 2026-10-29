@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=115';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=130';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=115';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=130';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -184,8 +184,10 @@ function renderBoard(el, state, currentP, actions) {
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
     const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
+    const [nx, ny] = n.id.split(',').map(Number);
+    const links = `${nodes[`${nx},${ny - 1}`] ? ' link-n' : ''}${nodes[`${nx},${ny + 1}`] ? ' link-s' : ''}${nodes[`${nx - 1},${ny}`] ? ' link-w' : ''}${nodes[`${nx + 1},${ny}`] ? ' link-e' : ''}`;
     const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
-    return `<div class="cell ${extra} ${flow}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
+    return `<div class="cell ${extra} ${flow}${links}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${occTitle}">${obstacleSvg(place.kind, place.name)}</div>` : ''}
@@ -264,13 +266,15 @@ function renderChoice(el, state, p, actions) {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
     const base = plot?.big ? (pending.bigType ? BIG_NAME[pending.bigType] : '大空地') : '小地产';
     const label = pending.level > 0 ? `${base} Lv.${pending.level}（无主已建）` : base;
-    html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
-      <button data-act="buy">买下</button><button data-act="skip">放弃</button>`);
+    const poor = (p?.cash ?? 0) < pending.price;
+    html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}${poor ? ' · 现金不足' : ''}</p>
+      <button data-act="buy" ${poor ? 'disabled' : ''}>买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
     const label = plot?.big ? '大空地' : '小地产';
-    html = box(`加盖 ${label}`, `<p>费用 ${pending.cost.toLocaleString()}</p>
-      <button data-act="build">加盖</button><button data-act="skip">放弃</button>`);
+    const poor = (p?.cash ?? 0) < pending.cost;
+    html = box(`加盖 ${label}`, `<p>费用 ${pending.cost.toLocaleString()}${poor ? ' · 现金不足' : ''}</p>
+      <button data-act="build" ${poor ? 'disabled' : ''}>加盖</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'chooseBig') {
     html = box('选择大型建筑', `<div class="offers">${['commercial','hotel','bookstore','energy','realestate','research']
       .map(t => `<button class="offer" data-big="${t}"><b>${BIG_NAME[t]}</b><span>${t === 'commercial' ? '转盘租金' : t === 'hotel' ? '强制住店' : t === 'bookstore' ? '离店得卡' : t === 'energy' ? '对手买卡更贵' : t === 'realestate' ? '己方租金减免' : '研发进阶卡'}</span></button>`).join('')}</div>`);
