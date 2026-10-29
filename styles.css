@@ -266,3 +266,12 @@ button { font: inherit; }
 .card .art svg, .shop-art svg { width: 100%; height: 100%; display: block; }
 .card .art, .shop-art { padding: 2px; box-sizing: border-box; }
 .occs svg { width: 100%; height: 100%; display: block; }
+/* 五类素材不同视觉语法：路面=线稿，放置物=圆徽章，建筑=剪影，卡=卡框，角色=圆形头像 */
+.road-icon { color: #a7b5c8; stroke-width: 1.6; }
+.structure-icon { color: #e4d3b0; stroke-width: 1.8; }
+.obstacle-icon { color: #f0c07a; stroke-width: 2.1; }
+.obstacle-icon .occ-bg { fill: #2b231b; stroke: #b7844d; stroke-width: 1.2; }
+.card-art { color: #e7d6b4; }
+.card-art .card-frame { fill: #18212c; stroke: #8e9bb0; stroke-width: 2; }
+.card-art .card-corner { stroke: #b78b4a; stroke-width: 2; }
+.card-art .card-glyph { stroke: #e7d6b4; stroke-width: 2.2; }

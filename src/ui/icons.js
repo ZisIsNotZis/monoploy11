@@ -1,5 +1,5 @@
 // 内联 SVG：道路、地产、建筑、卡面、人物头像和放置物都按名字绘制。
-const wrap = (body, vb = '0 0 64 64') => `<svg class="icon" viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const wrap = (body, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 /* ---------------- 路面 ---------------- */
 const ROAD = {
@@ -21,8 +21,10 @@ const ROAD = {
 };
 export function svgIcon(kind) {
   const k = kind === 'hospitalGate' ? 'hospital' : kind === 'jailGate' ? 'jail' : kind;
-  return ROAD[k] ? wrap(ROAD[k]) : null;
+  return ROAD[k] ? wrap(ROAD[k], 'road-icon') : null;
 }
+
+const wrapSt = (body) => wrap(body, 'structure-icon');
 
 /* ---------------- 小房屋 / 大建筑 ---------------- */
 function house(level) {
@@ -31,27 +33,27 @@ function house(level) {
   const y = 56 - h;
   let windows = '';
   for (let i = 0; i < lv; i++) windows += `<rect x="${24 + (i % 2) * 10}" y="${y + 8 + Math.floor(i / 2) * 8}" width="5" height="5"/>`;
-  return wrap(`<path d="M10 56h44"/><path d="M16 ${y}h32v${56 - y}H16z"/><path d="M12 ${y}h40L32 ${y - 10}z"/><rect x="27" y="45" width="10" height="11"/>${windows}${lv >= 4 ? '<path d="M24 20h16M32 14v20"/>' : ''}`);
+  return wrapSt(`<path d="M10 56h44"/><path d="M16 ${y}h32v${56 - y}H16z"/><path d="M12 ${y}h40L32 ${y - 10}z"/><rect x="27" y="45" width="10" height="11"/>${windows}${lv >= 4 ? '<path d="M24 20h16M32 14v20"/>' : ''}`);
 }
 function big(type, level) {
   const lv = Math.max(1, Math.min(5, level || 1));
   if (type === 'park') return wrap('<path d="M8 56h48"/><path d="M32 56V34"/><circle cx="32" cy="24" r="14"/><path d="M22 30c4-8 16-8 20 0"/><path d="M16 56h32"/><path d="M18 48h10M36 48h10"/>');
   const base = '<path d="M8 56h48"/>';
-  if (type === 'commercial') return wrap(`${base}<path d="M10 22h44v34H10z"/><path d="M10 22l6-10h32l6 10"/><path d="M18 30h28M18 40h28M18 50h28"/>${lv >= 3 ? '<circle cx="32" cy="10" r="4"/>' : ''}${lv >= 4 ? '<path d="M14 18v-4M50 18v-4"/>' : ''}`);
-  if (type === 'hotel') return wrap(`${base}<path d="M16 56V18h32v38"/><path d="M16 30h32M16 42h32"/><path d="M24 18v38M40 18v38"/><path d="M20 12h24"/>${lv >= 3 ? '<path d="M22 6h20"/>' : ''}${lv >= 5 ? '<circle cx="32" cy="36" r="4"/>' : ''}`);
-  if (type === 'bookstore') return wrap(`${base}<path d="M12 22h40v34H12z"/><path d="M12 22l8-10h24l8 10"/><path d="M20 32h24v14H20zM24 32v14M36 32v14"/>${lv >= 3 ? '<path d="M16 26h32"/>' : ''}${lv >= 4 ? '<path d="M22 38h20"/>' : ''}`);
-  if (type === 'energy') return wrap(`${base}<path d="M12 56V26h14v30M38 56V20h14v36"/><path d="M19 18v8M45 12v8"/><path d="M20 38h6M38 32h14"/><path d="M32 26l-6 12h7l-2 10 8-14h-7z"/>`);
-  if (type === 'realestate') return wrap(`${base}<path d="M10 56V18h44v38"/><path d="M16 26h8v8h-8zM26 26h8v8h-8zM36 26h8v8h-8zM16 38h8v8h-8zM26 38h8v8h-8zM36 38h8v8h-8z"/><path d="M26 56V46h12v10"/>${lv >= 4 ? '<path d="M32 8v10"/>' : ''}`);
-  if (type === 'research') return wrap(`${base}<path d="M12 56V30h40v26"/><path d="M20 30V18h24v12"/><path d="M32 8v10"/><circle cx="32" cy="12" r="3"/><path d="M20 40h24M20 48h24"/>${lv >= 3 ? '<path d="M16 24h32"/>' : ''}${lv >= 4 ? '<circle cx="32" cy="44" r="4"/>' : ''}`);
-  return wrap(`${base}<path d="M12 56h40"/><path d="M16 56V24l16-10 16 10v32"/><path d="M24 56V38h16v18"/>`);
+  if (type === 'commercial') return wrapSt(`${base}<path d="M10 22h44v34H10z"/><path d="M10 22l6-10h32l6 10"/><path d="M18 30h28M18 40h28M18 50h28"/>${lv >= 3 ? '<circle cx="32" cy="10" r="4"/>' : ''}${lv >= 4 ? '<path d="M14 18v-4M50 18v-4"/>' : ''}`);
+  if (type === 'hotel') return wrapSt(`${base}<path d="M16 56V18h32v38"/><path d="M16 30h32M16 42h32"/><path d="M24 18v38M40 18v38"/><path d="M20 12h24"/>${lv >= 3 ? '<path d="M22 6h20"/>' : ''}${lv >= 5 ? '<circle cx="32" cy="36" r="4"/>' : ''}`);
+  if (type === 'bookstore') return wrapSt(`${base}<path d="M12 22h40v34H12z"/><path d="M12 22l8-10h24l8 10"/><path d="M20 32h24v14H20zM24 32v14M36 32v14"/>${lv >= 3 ? '<path d="M16 26h32"/>' : ''}${lv >= 4 ? '<path d="M22 38h20"/>' : ''}`);
+  if (type === 'energy') return wrapSt(`${base}<path d="M12 56V26h14v30M38 56V20h14v36"/><path d="M19 18v8M45 12v8"/><path d="M20 38h6M38 32h14"/><path d="M32 26l-6 12h7l-2 10 8-14h-7z"/>`);
+  if (type === 'realestate') return wrapSt(`${base}<path d="M10 56V18h44v38"/><path d="M16 26h8v8h-8zM26 26h8v8h-8zM36 26h8v8h-8zM16 38h8v8h-8zM26 38h8v8h-8zM36 38h8v8h-8z"/><path d="M26 56V46h12v10"/>${lv >= 4 ? '<path d="M32 8v10"/>' : ''}`);
+  if (type === 'research') return wrapSt(`${base}<path d="M12 56V30h40v26"/><path d="M20 30V18h24v12"/><path d="M32 8v10"/><circle cx="32" cy="12" r="3"/><path d="M20 40h24M20 48h24"/>${lv >= 3 ? '<path d="M16 24h32"/>' : ''}${lv >= 4 ? '<circle cx="32" cy="44" r="4"/>' : ''}`);
+  return wrapSt(`${base}<path d="M12 56h40"/><path d="M16 56V24l16-10 16 10v32"/><path d="M24 56V38h16v18"/>`);
 }
 export function structureSvg(plot, pr) {
   if (!plot) return '';
   if (plot.big) {
-    if (!pr?.bigType) return wrap('<path d="M8 56h48"/><path d="M10 46h44M16 46v10M32 46v10M48 46v10"/><path d="M18 30l14-12 14 12"/><path d="M24 30v16M40 30v16"/>');
+    if (!pr?.bigType) return wrapSt('<path d="M8 56h48"/><path d="M10 46h44M16 46v10M32 46v10M48 46v10"/><path d="M18 30l14-12 14 12"/><path d="M24 30v16M40 30v16"/>');
     return big(pr.bigType, pr.level);
   }
-  if (!pr || !pr.level) return wrap('<path d="M8 56h48"/><path d="M12 50h40M18 56v-6M32 56v-6M46 56v-6"/><path d="M20 24l12-10 12 10"/><path d="M24 24v16M40 24v16"/>');
+  if (!pr || !pr.level) return wrapSt('<path d="M8 56h48"/><path d="M12 50h40M18 56v-6M32 56v-6M46 56v-6"/><path d="M20 24l12-10 12 10"/><path d="M24 24v16M40 24v16"/>');
   return house(pr.level);
 }
 
@@ -107,7 +109,8 @@ const CARD_ART = {
   godfavor: '<circle cx="32" cy="32" r="20"/><path d="M32 12v8M32 44v8M12 32h8M44 32h8M18 18l6 6M40 40l6 6M46 18l-6 6M24 40l-6 6"/><circle cx="32" cy="32" r="6"/>',
 };
 export function cardSvg(id) {
-  return wrap(CARD_ART[id] ?? '<rect x="10" y="14" width="44" height="36" rx="4"/>');
+  const art = CARD_ART[id] ?? '<rect x="14" y="18" width="36" height="28" rx="4"/>';
+  return `<svg class="card-art" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="card-frame" x="3" y="3" width="58" height="58" rx="7"/><path class="card-corner" d="M8 14h8M48 14h8M8 50h8M48 50h8"/><g class="card-glyph">${art}</g></svg>`;
 }
 
 /* ---------------- 放置物 / 神仙 ---------------- */
@@ -136,8 +139,8 @@ const GOD = {
   凶神: '<circle cx="32" cy="32" r="22"/><path d="M22 24l8 4M42 24l-8 4M24 42c6-6 10-6 16 0M28 32h8"/>',
 };
 export function obstacleSvg(kind, name) {
-  if (kind === 'god') return wrap(GOD[name] ?? GOD['福神']);
-  return wrap(OCC[kind] ?? '<circle cx="32" cy="32" r="18"/>');
+  const body = kind === 'god' ? (GOD[name] ?? GOD['福神']) : (OCC[kind] ?? '<circle cx="32" cy="32" r="18"/>');
+  return wrap(`<circle class="occ-bg" cx="32" cy="32" r="29"/>${body}`, 'obstacle-icon');
 }
 
 /* ---------------- 人物头像 ---------------- */
@@ -156,4 +159,8 @@ export function avatarSvg(charId, color, name) {
     charId === 'bear' ? '<circle cx="18" cy="16" r="7"/><circle cx="46" cy="16" r="7"/>' :
     charId === 'yuanyuan' ? '<path d="M42 14l8-6 2 8-8 4"/>' : '';
   return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${color}" opacity=".22"/><circle cx="32" cy="26" r="14" fill="${skin}"/>${hair}<path d="M12 58c2-12 10-18 20-18s18 6 20 18" fill="${color}"/><circle cx="26" cy="27" r="1.5" fill="#222"/><circle cx="38" cy="27" r="1.5" fill="#222"/><path d="M27 34c3 2 7 2 10 0" stroke="#222" stroke-width="1.5" fill="none"/><text x="32" y="58" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${name.slice(0,1)}</text>${acc}<title>${name}</title></svg>`;
+}
+
+export function tokenSvg() {
+  return '<svg class="tok-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor"/><path d="M12 1l5 6H7z" fill="currentColor"/></svg>';
 }
