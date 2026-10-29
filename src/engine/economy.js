@@ -53,11 +53,12 @@ export function assetsOf(state, p) {
 export function pay(state, from, to, amount, reason) {
   amount = Math.max(0, Math.round(amount));
   if (amount === 0) return true;
-  if (from.freeCard) {
+  const freeIdx = from.cards ? from.cards.indexOf('free') : -1;
+  if (freeIdx >= 0) {
     const ask = typeof window !== 'undefined' && typeof window.confirm === 'function';
     const use = !ask || window.confirm(`${from.name}：要用免费卡抵消 ${amount}（${reason}）吗？`);
     if (use) {
-      from.freeCard = false;
+      from.cards.splice(freeIdx, 1);
       log(state, `${from.name} 的免费卡抵消了 ${amount}（${reason}）`);
       return true;
     }

@@ -226,3 +226,7 @@ button { font: inherit; }
 .slot.phys { border-color: #a9772f; color: #e0c07c; }
 .tok .ptr { top: -8px; margin-left: -5.5px; border-left: 5.5px solid transparent; border-right: 5.5px solid transparent; border-bottom: 9px solid var(--c, #fff); }
 .cell .gicon, .cell .occs { pointer-events: auto; }
+
+.card.disabled { opacity: .32; cursor: not-allowed; }
+.money-float.card { color: #d9c48f; }
+.money-float.status { color: #b7c7d6; }

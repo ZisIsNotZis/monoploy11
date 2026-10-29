@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=81';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=82';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -144,7 +144,8 @@ function renderBoard(el, state, currentP, actions) {
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
     const w = (plot.big ? 2 : 1) * S;
     const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
-    return `<div class="prop ${plot.big ? 'bigprop' : ''}" data-plot="${plot.id}" title="${title}"
+    const pickPlot = state.mapPick?.plot;
+    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickPlot ? 'pick-target' : ''}" data-plot="${plot.id}"${pickPlot ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
       <div class="picon">${glyph}</div>
     </div>`;
@@ -189,6 +190,7 @@ function renderBoard(el, state, currentP, actions) {
     `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${plots}${roads}</div></div>`;
   el.querySelectorAll('[data-dir-cell]').forEach(c => c.onclick = () => actions.direction(c.dataset.dirCell));
   el.querySelectorAll('[data-pick-cell]').forEach(c => c.onclick = () => actions.pickCell(c.dataset.pickCell));
+  el.querySelectorAll('[data-pick-plot]').forEach(c => c.onclick = () => actions.pickPlot(c.dataset.pickPlot));
 }
 
 const short = n => n >= 1000 ? Math.round(n / 1000) + 'k' : String(n);
@@ -223,8 +225,9 @@ function renderChoice(el, state, p, actions) {
     return;
   }
   if (state.mapPick) {
-    const name = CARD_DEFS[current(state).cards[state.mapPick.index]]?.name ?? '卡片';
-    el.innerHTML = `<h3>${name}</h3><p class="hint">直接点地图上高亮的路面</p><button data-act="cancel-pick">取消</button>`;
+    const name = CARD_DEFS[state.mapPick.cardId]?.name ?? '卡片';
+    const hint = state.mapPick?.plot ? '直接点地图上的地产，按它所在的街区选目标' : '直接点地图上高亮的路面';
+    el.innerHTML = `<h3>${name}</h3><p class="hint">${hint}</p><button data-act="cancel-pick">取消</button>`;
     el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
     return;
   }
@@ -236,9 +239,9 @@ function renderChoice(el, state, p, actions) {
     if (pending.kind === 'cell') {
       html = box('选择目标', '<p class="hint">直接点地图上高亮的路面</p><button data-act="cancel-pick">取消</button>');
     } else if (pending.kind === 'player') {
-      html = box('选择目标', state.players.filter(q => q.alive && q.id !== current(state).id).map(q => `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
+      html = box('选择目标', (pending.players ?? state.players.filter(q => q.alive)).map(q => `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
     } else {
-      html = box('选择目标', ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'].map(x => `<button data-target="${x}">${x} 街</button>`).join('') + '<button data-act="cancel-pick">取消</button>');
+      html = box('选择目标', '<p class="hint">请直接点地图上的地产，按它所在的街区选目标</p><button data-act="cancel-pick">取消</button>');
     }
   } else  if (pending.type === 'buy') {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
@@ -326,7 +329,8 @@ function renderHand(root, state, p, actions) {
     const def = CARD_DEFS[id];
     const tip = `${def?.name ?? id}：${CARD_DESC[id] ?? ''}`;
     const rot = overlap ? (i - (n - 1) / 2) * 1.6 : 0;
-    return `<button class="card" data-card="${i}" style="--i:${i};z-index:${i};margin-left:${i ? Math.round(step - 74) : 0}px;transform:rotate(${rot}deg)" title="${tip}">
+    const passive = PASSIVE.has(id);
+    return `<button class="card${passive ? ' disabled' : ''}" data-card="${i}" ${passive ? 'disabled' : ''} style="--i:${i};z-index:${i};margin-left:${i ? Math.round(step - 74) : 0}px;transform:rotate(${rot}deg)" title="${passive ? '被动卡，在触发时询问是否使用' : tip}">
       <div class="art">${(def?.name ?? id).slice(0, 1)}</div>
     </button>`;
   }).join('');

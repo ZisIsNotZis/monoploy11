@@ -241,7 +241,8 @@ export function attachGod(state, p, name) {
 export function spawnOccupants(state) {
   if (state.day < 3) return;
   if (state.rng.float() > 0.55) return;
-  const cells = state.map.nodes.filter(n => !state.placements[n.id] && n.kind !== 'teleport' && n.kind !== 'platform' && n.kind !== 'hospital' && n.kind !== 'jail');
+  const occupied = new Set(state.players.filter(p => p.alive).map(p => p.position));
+  const cells = state.map.nodes.filter(n => !state.placements[n.id] && !occupied.has(n.id) && n.kind !== 'teleport' && n.kind !== 'platform' && n.kind !== 'hospital' && n.kind !== 'jail');
   if (!cells.length) return;
   const cell = state.rng.pick(cells);
   const roll = state.rng.float();
@@ -257,7 +258,9 @@ export function spawnOccupants(state) {
 
 export const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 
-const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
+export const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start', 'audit', 'missile', 'quantum', 'rushmissile']);
+export const SELF_TARGET = new Set(['turtle', 'turn', 'stay']);
+export const PASSIVE = new Set(['free', 'samefate', 'transfer', 'wuxie']);
 
 export function useCard(state, index, target) {
   if (state.phase !== 'action') return state;
@@ -267,10 +270,15 @@ export function useCard(state, index, target) {
   const def = CARD_DEFS[id];
   if (!def) return state;
   if (def.target !== 'self' && def.target !== 'all' && !target) return state;
+  if (target === p.id && !SELF_TARGET.has(id)) return state;
   if (TARGET_RANGE_5.has(id) && target && !(id === 'turn' && p.talents.includes('turn_card_infinite'))) {
     const q = targetPlayer(state, p, target);
     if (!q) return state;
     if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, 5)) return state;
+  }
+  if (def.target === 'cell' && target) {
+    const max = id === 'robotdoll' ? 10 : 5;
+    if (!pathWithin(state.map, p.position, target, max)) return state;
   }
   if (p.god === '糊涂神' && state.rng.float() < 0.3) {
     p.cards.splice(index, 1);
@@ -287,7 +295,7 @@ export function useCard(state, index, target) {
 }
 
 function targetPlayer(state, p, id) {
-  return state.players.find(q => q.id === id && q.alive && q.id !== p.id) ?? null;
+  return state.players.find(q => q.id === id && q.alive) ?? null;
 }
 
 function targetNode(state, id) {
@@ -456,6 +464,7 @@ function damage(state, q, amount, reason) {
 
 export function place(state, cellId, obj) {
   if (state.placements[cellId]) return false;
+  if (state.players.some(p => p.alive && p.position === cellId)) return false;
   state.placements[cellId] = obj;
   return true;
 }

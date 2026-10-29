@@ -1,8 +1,9 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=81';
+import { render } from './ui/render.js?v=82';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
+import { CARD_DEFS } from './engine/game.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -13,32 +14,51 @@ const root = {
 let state = null;
 let active = null; // { prompt, resolve }
 let lastMoney = null;
+let lastSnap = null;
+
+function spawnFloat(p, text, kind) {
+  const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
+  const rect = tok?.getBoundingClientRect();
+  const span = document.createElement('span');
+  span.className = `money-float map-float ${kind}`;
+  span.textContent = text;
+  if (rect) {
+    span.style.left = `${rect.left + rect.width / 2}px`;
+    span.style.top = `${rect.top - 4}px`;
+  }
+  document.body.appendChild(span);
+  setTimeout(() => span.remove(), 1200);
+}
 
 function rerender() {
   if (!state) return;
   render(root, state, actions);
   if (!lastMoney) {
     lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
+    lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital }]));
     return;
   }
   for (const p of state.players) {
     const old = lastMoney.get(p.id);
     const now = p.cash + p.deposit;
-    if (old == null || now === old) continue;
-    const delta = now - old;
-    const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
-    const rect = tok?.getBoundingClientRect();
-    const span = document.createElement('span');
-    span.className = 'money-float map-float ' + (delta > 0 ? 'up' : 'down');
-    span.textContent = (delta > 0 ? '+' : '') + delta.toLocaleString();
-    if (rect) {
-      span.style.left = `${rect.left + rect.width / 2}px`;
-      span.style.top = `${rect.top - 4}px`;
+    if (old != null && now !== old) {
+      const delta = now - old;
+      spawnFloat(p, (delta > 0 ? '+' : '') + delta.toLocaleString(), delta > 0 ? 'up' : 'down');
     }
-    document.body.appendChild(span);
-    setTimeout(() => span.remove(), 1200);
+    const prev = lastSnap.get(p.id);
+    if (prev) {
+      const gained = p.cards.filter((id, i) => !prev.cards.includes(id));
+      const lost = prev.cards.filter((id, i) => !p.cards.includes(id));
+      if (gained.length) spawnFloat(p, '+' + (CARD_DEFS[gained[0]]?.name ?? '卡'), 'card');
+      if (lost.length) spawnFloat(p, '-' + (CARD_DEFS[lost[0]]?.name ?? '卡'), 'card');
+      if (p.god !== prev.god) spawnFloat(p, p.god ? '+' + p.god : '-' + (prev.god ?? '神'), 'status');
+      if (p.status !== prev.status) spawnFloat(p, p.status ? '+' + p.status : '-' + (prev.status ?? '状态'), 'status');
+      if (p.jail !== prev.jail) spawnFloat(p, p.jail > prev.jail ? '+监狱' : '-监狱', 'status');
+      if (p.hospital !== prev.hospital) spawnFloat(p, p.hospital > prev.hospital ? '+医院' : '-医院', 'status');
+    }
   }
   lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
+  lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital }]));
 }
 
 const ui = {
@@ -69,9 +89,11 @@ function applyPromptToState(p) {
   if (p.type === 'target') {
     if (p.kind === 'cell') {
       const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
-      state.mapPick = { max: p.max, cells };
+      state.mapPick = { max: p.max, cells, cardId: p.cardId };
+    } else if (p.kind === 'street') {
+      state.mapPick = { plot: true };
     }
-    state.pending = { type: 'target', kind: p.kind, cardId: p.cardId };
+    state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, players: p.players };
     return;
   }
   if (p.type === 'buy') { state.pending = { type: 'buy', cellId: p.plot.id, price: p.price, label: p.plot.big ? '大空地' : '小地产' }; return; }
@@ -96,6 +118,7 @@ const actions = {
   stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
   direction(id) { answer(id); },
   pickCell(id) { answer(id); },
+  pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (plot) answer(plot.street); },
   chooseBig(type) { answer(type); },
   magic(effect) { answer({ effect }); },
   lottery(number) { answer({ action: 'buy', number }); },

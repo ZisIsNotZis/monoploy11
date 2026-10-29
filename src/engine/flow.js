@@ -4,7 +4,7 @@ import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } fro
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log } from './economy.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
-  useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks,
+  useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE,
   applyMonthly, tickGod, tickTimers, spawnOccupants, releaseFrom, runNewsEvent,
 } from './game.js';
 
@@ -117,12 +117,16 @@ async function actionPhase(state, p, ui) {
     if (a.action === 'stock') { await stockFlow(state, p, ui); continue; }
     if (a.action === 'card') {
       const id = p.cards[a.index];
-      if (!id) continue;
+      if (!id || PASSIVE.has(id)) continue;
       if (id === 'remotedice') { if (await remoteDiceFlow(state, p, ui, a.index)) return null; continue; }
       let target = null;
       const def = CARD_DEFS[id];
       if (def.target !== 'self' && def.target !== 'all') {
-        target = await ui.ask({ type: 'target', player: p, cardId: id, kind: def.target });
+        let opts = null;
+        if (def.target === 'player') {
+          opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && (!TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5)));
+        }
+        target = await ui.ask({ type: 'target', player: p, cardId: id, kind: def.target, players: opts, max: def.target === 'cell' ? (id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
       }
       useCard(state, a.index, target);
