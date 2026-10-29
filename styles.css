@@ -311,3 +311,14 @@ button { font: inherit; }
 .player-card-fields .team { width: 55%; margin-left: 0; justify-self: start; text-align: left; }
 .player-card-fields .ctrl { width: 72%; justify-self: start; }
 .player-card-fields .team option { text-align: left; }
+/* 宽屏优先横向铺开：卡片固定内容宽度、自动换行，不把卡片拉宽 */
+#setup { align-items: stretch; }
+#setup > h1 { text-align: center; }
+.setup-grid { width: min(1280px, 100%); align-self: center; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+#setupRows { width: 100%; max-width: min(1800px, 96vw); margin: 8px auto 14px; display: grid; grid-template-columns: repeat(auto-fill, 286px); justify-content: center; gap: 8px; }
+.setup-player { width: 286px; min-height: 78px; padding: 6px 8px; gap: 8px; }
+.player-card-avatar { width: 58px; height: 58px; flex-basis: 58px; }
+.player-card-fields { gap: 3px; }
+.player-card-fields .char { width: 100%; }
+.player-card-fields .team { width: 62%; }
+.player-card-fields .ctrl { width: 58%; }
