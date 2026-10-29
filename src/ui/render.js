@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=140';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=141';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=140';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=141';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
