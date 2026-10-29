@@ -72,6 +72,12 @@ function defaultParticipants() {
   ];
 }
 
+function nextForward(map, pos, lastNode) {
+  const adj = buildAdj(map);
+  const forward = adj[pos].filter(e => e.to !== lastNode);
+  return (forward[0] ?? adj[pos][0])?.to ?? null;
+}
+
 function initialFacing(map, id) {
   const e = map.edges.find(e => e.a === id || e.b === id);
   if (!e) return null;
@@ -290,7 +296,7 @@ export function roll(state, diceCount = 1) {
   }
   p.lastNode = res.path.length >= 2 ? res.path[res.path.length - 2] : p.position;
   p.position = res.landed;
-  p.facing = null;
+  p.facing = res.pendingDirection ? null : nextForward(state.map, p.position, p.lastNode);
   if (!p.alive) return endTurn(state);
   state.phase = 'resolve';
   if (res.pendingDirection) {

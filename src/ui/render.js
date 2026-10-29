@@ -146,8 +146,11 @@ function renderBoard(el, state, currentP) {
       <div class="gicon">${ground}</div>
       <div class="subtag">${n.kind === 'empty' ? '' : n.label}</div>
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
-      <div class="tokens">${here.map(q => `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
-      ${n.id === currentP?.position && angle != null ? `<span class="face" style="transform:rotate(${angle}deg)">➤</span>` : ''}
+      <div class="tokens">${here.map(q => {
+        const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
+        const a = t ? Math.atan2(t.y - n.y, t.x - n.x) * 180 / Math.PI : 0;
+        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
+      }).join('')}</div>
     </div>`;
   }).join('');
 
@@ -186,12 +189,12 @@ function renderChoice(el, state, p, actions) {
   const box = (title, body) => `<h3>${title}</h3>${body}`;
   let html = '';
   if (pending.type === 'buy') {
-    const n = state.map.nodes.find(x => x.id === pending.cellId);
-    html = box(`购买 ${n.label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
+    const label = pending.label ?? state.map.plots.find(x => x.id === pending.cellId)?.label ?? pending.cellId;
+    html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
       <button data-act="buy">买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {
-    const n = state.map.nodes.find(x => x.id === pending.cellId);
-    html = box(`加盖 ${n.label}`, `<p>费用 ${pending.cost.toLocaleString()}</p>
+    const label = pending.label ?? state.map.plots.find(x => x.id === pending.cellId)?.label ?? pending.cellId;
+    html = box(`加盖 ${label}`, `<p>费用 ${pending.cost.toLocaleString()}</p>
       <button data-act="build">加盖</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'chooseBig') {
     html = box('选择大型建筑', `<div class="offers">${['commercial','hotel','bookstore','energy','realestate','research']
