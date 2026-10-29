@@ -38,7 +38,7 @@ export function createGame(config = {}) {
       controller: p.controller ?? 'human', isBoss: !!p.isBoss, bossId: p.bossId ?? null, bossTier: p.bossTier ?? 0, revived: false,
       cash: config.startingCash ?? TUNING.startingCash,
       deposit: config.startingDeposit ?? TUNING.startingDeposit,
-      cards: [], position: map.startId, facing: null, pendingDirection: null,
+      cards: [], position: map.startId, facing: null,
       jail: 0, hospital: 0, god: null, godDays: 0, status: null, statusDays: 0,
       vehicle: null, alive: true, properties: [], handLimit: p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : TUNING.handLimit,
       talents: char.talents.map(t => t.id),
@@ -55,7 +55,7 @@ export function createGame(config = {}) {
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
-    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null, postGodCell: null, landingBuilt: [], moving: null,
+    phase: 'action', properties: {}, placements: {}, log: [], pending: null,
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
