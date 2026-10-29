@@ -168,6 +168,8 @@ function renderBoard(el, state, currentP, actions) {
     </div>`;
   }).join('');
 
+  const zones = (map.zones ?? []).map(z => `<div class="zone" style="left:${z.x * S}px;top:${z.y * S}px;width:${z.w * S}px;height:${z.h * S}px;background:${z.color}"></div>`).join('');
+
   const roads = map.nodes.map(n => {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
@@ -206,7 +208,7 @@ function renderBoard(el, state, currentP, actions) {
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
   el.innerHTML = `<div class="grid-fit" style="width:${Math.round(W * scale)}px;height:${Math.round(H * scale)}px">` +
-    `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${plots}${roads}</div></div>`;
+    `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${zones}${plots}${roads}</div></div>`;
   el.querySelectorAll('[data-dir-cell]').forEach(c => c.onclick = () => actions.direction(c.dataset.dirCell));
   el.querySelectorAll('[data-pick-cell]').forEach(c => c.onclick = () => actions.pickCell(c.dataset.pickCell));
   el.querySelectorAll('[data-pick-plot]').forEach(c => c.onclick = () => actions.pickPlot(c.dataset.pickPlot));

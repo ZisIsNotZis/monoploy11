@@ -71,6 +71,7 @@ function rerender() {
   if (state.lastNews?.seq && state.lastNews.seq !== lastNews) {
     lastNews = state.lastNews.seq;
     const side = document.querySelector('#side');
+    side?.querySelectorAll('.news-banner').forEach(x => x.remove());
     const banner = document.createElement('div');
     banner.className = 'news-banner';
     banner.textContent = state.lastNews.text;

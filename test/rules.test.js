@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { GRID_MANOR } from '../src/data/maps/grid-manor.js';
 import { GRAND_HOTEL } from '../src/data/maps/grand-hotel.js';
 import { validateMap } from '../src/engine/board-v2.js';
-import { createGame, current, drawLottery, useCard } from '../src/engine/game.js';
+import { createGame, current, drawLottery, useCard, runNewsEvent } from '../src/engine/game.js';
 import { pay } from '../src/engine/economy.js';
 import { buyPlot, buildPlot } from '../src/engine/flow.js';
 import { rentFor } from '../src/engine/economy.js';
@@ -141,4 +141,12 @@ test('unowned prebuilt hotel earns no rent and keeps its level when bought', () 
   assert.equal(s.properties[hotel.id].level, 3);
   assert.equal(s.properties[hotel.id].bigType, 'hotel');
   assert.ok(rentFor(s, hotel.id) > 0);
+});
+
+test('news events publish a 2.4s banner payload', () => {
+  const s = createGame({ seed: 82 });
+  s.rng.pick = () => 'price';
+  runNewsEvent(s, current(s));
+  assert.ok(s.lastNews?.text.includes('物价上涨'));
+  assert.equal(typeof s.lastNews.seq, 'number');
 });

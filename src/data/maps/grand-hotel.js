@@ -132,6 +132,13 @@ export const GRAND_HOTEL = {
   id: 'grand-hotel', name: '大酒店', mode: 'traditional',
   w: W, h: H, cell: S, startId: '2,2',
   nodes, edges, plots, initialProperties,
+  zones: [
+    { id: 'nw', x: 3, y: 3, w: 7, h: 5, color: 'rgba(120, 92, 48, .10)' },
+    { id: 'ne', x: 16, y: 3, w: 7, h: 5, color: 'rgba(70, 100, 128, .10)' },
+    { id: 'sw', x: 3, y: 11, w: 7, h: 5, color: 'rgba(72, 112, 82, .10)' },
+    { id: 'se', x: 16, y: 11, w: 7, h: 5, color: 'rgba(110, 78, 120, .10)' },
+    { id: 'center', x: 10, y: 6, w: 7, h: 7, color: 'rgba(201, 162, 74, .07)' },
+  ],
   platform: null,
   intro: '中央大酒店 Lv.3，无主，12 个路面入口，标价 90,000；四角各有 6 个入口的 2×2 大地产。',
   facility: { hospital: '1,9', jail: '25,9' },

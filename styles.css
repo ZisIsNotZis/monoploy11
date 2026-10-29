@@ -449,3 +449,5 @@ button { font: inherit; }
 .news-banner { position: absolute; left: 10px; right: 10px; top: 42px; z-index: 60; padding: 8px 10px; border: 1px solid rgba(216,161,63,.55); border-radius: 5px; background: rgba(20,23,29,.96); color: #f2efe7; font-size: 13px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: newsIn 180ms ease-out; }
 @keyframes newsIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .news-banner { animation: none; } }
+
+.zone { position: absolute; z-index: 0; pointer-events: none; border-radius: 14px; }
