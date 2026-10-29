@@ -1,7 +1,7 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js';
+import { CARD_DEFS, current } from '../engine/game.js?v=48';
 import { assetsOf } from '../engine/economy.js';
-import { isPlatformActive } from '../engine/board.js';
+import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
 
 const KIND_TAG = {

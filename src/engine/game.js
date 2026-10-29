@@ -4,7 +4,7 @@ import { CHARACTER_BY_ID, CHARACTERS } from '../data/characters.js';
 import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
 import { GRID_MANOR } from '../data/maps/grid-manor.js';
-import { walk, validateMap, buildAdj, isPlatformActive, nearestStable } from './board.js';
+import { walk, validateMap, buildAdj, isPlatformActive, nearestStable } from './board-v2.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
 
 const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };

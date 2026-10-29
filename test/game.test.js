@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEST_MANOR } from '../src/data/maps/test-manor.js';
-import { validateMap } from '../src/engine/board.js';
+import { validateMap } from '../src/engine/board-v2.js';
 import { createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, current, skipPending, doMagic, doNews, doLottery, doMerchant, doShop, leaveStock, doBank, leavePending, addCard, attachGod, useCard, CARD_DEFS } from '../src/engine/game.js';
 import { pay } from '../src/engine/economy.js';
 import { rentFor } from '../src/engine/economy.js';
