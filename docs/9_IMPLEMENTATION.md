@@ -78,36 +78,20 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 - `buyPrice`：小地产 8000，大地产 20000（近似）。
 - `assetsOf`：现金 + 存款 + 地产估值。
 
-## UI
+## 界面实现
 
-- 侧栏 390px：`#system`（天数/物价/股票）、`#players`（一行式）、`#log`（flex 1）、`#hand`（情境区）。
-- `renderHand`：无 pending 时渲染骰子行 + 卡片行；有 pending 时隐藏卡片/骰子，渲染 `#choice` 选择面板。
-- 卡片间距按数量动态计算：少时散开，多时负 margin + 轻微旋转；不横向滚动。
-- 棋盘：`renderBoard` 画路面 `.cell` 与地产 `.prop`；大地产只画一个 2×2 `.prop`；路面东西 `.occs`；人物 `.tok` 带方向指针；不写文字，tooltip 提供说明。
-- `main.js` 的 `actions` 是唯一 UI → 引擎入口；`rerender()` 全量重绘。
+侧栏由 `#system`、`#players`、`#log` 和 `#hand` 四段组成，宽度由 `--side-w` 控制，默认 390px；`#sideGrip` 拖动这个变量，`#desk` 和 `#side` 同时跟着变，松手后重绘棋盘。`renderHand` 在没有 pending 时画骰子行和卡片行，有 pending 或 `state.mapPick` 时给 `#hand` 加 `.choice`，让 `#choice` 变成全宽块并画选择面板；没有这个 class 时 `#choice` 会缩成右侧一条，商店和乐透都会变形。
+
+方向选择由 `state.pending.type === 'direction'` 驱动：`renderBoard` 给合法路面加 `data-dir-cell`、高亮和箭头，点击调用 `actions.direction`。卡片点选由 `state.mapPick = { index }` 驱动：`actions.card` 遇到 `target === 'cell'` 时不弹选择器，地图所有路面加 `data-pick-cell`，点击调用 `actions.pickCell`，取消走 `cancel-pick`。这套机制也适用于后续新增的炸弹、障碍和其他选格卡。
+
+商店、神秘人和研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))` 自动排列；`.shop-card` 是方形卡面占位加价格，不渲染卡名和效果，名字与说明放在 tooltip。手牌间距按数量动态计算，少时散开，多时负 margin 加轻微旋转，不横向滚动。
+
+棋盘由 `renderBoard` 画路面 `.cell` 和地产 `.prop`；大地产只画一个 2×2 `.prop`，路面东西画在 `.occs`，人物 `.tok` 带方向指针。空白路面不渲染 `.gicon`，放置物默认占满整格；特殊路面和放置物同时存在时各缩到 70%，一个左上、一个右下叠放。金额飘字从 `[data-player]` 的 token 取 `getBoundingClientRect`，用 fixed 定位挂到 body。`main.js` 的 `actions` 是唯一 UI 到引擎的入口，`rerender()` 全量重绘。
 
 ## 测试覆盖
 
-- 地图校验、开局、同 seed 复现、整局无崩溃、48 卡不抛异常。
-- 同街指数租金、租金进存款、大空地/建筑选择、2×2 共享产权、乐透号码去重、商店买 3 自动退出。
-- 死路反弹、方向不能回头、步行不能掷 2 骰、定时炸弹主动送出。
+测试覆盖地图校验、开局、同 seed 复现、整局无崩溃、48 卡不抛异常、同街指数租金、租金进存款、大空地/建筑选择、2×2 共享产权、乐透号码去重、商店买三张自动退出、死路反弹、方向不能回头、步行不能掷两颗骰、定时炸弹主动送出、新闻/魔法屋/乐透/商店落点各自打开正确面板，以及乐透一次买多注。
 
 ## 已知实现缺口
 
-- 路面类型 + 相邻地产“同一次落点都结算”只对空路面完整；有 pending 的路面事件后会跳过部分相邻地产。
-- 冻结/冰冻的 0 点规则没有状态来源。
-- 结盟/背叛、AI、16 张图、热斗/抢房未实现。
-- 体验层素材/语音/BGM 未实现。
-- 数值全是近似；乐透 10 天、银行 30 天为暂定。
-
-## 2026-10 UI 修订
-
-- 交叉点方向：`state.pending.type === 'direction'` 时，`renderBoard` 给合法路面加 `data-dir-cell` 与高亮箭头，点击调用 `actions.direction`。
-- 卡片点选：`actions.card` 遇到 `target === 'cell'` 时不弹选择器，设置 `state.mapPick = {index}`；地图所有路面加 `data-pick-cell`，点击调用 `actions.pickCell`，取消由 `cancel-pick` 处理。
-- `#hand` 在有待处理选择时加 `.choice`，让 `#choice` 成为全宽块；否则选择面板会缩成右侧一条。
-- 商店/神秘人/研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))`，卡面 `.shop-card` 是方形图 + 价格，不显示名字。
-- 侧栏拖动：`#sideGrip` 改 `--side-w`，`#desk` 与 `#side` 共用该变量；松手后重绘棋盘。
-- 落点 case 已拆开：bank/lottery/shop/stock/magic/news/merchant 各自打开自己的 pending；新闻、魔法屋不再无反应，乐透不再弹商店。
-- 空白路面不渲染 `.gicon`；放置物 `.occs` 默认占满格；特殊路面 + 放置物时各 70%，左上/右下叠放。
-- 金额飘字从 `[data-player]` 的地图 token 取 `getBoundingClientRect`，用 fixed 定位挂到 body。
-
+路面类型和相邻地产在同一次落点里全部结算，目前只对空路面完整；有 pending 的路面事件处理完会跳过部分相邻地产。冻结或冰冻的零点规则没有状态来源。结盟、背叛、AI、16 张图、热斗和抢房还没有实现，体验层素材、语音和 BGM 也还没有接。数值全是近似值，乐透十天和银行三十天是暂定值。
