@@ -297,3 +297,12 @@ button { font: inherit; }
 .cell .tokens { z-index: 45; }
 .cell .tok { z-index: 46; }
 #setup { overflow: auto; justify-content: flex-start; padding: 18px 24px 40px; box-sizing: border-box; }
+#setupRows { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; width: min(1100px, 96vw); margin: 10px 0 16px; }
+.setup-player { display: flex; align-items: center; gap: 10px; background: #151a21; border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 0; }
+.player-card-avatar { width: 64px; height: 64px; flex: 0 0 64px; border: 2px solid var(--line); border-radius: 50%; overflow: hidden; }
+.player-card-avatar .avatar-svg { width: 100%; height: 100%; display: block; }
+.player-card-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-width: 0; flex: 1; }
+.player-card-fields select { min-width: 0; padding: 4px; background: #1b222c; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
+.player-card-fields .char { grid-column: 1 / -1; }
+.player-card-fields .team { grid-column: 1 / -1; }
+#setupRows + .setup-row { margin-bottom: 30px; }

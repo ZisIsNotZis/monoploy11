@@ -35,7 +35,7 @@ export function rentFor(state, ref) {
 export function buyPrice(state, ref) {
   const cellId = plotIdOf(state, ref);
   const plot = state.map.plots.find(p => p.id === cellId);
-  const base = plot?.big ? 20_000 : 8_000;
+  const base = plot?.big ? (state.config?.bigPlotPrice ?? 20_000) : (state.config?.smallPlotPrice ?? 8_000);
   return Math.round(base * state.priceIndex);
 }
 

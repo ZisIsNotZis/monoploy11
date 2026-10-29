@@ -3,6 +3,7 @@ const wrap = (body, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 64 64" fi
 
 /* ---------------- 路面 ---------------- */
 const ROAD = {
+  money: '<circle cx="32" cy="32" r="18"/><path d="M32 18v28M24 24h12a6 6 0 0 1 0 12h-8a6 6 0 0 0 0 12h12"/>',
   bank: '<path d="M10 24h44M14 24v26M22 24v26M30 24v26M38 24v26M46 24v26M10 50h44M32 8l24 16H8z"/>',
   shop: '<path d="M12 22h40l-3 30H15zM20 22v-5a12 12 0 0 1 24 0v5M22 34h20M26 42h12"/>',
   news: '<path d="M12 10h40v44H12zM20 20h24M20 28h24M20 36h16M20 44h10"/><path d="M36 44h8v8h-8z"/>',

@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=103';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=104';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -15,11 +15,11 @@ const KIND_TAG = {
 };
 const BIG_TAG = { commercial: '商', hotel: '饭', bookstore: '书', energy: '能', realestate: '地', research: '研', park: '公' };
 const BIG_NAME = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
-const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机' };
+const GROUND_ICON = { start:'起', bank:'银', money:'金', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机' };
 const OCC_ICON = { god:'神', dog:'狗', beggar:'乞', merchant:'秘', mine:'雷', dynamite:'炸', timebomb:'弹', banana:'绊', jelly:'冻', trap:'陷', roadblock:'障' };
 const GOD_ICON = { 财神:'财', 穷神:'穷', 福神:'福', 衰神:'衰', 天使:'天', 恶魔:'恶', 土地公:'土', 糊涂神:'糊', 武神:'武', 凶神:'凶' };
 const STATUS_ICON = { 乌龟:'龟', 梦游:'梦', 冬眠:'眠', 冰冻:'冰', 停留:'停' };
-const PASS_ROAD = new Set(['start', 'bank', 'lottery', 'card']);
+const PASS_ROAD = new Set(['start', 'bank', 'lottery', 'card', 'money']);
 const STOP_ROAD = new Set(['shop', 'news', 'magic', 'tax', 'event', 'god', 'dog', 'beggar', 'merchant', 'hospital', 'hospitalGate', 'jail', 'jailGate', 'teleport']);
 const PASS_OCC = new Set(['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock']);
 const STOP_OCC = new Set(['god', 'dog', 'beggar', 'merchant']);
@@ -37,7 +37,7 @@ const CELL_HELP = {
   bank: '经过或停留：打开存取款面板', stock: '股票：随时买卖',
   lottery: '经过或停留：买一注 1–30 的号码，每 10 天开奖', shop: '停下触发：9 张卡，最多买 3 张',
   magic: '停下触发：选择魔法效果', news: '停下触发：立即结算随机新闻',
-  card: '经过或停留：获得 1 张卡', tax: '停下触发：支付现金的 5%',
+  card: '经过或停留：获得 1 张卡', money: '经过或停留：获得 1 到上限之间的现金', tax: '停下触发：支付现金的 5%',
   event: '停下触发：随机现金事件', god: '停下触发：随机神仙附身', dog: '停下触发：50% 住院 2 回合，50% 损失 5000',
   beggar: '停下触发：损失 3000', merchant: '停下触发：6 张卡，最多买 2 张，每张 1000',
   hospitalGate: '医院入口，侧路连回主路', jailGate: '监狱入口，侧路连回主路',

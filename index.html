@@ -10,17 +10,29 @@
 <div id="setup">
   <h1>Monopoly 11</h1>
   <div class="setup-grid">
-    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option></select></label>
     <label>地图 <select id="map"><option value="grid-manor">骑士庄园</option></select></label>
     <label>种子 <input id="seed" type="number" value="1"></label>
     <label>初始现金 <input id="startingCash" type="number" value="100000" step="10000"></label>
     <label>初始存款 <input id="startingDeposit" type="number" value="100000" step="10000"></label>
+    <label>金钱格上限 <input id="moneyCap" type="number" value="30000" step="1000"></label>
     <label>初始手牌 <input id="startingCards" type="number" value="4" min="0"></label>
     <label>手牌上限 <input id="handLimit" type="number" value="8" min="1"></label>
     <label>天数上限 <input id="dayLimit" type="number" value="100" min="1"></label>
+    <label>物价起始 <input id="priceStart" type="number" value="1" step="0.1"></label>
+    <label>物价步长 <input id="priceStep" type="number" value="0.1" step="0.05"></label>
+    <label>物价间隔 <input id="priceEvery" type="number" value="15" min="1"></label>
+    <label>银行利率% <input id="interestRate" type="number" value="10" step="1"></label>
+    <label>结息天数 <input id="interestEvery" type="number" value="30" min="1"></label>
+    <label>医院天数 <input id="hospitalDays" type="number" value="2" min="1"></label>
+    <label>监狱天数 <input id="jailDays" type="number" value="2" min="1"></label>
+    <label>乐透票价 <input id="lotteryTicket" type="number" value="2000" step="100"></label>
+    <label>开奖天数 <input id="lotteryEvery" type="number" value="10" min="1"></label>
+    <label>初始奖池 <input id="lotteryBase" type="number" value="200000" step="10000"></label>
+    <label>小地产价 <input id="smallPrice" type="number" value="8000" step="1000"></label>
+    <label>大地产价 <input id="bigPrice" type="number" value="20000" step="1000"></label>
     <label class="check"><input type="checkbox" id="testcards"> 测试卡组</label>
   </div>
-  <div class="setup-head"><span>控制</span><span>角色</span><span>队伍</span></div>
   <div id="setupRows"></div>
   <div class="setup-row"><button id="start">开始</button></div>
   <p class="hint">队伍选同一个编号就是组队；每名参赛者可选人类或 AI。角色就是身份，没有额外名字。</p>
@@ -41,6 +53,6 @@
   </aside>
 </main>
 
-<script type="module" src="./src/main.js?v=103"></script>
+<script type="module" src="./src/main.js?v=104"></script>
 </body>
 </html>

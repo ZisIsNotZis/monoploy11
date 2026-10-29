@@ -64,8 +64,10 @@ function endPlayerTurn(state, p) {
 
 function advanceDay(state) {
   state.day += 1;
-  if ((state.day - 1) % TUNING.priceIndexEveryDays === 0) {
-    state.priceIndex = +(state.priceIndex + TUNING.priceIndexStep).toFixed(2);
+  const every = state.config?.priceIndexEveryDays ?? TUNING.priceIndexEveryDays;
+  const step = state.config?.priceIndexStep ?? TUNING.priceIndexStep;
+  if ((state.day - 1) % every === 0) {
+    state.priceIndex = +(state.priceIndex + step).toFixed(2);
     log(state, `物价指数上涨到 ${state.priceIndex.toFixed(2)}`);
   }
   for (const p of state.players) if (p.alive) applyMonthly(state, p);
@@ -350,6 +352,13 @@ function faceRandom(state, p) {
   if (exits.length) p.facing = state.rng.pick(exits).to;
 }
 
+function gainMoney(state, p, reason = '金钱格') {
+  const cap = Math.max(1, state.config?.moneyCap ?? TUNING.moneyCap ?? 30000);
+  const amount = Math.max(1000, Math.round((1 + state.rng.int(cap)) / 1000) * 1000);
+  p.cash += amount;
+  log(state, `${p.name} 在${reason}获得 ${amount}`);
+}
+
 async function passPhase(state, p, cellId, ui, isLast) {
   if (!isLast) {
     const occ = state.placements[cellId];
@@ -360,6 +369,7 @@ async function passPhase(state, p, cellId, ui, isLast) {
     }
     const node = state.map.nodes.find(n => n.id === cellId);
     if (node.kind === 'card') { addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
+    if (node.kind === 'money') gainMoney(state, p, '金钱格');
     if (node.kind === 'bank') { await bankFlow(state, p, ui, true); }
     if (node.kind === 'lottery') { await lotteryFlow(state, p, ui); }
     if (node.kind === 'teleport') { const to = portalDestination(state, cellId); if (to) { p.position = to; p.trail = [to]; p.lastNode = null; p.forceRandom = true; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); } }
@@ -382,7 +392,7 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
   const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[occ.kind];
   if (hurt) {
     if (!pay(state, p, null, hurt, occ.kind)) state.stats.bankruptcies += 1;
-    if (p.alive) { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被炸伤住院 ${p.hospital} 天`); }
+    if (p.alive) { p.hospital = (state.config?.hospitalTurns ?? TUNING.hospitalTurns); p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被炸伤住院 ${p.hospital} 天`); }
   }
   else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 0; p.bombSteps = 30; }
   else if (occ.kind === 'jelly') { p.bounceSteps = 2; log(state, `${p.name} 碰到果冻墙，被弹回 2 格`); }
@@ -392,7 +402,7 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
 
 async function dogEffect(state, p) {
   if (p.vehicle || p.talents.includes('immune_beggar_dog')) { log(state, `${p.name} 躲过了野狗`); return; }
-  p.hospital = TUNING.hospitalTurns;
+  p.hospital = (state.config?.hospitalTurns ?? TUNING.hospitalTurns);
   p.position = state.map.facility?.hospital ?? p.position;
   log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 天`);
 }
@@ -416,12 +426,13 @@ async function landingPhase(state, p, ui) {
   }
   switch (cell.kind) {
     case 'card': addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
+    case 'money': gainMoney(state, p, '金钱格'); break;
     case 'tax': { const amount = Math.min(50_000, Math.max(5_000, Math.round(p.cash * TUNING.taxRate))); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
     case 'god': { const gods = ['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']; attachGod(state, p, state.rng.pick(gods)); break; }
     case 'dog': await dogEffect(state, p); break;
     case 'beggar': if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); break;
-    case 'hospitalGate': case 'hospital': p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 住院 ${p.hospital} 回合`); break;
-    case 'jailGate': case 'jail': p.jail = TUNING.jailTurns; p.position = state.map.facility?.jail ?? p.position; log(state, `${p.name} 入狱 ${p.jail} 回合`); break;
+    case 'hospitalGate': case 'hospital': p.hospital = (state.config?.hospitalTurns ?? TUNING.hospitalTurns); p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 住院 ${p.hospital} 回合`); break;
+    case 'jailGate': case 'jail': p.jail = (state.config?.jailTurns ?? TUNING.jailTurns); p.position = state.map.facility?.jail ?? p.position; log(state, `${p.name} 入狱 ${p.jail} 回合`); break;
     case 'event': runNewsEvent(state, p); break;
     case 'teleport': break;
     case 'bank': await bankFlow(state, p, ui, false); break;
@@ -573,11 +584,11 @@ async function lotteryFlow(state, p, ui) {
   const a = await ui.ask({ type: 'lottery', player: p });
   if (!a || a.action === 'leave') return;
   const n = Number(a.number);
-  if (!Number.isInteger(n) || n < 1 || n > 30 || state.lottery.sold.includes(n) || p.cash < TUNING.lotteryTicket) return lotteryFlow(state, p, ui);
-  p.cash -= TUNING.lotteryTicket;
+  if (!Number.isInteger(n) || n < 1 || n > 30 || state.lottery.sold.includes(n) || p.cash < (state.config?.lotteryTicket ?? TUNING.lotteryTicket)) return lotteryFlow(state, p, ui);
+  p.cash -= (state.config?.lotteryTicket ?? TUNING.lotteryTicket);
   state.lottery.tickets.push({ playerId: p.id, number: n });
   state.lottery.sold.push(n);
-  log(state, `${p.name} 买下乐透 ${n}（${TUNING.lotteryTicket}）`);
+  log(state, `${p.name} 买下乐透 ${n}（${state.config?.lotteryTicket ?? TUNING.lotteryTicket}）`);
 }
 
 async function shopFlow(state, p, ui, kind) {

@@ -1,5 +1,5 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=103';
+import { render } from './ui/render.js?v=104';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
@@ -170,66 +170,53 @@ function numberInput() { return Number($('#amount')?.value ?? 0); }
 const CHOICES = [
   { value: 'random', id: 'random', name: '随机角色' },
   ...CHARACTERS.map(c => ({ value: `char:${c.id}`, id: c.id, name: c.name })),
-  ...BOSSES.flatMap(b => [1,2,3].map(t => ({ value: `boss:${b.id}:${t}`, id: b.id, name: `${b.name}·${['简单','普通','困难'][t-1]}`, boss: true }))),
+  ...BOSSES.flatMap(b => [1,2,3].map(t => ({ value: `boss:${b.id}:${t}`, id: b.id, name: `${b.name}·${['简单','普通','困难'][t-1]}` }))),
 ];
 function choiceMeta(value) {
-  if (value === 'random') return { id: 'random', name: '随机角色', boss: false };
+  if (value === 'random') return { id: 'random', name: '随机角色' };
   if (value.startsWith('boss:')) {
     const [, id, tier] = value.split(':');
     const b = BOSSES.find(x => x.id === id);
-    return { id, name: `${b?.name ?? id}·${['简单','普通','困难'][Number(tier)-1]}`, boss: true };
+    return { id, name: `${b?.name ?? id}·${['简单','普通','困难'][Number(tier)-1]}` };
   }
   const id = value.slice(5);
   const c = CHARACTERS.find(x => x.id === id);
-  return { id, name: c?.name ?? id, boss: false };
+  return { id, name: c?.name ?? id };
 }
-function pickerMarkup(value, color) {
-  const meta = choiceMeta(value);
-  return `<span class="picker-avatar">${avatarSvg(meta.id, color, meta.name)}</span><span class="picker-name">${meta.name}</span>`;
+function characterOptions(selected) {
+  return CHOICES.map(c => `<option value="${c.value}" ${c.value === selected ? 'selected' : ''}>${c.name}</option>`).join('');
 }
 function renderSetupRows() {
   const count = Number($('#count').value);
   const box = $('#setupRows');
   box.innerHTML = Array.from({ length: count }, (_, i) => {
-    const char = CHARACTERS[i % CHARACTERS.length];
     const teams = Array.from({ length: count }, (_, j) => `<option value="t${j+1}" ${i === j ? 'selected' : ''}>队伍 ${j+1}</option>`).join('');
     return `<div class="setup-player">
-      <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai" ${i > 0 ? 'selected' : ''}>AI</option></select>
-      <div class="char-picker" data-value="random">
-        <button type="button" class="char-current"></button>
-        <div class="char-menu" hidden></div>
+      <div class="player-card-avatar" data-i="${i}"></div>
+      <div class="player-card-fields">
+        <select class="ctrl"><option value="human">人类</option><option value="ai" ${i > 0 ? 'selected' : ''}>AI</option></select>
+        <select class="char">${characterOptions('random')}</select>
+        <select class="team">${teams}</select>
       </div>
-      <select class="team" data-i="${i}">${teams}</select>
     </div>`;
   }).join('');
   box.querySelectorAll('.setup-player').forEach(row => {
+    row.querySelector('.char').onchange = refreshSetupColors;
     row.querySelector('.team').onchange = refreshSetupColors;
-    row.querySelector('.char-current').onclick = () => {
-      const menu = row.querySelector('.char-menu');
-      menu.hidden = !menu.hidden;
-    };
   });
   refreshSetupColors();
 }
 function refreshSetupColors() {
   const rows = [...document.querySelectorAll('.setup-player')];
   const teams = [...new Set(rows.map(r => r.querySelector('.team').value))];
-  rows.forEach((row, i) => {
+  rows.forEach(row => {
     const team = row.querySelector('.team').value;
     const members = rows.filter(r => r.querySelector('.team').value === team);
     const color = teamColor(teams.indexOf(team), members.indexOf(row), members.length);
-    row.dataset.color = color;
-    const picker = row.querySelector('.char-picker');
-    const value = picker.dataset.value;
-    const btn = picker.querySelector('.char-current');
-    btn.innerHTML = pickerMarkup(value, color);
-    const menu = picker.querySelector('.char-menu');
-    menu.innerHTML = CHOICES.map(choice => `<button type="button" class="char-option ${choice.value === value ? 'sel' : ''}" data-value="${choice.value}"><span class="picker-avatar">${avatarSvg(choice.id, color, choice.name)}</span><span>${choice.name}</span></button>`).join('');
-    menu.querySelectorAll('.char-option').forEach(opt => opt.onclick = () => {
-      picker.dataset.value = opt.dataset.value;
-      menu.hidden = true;
-      refreshSetupColors();
-    });
+    const meta = choiceMeta(row.querySelector('.char').value);
+    const avatar = row.querySelector('.player-card-avatar');
+    avatar.innerHTML = avatarSvg(meta.id, color, meta.name);
+    avatar.style.borderColor = color;
   });
 }
 
@@ -239,7 +226,7 @@ function startGame() {
   const participants = rows.map((row, i) => {
     const controller = row.querySelector('.ctrl').value;
     const team = row.querySelector('.team').value;
-    let value = row.querySelector('.char-picker').dataset.value;
+    let value = row.querySelector('.char').value;
     if (value === 'random') {
       const pool = CHARACTERS.filter(c => !used.has(c.id));
       const c = pool.length ? pool[Math.floor(Math.random() * pool.length)] : CHARACTERS[i % CHARACTERS.length];
@@ -264,6 +251,19 @@ function startGame() {
     startingCards: Number($('#startingCards').value),
     handLimit: Number($('#handLimit').value),
     dayLimit: Number($('#dayLimit').value),
+    moneyCap: Number($('#moneyCap').value),
+    priceIndexStart: Number($('#priceStart').value),
+    priceIndexStep: Number($('#priceStep').value),
+    priceIndexEveryDays: Number($('#priceEvery').value),
+    monthlyInterest: Number($('#interestRate').value) / 100,
+    interestEveryDays: Number($('#interestEvery').value),
+    hospitalTurns: Number($('#hospitalDays').value),
+    jailTurns: Number($('#jailDays').value),
+    lotteryTicket: Number($('#lotteryTicket').value),
+    lotteryEveryDays: Number($('#lotteryEvery').value),
+    lotteryJackpotBase: Number($('#lotteryBase').value),
+    smallPlotPrice: Number($('#smallPrice').value),
+    bigPlotPrice: Number($('#bigPrice').value),
     mapId: $('#map').value,
   });
   $('#setup').hidden = true;

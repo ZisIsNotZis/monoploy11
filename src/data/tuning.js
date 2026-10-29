@@ -11,6 +11,7 @@ export const TUNING = {
   salary: 20_000,
   freeThreshold: 10_000,
   magicCash: 30_000,
+  moneyCap: 30_000,
 
   // 地产
   landPrice: [0, 2_000, 3_000, 4_500, 6_500, 9_000], // 按等级

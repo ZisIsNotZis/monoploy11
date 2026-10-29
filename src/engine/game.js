@@ -55,9 +55,9 @@ export function createGame(config = {}) {
 
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
-    day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
+    day: 0, priceIndex: config.priceIndexStart ?? TUNING.priceIndexStart, turn: 0,
     phase: 'action', properties: {}, placements: {}, log: [], pending: null,
-    winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
+    winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: config.lotteryJackpotBase ?? TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
 
@@ -151,8 +151,9 @@ export function current(state) {
 }
 
 export function applyMonthly(state, p) {
-  if (state.day % 30 !== 0) return;
-  const rate = p.isBoss && p.bossId === 'yuanyuan' ? 0.15 : TUNING.monthlyInterest;
+  const every = state.config?.interestEveryDays ?? 30;
+  if (state.day % every !== 0) return;
+  const rate = p.isBoss && p.bossId === 'yuanyuan' ? 0.15 : (state.config?.monthlyInterest ?? TUNING.monthlyInterest);
   const interest = Math.round(p.deposit * rate);
   p.deposit += interest;
   log(state, `${p.name} 存款利息 +${interest}`);
@@ -193,7 +194,8 @@ export function makeOffer(state, n, kind = 'shop') {
 }
 
 export function drawLottery(state) {
-  if (state.day % 10 !== 0) return;
+  const every = state.config?.lotteryEveryDays ?? 10;
+  if (state.day % every !== 0) return;
   if (state.lottery.lastDrawDay === state.day) return;
   state.lottery.lastDrawDay = state.day;
   const winning = 1 + state.rng.int(30);
@@ -201,9 +203,9 @@ export function drawLottery(state) {
   if (hit) {
     const w = state.players.find(p => p.id === hit.playerId);
     if (w) { w.cash += state.lottery.jackpot; log(state, `乐透开奖 ${winning}：${w.name} 中奖 ${state.lottery.jackpot}`); }
-    state.lottery.jackpot = TUNING.lotteryJackpotBase;
+    state.lottery.jackpot = state.config?.lotteryJackpotBase ?? TUNING.lotteryJackpotBase;
   } else {
-    state.lottery.jackpot += 200_000;
+    state.lottery.jackpot += Math.round((state.config?.lotteryJackpotBase ?? TUNING.lotteryJackpotBase) * 1);
     log(state, `乐透开奖 ${winning}：无人中奖，奖池累计 ${state.lottery.jackpot}；已买号码继续保留`);
     return;
   }
