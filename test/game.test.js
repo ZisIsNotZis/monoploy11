@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEST_MANOR } from '../src/data/maps/test-manor.js';
 import { validateMap } from '../src/engine/board.js';
-import { createGame, roll, buyProperty, buildProperty, chooseDirection, endTurn, current, skipPending, doMagic, doNews, doLottery, doMerchant, doShop, leaveStock, doBank, leavePending } from '../src/engine/game.js';
+import { createGame, roll, buyProperty, buildProperty, chooseDirection, current, skipPending, doMagic, doNews, doLottery, doMerchant, doShop, leaveStock, doBank, leavePending, addCard, attachGod, useCard, CARD_DEFS } from '../src/engine/game.js';
 import { rentFor } from '../src/engine/economy.js';
 import { TUNING } from '../src/data/tuning.js';
 
@@ -68,4 +68,58 @@ test('a full hotseat game terminates without crashing', () => {
   }
   assert.equal(s.phase, 'over');
   assert.ok(s.winnerTeam);
+});
+
+test('five identical cards synthesize the advanced card', () => {
+  const s = createGame({ seed: 12 });
+  const p = s.players[0];
+  p.cards = [];
+  for (let i = 0; i < 5; i++) addCard(s, p, 'missile');
+  assert.deepEqual(p.cards, ['rushmissile']);
+});
+
+test('boss goes first and starts with properties', () => {
+  const s = createGame({ seed: 13, participants: [
+    { name: '孙小美', charId: 'sunxiaomei', team: 'ch' },
+    { name: '博士', charId: 'sunxiaomei', team: 'boss', isBoss: true, bossId: 'doctor', bossTier: 3 },
+  ]});
+  assert.equal(s.players[0].name, '博士');
+  assert.ok(s.players[0].properties.length >= 5);
+  assert.equal(current(s).name, '博士');
+  assert.equal(s.players[0].handLimit, 16);
+});
+
+test('two-player free game is legal and can end', () => {
+  const s = createGame({ seed: 14, participants: [
+    { name: 'A', charId: 'sunxiaomei', team: 'a' },
+    { name: 'B', charId: 'atubo', team: 'b' },
+  ]});
+  assert.equal(s.players.length, 2);
+  assert.equal(s.phase, 'action');
+});
+
+test('time bomb occupies the god slot and overrides a god', () => {
+  const s = createGame({ seed: 15 });
+  const p = s.players[0];
+  attachGod(s, p, '财神');
+  assert.equal(p.god, '财神');
+  attachGod(s, p, '定时炸弹');
+  assert.equal(p.god, '定时炸弹');
+});
+
+test('all 48 card definitions can be used without throwing', () => {
+  const s0 = createGame({ seed: 16 });
+  const ids = Object.keys(CARD_DEFS);
+  assert.equal(ids.length, 48);
+  for (const id of ids) {
+    const s = createGame({ seed: 17 });
+    const p = current(s);
+    p.cards = [id];
+    const def = CARD_DEFS[id];
+    let target = null;
+    if (def.target === 'player') target = s.players.find(q => q.id !== p.id).id;
+    if (def.target === 'cell') target = s.map.nodes.find(n => n.kind === 'property').id;
+    if (def.target === 'street') target = 'A';
+    assert.doesNotThrow(() => useCard(s, 0, target), `card ${id}`);
+  }
 });

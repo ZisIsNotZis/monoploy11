@@ -1,24 +1,19 @@
-import { makeRng } from './engine/rng.js';
 import {
-  createGame, roll, buyProperty, buildProperty, chooseDirection, endTurn,
-  useCard, doBank, doStock, leaveStock, doLottery, doMagic, doNews,
-  doMerchant, doShop, skipPending, current, CARD_DEFS, leavePending,
+  createGame, roll, buyProperty, buildProperty, chooseDirection, useCard,
+  doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
+  doShop, doResearch, skipPending, current, CARD_DEFS, leavePending,
 } from './engine/game.js';
 import { render } from './ui/render.js';
+import { CHARACTERS } from './data/characters.js';
+import { BOSSES } from './data/bosses.js';
 
+const $ = s => document.querySelector(s);
 const root = {
-  topbar: document.querySelector('#topbar'),
-  players: document.querySelector('#players'),
-  board: document.querySelector('#board'),
-  actions: document.querySelector('#actions'),
-  log: document.querySelector('#log'),
-  hand: document.querySelector('#hand'),
+  status: $('#status'), players: $('#players'), board: $('#board'),
+  actions: $('#actions'), log: $('#log'), hand: $('#hand'),
 };
 
-let state = createGame({ seed: 1 });
-let pendingCard = null;
-
-const PLAYER_TARGET_CARDS = new Set(['equalpoor', 'stay', 'turtle']);
+let state = null;
 
 const actions = {
   roll(n) { roll(state, n); rerender(); },
@@ -36,48 +31,90 @@ const actions = {
   },
   stock(id, qty, side) { doStock(state, id, qty, side); rerender(); },
   shop(id) { doShop(state, id); rerender(); },
+  research(id) { doResearch(state, id); rerender(); },
   merchant(id) { doMerchant(state, id); rerender(); },
   magic(effect) { doMagic(state, effect); rerender(); },
+  again() { showSetup(); },
   card(i) {
     const p = current(state);
     const id = p.cards[i];
     if (!id) return;
-    if (PLAYER_TARGET_CARDS.has(id)) {
-      pendingCard = i;
-      renderTargetPicker(state, p, i);
+    const def = CARD_DEFS[id];
+    if (!def) return;
+    if (def.target !== 'self' && def.target !== 'all') {
+      renderTargetPicker(state, p, i, def.target);
       return;
     }
-    useCard(state, i, randomTeleportTarget(id));
+    useCard(state, i, null);
     rerender();
   },
 };
 
-function randomTeleportTarget(id) {
-  if (id !== 'teleport') return null;
-  const nodes = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform');
-  return nodes[Math.floor(state.rng.float() * nodes.length)].id;
-}
+function numberInput() { return Number($('#amount')?.value ?? 0); }
 
-function numberInput() {
-  return Number(document.querySelector('#amount')?.value ?? 0);
-}
-
-function renderTargetPicker(state, p, i) {
+function renderTargetPicker(state, p, i, kind) {
   const id = p.cards[i];
-  root.actions.innerHTML = `<h3>选择目标：${CARD_DEFS[id].name}</h3>` +
-    state.players.filter(q => q.alive && q.id !== p.id).map(q =>
-      `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('') +
+  let body = '';
+  if (kind === 'player') {
+    body = state.players.filter(q => q.alive && q.id !== p.id).map(q =>
+      `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('');
+  } else if (kind === 'street') {
+    body = ['A', 'B', 'C', 'D'].map(s => `<button data-target="${s}">${s} 街</button>`).join('');
+  } else if (kind === 'cell') {
+    body = `<select id="cellTarget">${state.map.nodes.map(n =>
+      `<option value="${n.id}">${n.label}</option>`).join('')}</select>
+      <button data-pickcell="1">确定</button>`;
+  }
+  root.actions.innerHTML = `<h3>选择目标：${CARD_DEFS[id].name}</h3>` + body +
     `<button data-target="">取消</button>`;
   root.actions.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => {
     const target = b.dataset.target || null;
     if (target) useCard(state, i, target);
-    pendingCard = null;
     rerender();
   });
+  const pick = root.actions.querySelector('button[data-pickcell]');
+  if (pick) pick.onclick = () => {
+    useCard(state, i, $('#cellTarget').value);
+    rerender();
+  };
 }
 
 function rerender() {
-  render(root, state, actions);
+  if (state) render(root, state, actions);
 }
 
-rerender();
+function startGame() {
+  const mode = $('#mode').value;
+  const count = Number($('#count').value);
+  const seed = Number($('#seed').value) || 1;
+  const participants = [];
+  if (mode === 'free') {
+    for (let i = 0; i < count; i++) {
+      const c = CHARACTERS[i % CHARACTERS.length];
+      participants.push({ name: c.name, charId: c.id, team: `t${i + 1}`, controller: 'human' });
+    }
+  } else {
+    for (let i = 0; i < Math.max(1, count - 1); i++) {
+      const c = CHARACTERS[i % CHARACTERS.length];
+      participants.push({ name: c.name, charId: c.id, team: 'ch', controller: 'human' });
+    }
+    const b = BOSSES.find(x => x.id === $('#boss').value) ?? BOSSES[0];
+    participants.push({
+      name: b.name, charId: CHARACTERS[0].id, team: 'boss', controller: 'human',
+      isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color,
+    });
+  }
+  state = createGame({ seed, participants });
+  $('#setup').hidden = true;
+  rerender();
+}
+
+function showSetup() {
+  $('#setup').hidden = false;
+}
+
+$('#boss').innerHTML = BOSSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+$('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'; };
+$('#start').onclick = startGame;
+$('#reset').onclick = showSetup;
+showSetup();

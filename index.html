@@ -7,7 +7,17 @@
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<header id="topbar">大富翁 11 · 文字复刻</header>
+<header id="topbar"><span id="status">大富翁 11 · 文字复刻</span><button id="reset">重开</button></header>
+<div id="setup">
+  <h1>大富翁 11 · 文字复刻</h1>
+  <div class="setup-row"><label>模式 <select id="mode"><option value="free">自由乱战</option><option value="boss">领主战</option></select></label>
+  <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
+  <div class="setup-row" id="bossRow" hidden><label>领主 <select id="boss"></select></label>
+  <label>难度 <select id="tier"><option value="1">简单</option><option value="2">普通</option><option value="3">困难</option></select></label></div>
+  <div class="setup-row"><label>种子 <input id="seed" type="number" value="1"></label>
+  <button id="start">开始</button></div>
+  <p class="hint">热座：所有人由你操控；掷骰前可用卡，掷骰后回合结束。</p>
+</div>
 <main id="desk">
   <aside id="players"></aside>
   <section id="board" aria-label="棋盘"></section>

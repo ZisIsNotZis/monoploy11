@@ -1,5 +1,6 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, cardName, current, assetsOf } from '../engine/game.js';
+import { CARD_DEFS, cardName, current } from '../engine/game.js';
+import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board.js';
 
 const KIND_TAG = {
@@ -17,7 +18,7 @@ const BIG_TAG = {
 
 export function render(root, state, actions) {
   const p = current(state);
-  root.topbar.textContent = `第 ${state.day} 天 · 物价 ${state.priceIndex.toFixed(2)} · ${state.phase} · seed ${state.seed}`;
+  root.status.textContent = `第 ${state.day} 天 · 物价 ${state.priceIndex.toFixed(2)} · ${state.phase} · seed ${state.seed}`;
   renderBoard(root.board, state);
   renderPlayers(root.players, state, p);
   renderActions(root.actions, state, p, actions);
@@ -78,7 +79,12 @@ function renderPlayers(el, state, currentP) {
 
 function renderActions(el, state, p, actions) {
   if (state.phase === 'over') {
-    el.innerHTML = `<div class="big-msg">比赛结束，队伍 ${state.winnerTeam ?? '—'} 获胜</div>`;
+    const rows = [...state.players].sort((a, b) => assetsOf(state, b) - assetsOf(state, a))
+      .map((x, i) => `<tr><td>${i + 1}</td><td>${x.name}</td><td>${x.team}</td><td>${assetsOf(state, x).toLocaleString()}</td><td>${x.alive ? '' : '破产'}</td></tr>`).join('');
+    el.innerHTML = `<div class="big-msg">比赛结束，队伍 ${state.winnerTeam ?? '—'} 获胜</div>
+      <table class="rank"><thead><tr><th>#</th><th>角色</th><th>队伍</th><th>资产</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <button data-act="again">再来一局</button>`;
+    el.querySelector('[data-act="again"]').onclick = () => actions.again();
     return;
   }
   const pending = state.pending;
@@ -116,6 +122,9 @@ function renderActions(el, state, p, actions) {
       <button data-magic="jail">随机对手入狱</button>`;
   } else if (pending?.type === 'news') {
     el.innerHTML = `<h3>新闻</h3><button data-act="news">看新闻</button>`;
+  } else if (pending?.type === 'research') {
+    el.innerHTML = `<h3>研究所</h3>${state.shopOffer.map(id => `<button data-research="${id}">${cardName(id)} 5000</button>`).join('')}
+      <button data-act="skip">离开</button>`;
   } else if (pending?.type === 'merchant') {
     el.innerHTML = `<h3>神秘人（1000/张）</h3>${state.shopOffer?.map(id => `<button data-merchant="${id}">${cardName(id)}</button>`).join('') ?? ''}
       <button data-act="skip">离开</button>`;
@@ -134,6 +143,7 @@ function renderActions(el, state, p, actions) {
   el.querySelectorAll('button[data-shop]').forEach(b => b.onclick = () => actions.shop(b.dataset.shop));
   el.querySelectorAll('button[data-magic]').forEach(b => b.onclick = () => actions.magic(b.dataset.magic));
   el.querySelectorAll('button[data-merchant]').forEach(b => b.onclick = () => actions.merchant(b.dataset.merchant));
+  el.querySelectorAll('button[data-research]').forEach(b => b.onclick = () => actions.research(b.dataset.research));
 }
 
 function renderLog(el, state) {

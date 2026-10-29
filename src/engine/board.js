@@ -106,8 +106,10 @@ export function walk(map, day, from, facing, steps, rng, opts = {}) {
       edge = adj[cur].find(e => e.to === face);
     } else {
       let exits = adj[cur].filter(usable);
-      const nonBack = exits.filter(e => e.to !== cameFrom);
-      if (nonBack.length) exits = nonBack;
+      if (!opts.chaos) {
+        const nonBack = exits.filter(e => e.to !== cameFrom);
+        if (nonBack.length) exits = nonBack;
+      }
       if (exits.length === 0) break;
       if (adj[cur].length >= 3 && !forced) {
         edge = rng.pick(exits);
