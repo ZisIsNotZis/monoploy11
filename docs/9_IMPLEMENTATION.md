@@ -1,5 +1,7 @@
 # 实现结构
 
+> 三层文档分工：`3_REQUIREMENT.md` 是玩法设计，`5_PRODUCT.md` 是体验设计，本文件是**架构设计**。本文件只讲数据、模块、状态和执行顺序，不讲主题、配色和动效观感。
+
 本文件记录代码的组织方式，供后续接手者不靠对话记忆也能继续。规则口径以 `3_REQUIREMENT.md` 为准；本文件只讲实现。
 
 ## 运行
@@ -42,7 +44,7 @@ index.html      单页入口；不承载规则
 | `src/engine/economy.js` | 租金、买价、资产、付款、租金进存款 |
 | `src/engine/rng.js` | 种子 RNG |
 | `src/data/tuning.js` | 全部金额、概率、天数、倍率和上限 |
-| `src/data/maps/grid-manor.js` | 当前 25×17 网格地图；目标地图集见 3_REQUIREMENT 2.2.5 |
+| `src/data/maps/grid-manor.js` | 当前 25×17 网格地图；目标地图集见 5_PRODUCT 地图目录 |
 | `src/data/maps/test-manor.js` | 旧环图测试数据，只用于回归测试 |
 | `src/ui/render.js` | 网格棋盘、侧栏、日志、底部情境区、tooltip |
 | `test/*.test.js` | 15 项规则/流程测试 |
@@ -216,6 +218,29 @@ AI 选择目标时要读 `mapRuntime`：
 ## 事后神
 
 `playTurn` 在 `groundPhase` 之后调用 `postGodPhase`，再调用 `directionPhase`。福神/天使先对相邻地产免费加层，己方大空地打开 `chooseBig`；凶神把本次落点里刚加盖的己方小房屋降一层；土地公最后收走所有非己方相邻地产，保留原有层数和建筑类型。
+
+## 体验层接口（目标）
+
+体验设计规定“看到什么、等多久”，架构提供统一接口，避免每个动画各写一套计时器。
+
+```js
+ui.render(state)
+ui.ask(prompt) -> Promise<value>
+ui.step(state, player, cell) -> Promise<void>   // 逐格移动，目标 300ms
+ui.say(player, event) -> Promise<void>          // 气泡 + 语音，气泡结束才 resolve
+ui.pause(kind) -> Promise<void>                 // AI 动作间隔，默认 350ms；读信息 500ms
+```
+
+规则：
+
+- 所有体验时长集中在 `src/data/experience.js`（目标文件），不散落在 `flow.js`、`render.js` 和 CSS 里。CSS 动画时长从同一组变量读取。
+- `flow.js` 在需要停顿的地方 `await ui.say` / `await ui.pause`；不在引擎里直接调用 `setTimeout`。
+- `ui.say` 负责随机台词、气泡定位、语音播放和提前关闭；台词文本与日志共用同一份 `VOICE_LINES`。
+- `ui.step` 只负责移动表现，不改引擎的移动步数；移动逻辑先算出下一格，再等 300ms。
+- AI 的延迟在 `ui.pause` 中统一处理；人类玩家跳过 `ui.pause`。
+- `prefers-reduced-motion` 只缩短 CSS 过渡，不改变 `ui.pause` 的语义等待。
+
+当前债务：`main.js` 的逐格移动是 500ms，AI 回答是 220ms，飘字是 1.2s；气泡尚未实现；`speak` 是 fire-and-forget，不阻塞流程。M5 体验层按上面的接口统一。
 
 ## 测试覆盖
 
