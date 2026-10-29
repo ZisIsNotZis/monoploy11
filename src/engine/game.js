@@ -468,7 +468,7 @@ function resolveAdjacentPlots(state, p, cell) {
     if (!pr || !pr.ownerId) { unowned.push(id); continue; }
     if (pr.ownerId === p.id) {
       if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: id }; return state; }
-      if (pr.level < TUNING.maxLevel && !state.pending) { state.pending = { type: 'build', cellId: id, cost: buildCost(pr.level), label: plot?.label }; }
+      if (pr.level < TUNING.maxLevel && !state.pending) { state.pending = { type: 'build', cellId: id, cost: buildCost(pr.level), label: labelForPlot(state, id) }; }
       continue;
     }
     const owner = state.players.find(q => q.id === pr.ownerId);
@@ -492,7 +492,7 @@ function resolveAdjacentPlots(state, p, cell) {
     const id = unowned.shift();
     const plot = state.map.plots.find(x => x.id === id);
     const price = buyPrice(state, id);
-    state.pending = { type: 'buy', cellId: id, price, label: plot?.label, queue: unowned };
+    state.pending = { type: 'buy', cellId: id, price, label: labelForPlot(state, id), queue: unowned };
     log(state, `${labelForPlot(state, id)} 无主，售价 ${price}`);
     return state;
   }
@@ -501,7 +501,9 @@ function resolveAdjacentPlots(state, p, cell) {
 
 function labelForPlot(state, id) {
   const plot = state.map.plots.find(x => x.id === id);
-  return plot ? (plot.big ? (state.properties[id]?.bigType ? BIG_NAMES[state.properties[id].bigType] : '大空地') : plot.label) : id;
+  if (!plot) return id;
+  if (plot.big) return state.properties[id]?.bigType ? BIG_NAMES[state.properties[id].bigType] : '大空地';
+  return '小地产';
 }
 
 function handleOccupant(state, p, cell) {
@@ -731,13 +733,13 @@ export function buyProperty(state) {
   state.properties[cellId] = {
     ownerId: p.id, level: old?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: old?.bigType ?? null,
   };
-  log(state, `${p.name} 以 ${price} 买下 ${plot?.label ?? cellId}`);
+  log(state, `${p.name} 以 ${price} 买下 ${labelForPlot(state, cellId)}`);
   const queue = state.pending.queue ?? [];
   if (queue.length) {
     const id = queue.shift();
     const nextPlot = state.map.plots.find(x => x.id === id);
-    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: nextPlot?.label, queue };
-    log(state, `${nextPlot?.label ?? id} 也无主，售价 ${buyPrice(state, id)}`);
+    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: labelForPlot(state, id), queue };
+    log(state, `${labelForPlot(state, id)} 也无主，售价 ${buyPrice(state, id)}`);
     return state;
   }
   state.pending = null;
@@ -755,7 +757,7 @@ export function buildProperty(state) {
   pr.level += 1;
   state.landingBuilt = state.landingBuilt ?? [];
   state.landingBuilt.push(cellId);
-  log(state, `${p.name} 将 ${state.map.plots.find(x => x.id === cellId)?.label ?? cellId} 升到 Lv.${pr.level}（花费 ${cost}）`);
+  log(state, `${p.name} 将 ${labelForPlot(state, cellId)} 升到 Lv.${pr.level}（花费 ${cost}）`);
   state.pending = null;
   return endTurn(state);
 }
@@ -771,7 +773,7 @@ export function doChooseBig(state, bigType) {
   pr.level = 1;
   state.landingBuilt = state.landingBuilt ?? [];
   state.landingBuilt.push(state.pending.cellId);
-  log(state, `${p.name} 在 ${state.map.plots.find(x => x.id === state.pending.cellId)?.label ?? '大地产'} 建起 ${BIG_NAMES[bigType] ?? bigType}`);
+  log(state, `${p.name} 建起 ${BIG_NAMES[bigType] ?? bigType}`);
   state.pending = null;
   return endTurn(state);
 }
@@ -784,8 +786,8 @@ export function skipPending(state) {
   if (state.pending.type === 'buy' && queue.length) {
     const id = queue.shift();
     const plot = state.map.plots.find(x => x.id === id);
-    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: plot?.label, queue };
-    log(state, `${plot?.label ?? id} 也无主，售价 ${buyPrice(state, id)}`);
+    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: labelForPlot(state, id), queue };
+    log(state, `${labelForPlot(state, id)} 也无主，售价 ${buyPrice(state, id)}`);
     return state;
   }
   state.pending = null;

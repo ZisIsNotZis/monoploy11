@@ -24,20 +24,17 @@ const plots = [];
 let small = 0, big = 0;
 function smallPlot(x, y, street) {
   const id = `plot_s${++small}`;
-  plots.push({ id, cells: [{ x, y }], big: false, street, label: `${street}${small}` });
+  plots.push({ id, cells: [{ x, y }], big: false, street });
   plotCells.set(`${x},${y}`, id);
 }
-function bigPlot(x, y, street, label) {
+function bigPlot(x, y, street) {
   const id = `plot_b${++big}`;
   const cells = [{ x, y }, { x: x + 1, y }, { x, y: y + 1 }, { x: x + 1, y: y + 1 }];
-  plots.push({ id, cells, big: true, street, label });
+  plots.push({ id, cells, big: true, street });
   for (const c of cells) plotCells.set(`${c.x},${c.y}`, id);
 }
 function cluster(street, bigAt, smalls) {
-  if (bigAt) bigPlot(bigAt[0], bigAt[1], street, {
-    A: '商业中心', B: '大饭店', C: '书店', D: '能源中心',
-    E: '地产公司', F: '研究所', G: '公园', H: '仓库',
-  }[street] ?? '大空地');
+  if (bigAt) bigPlot(bigAt[0], bigAt[1], street);
   for (const [x, y] of smalls) smallPlot(x, y, street);
 }
 // 8 簇，每簇 3–5 块；簇间至少隔一格空。

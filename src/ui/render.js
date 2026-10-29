@@ -96,7 +96,8 @@ function layout(map, W, H) {
 function cellTitle(n, pr, owner, state) {
   if (n.plotId) {
     const plot = state.map.plots.find(p => p.id === n.plotId);
-    return `路：旁边是 ${plot?.label ?? ''}${pr ? `｜${owner?.name ?? '无主'} Lv.${pr.level}` : ''}`;
+    const what = plot?.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
+    return `路：旁边是 ${what}${pr ? `｜${owner?.name ?? '无主'} Lv.${pr.level}` : ''}`;
   }
   let s = `${n.label}：${CELL_HELP[n.kind] ?? ''}`;
   if (n.kind === 'big') s = `${pr?.bigType ? BIG_NAME[pr.bigType] : '大空地'}：${pr?.bigType ? BIG_HELP[pr.bigType] : '第二次投资选择建筑'}`;
@@ -122,7 +123,7 @@ function renderBoard(el, state, currentP) {
   const plots = (map.plots ?? []).map(plot => {
     const pr = state.properties[plot.id];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
-    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
+    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
     const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : '地';
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
@@ -204,11 +205,13 @@ function renderChoice(el, state, p, actions) {
   const box = (title, body) => `<h3>${title}</h3>${body}`;
   let html = '';
   if (pending.type === 'buy') {
-    const label = pending.label ?? state.map.plots.find(x => x.id === pending.cellId)?.label ?? pending.cellId;
+    const plot = state.map.plots.find(x => x.id === pending.cellId);
+    const label = plot?.big ? '大空地' : '小地产';
     html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
       <button data-act="buy">买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {
-    const label = pending.label ?? state.map.plots.find(x => x.id === pending.cellId)?.label ?? pending.cellId;
+    const plot = state.map.plots.find(x => x.id === pending.cellId);
+    const label = plot?.big ? '大空地' : '小地产';
     html = box(`加盖 ${label}`, `<p>费用 ${pending.cost.toLocaleString()}</p>
       <button data-act="build">加盖</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'chooseBig') {
