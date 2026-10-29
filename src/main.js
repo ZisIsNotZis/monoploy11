@@ -2,11 +2,11 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=72';
-import { render } from './ui/render.js?v=72';
+} from './engine/game.js?v=73';
+import { render } from './ui/render.js?v=73';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
-import { reachableWithin } from './engine/board-v2.js';
+import { reachableWithin, pathWithin } from './engine/board-v2.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -144,7 +144,8 @@ function renderTargetPicker(state, p, i, kind) {
   const id = p.cards[i];
   let body = '';
   if (kind === 'player') {
-    body = state.players.filter(q => q.alive && q.id !== p.id).map(q =>
+    const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
+    body = state.players.filter(q => q.alive && q.id !== p.id && (!range5.has(id) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5))).map(q =>
       `<button data-target="${q.id}">${q.name}（${q.team}）</button>`).join('');
   } else if (kind === 'street') {
     body = ['A', 'B', 'C', 'D'].map(s => `<button data-target="${s}">${s} 街</button>`).join('');

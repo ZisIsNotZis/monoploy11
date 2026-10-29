@@ -214,3 +214,15 @@ button { font: inherit; }
 .money-float.map-float { right: auto !important; width: auto; white-space: nowrap; }
 .cell.no-ground .occs { font-size: 30px; }
 #sideGrip::after { content: ''; position: absolute; left: 3px; top: 50%; width: 2px; height: 34px; margin-top: -17px; border-radius: 1px; background: rgba(216,161,63,.55); }
+
+/* 路面/障碍物 2×2 颜色语义：路面停/过，障碍物停/过 */
+.cell.road-stop { border-color: #a9772f; background: #211b14; }
+.cell.road-pass { border-color: #3b7894; background: #131f28; }
+.cell.road-stop .gicon { color: #e0b36a; }
+.cell.road-pass .gicon { color: #7fc3e0; }
+.cell.occ-stop .occs { color: #ff6b6b; text-shadow: 0 0 4px rgba(255, 80, 80, .35); }
+.cell.occ-pass .occs { color: #59d2c3; text-shadow: 0 0 4px rgba(89, 210, 195, .35); }
+.slot.bind { border-color: #7b5ca8; color: #c7b0ee; }
+.slot.body { border-color: #3d8f72; color: #9be0c2; }
+.slot.phys { border-color: #a9772f; color: #e0c07c; }
+.tok .ptr { top: -8px; margin-left: -5.5px; border-left: 5.5px solid transparent; border-right: 5.5px solid transparent; border-bottom: 9px solid var(--c, #fff); }

@@ -163,6 +163,24 @@ export function startTurn(state) {
   tickTimers(state);
   tickGod(state, p);
 
+  if (p.statusDays > 0) {
+    const was = p.status;
+    if (was === '乌龟') {
+      p.statusDays -= 1;
+    } else {
+      p.statusDays -= 1;
+      if (p.statusDays <= 0) {
+        log(state, `${p.name} 的 ${was} 状态结束`);
+        p.status = null;
+        p.statusDays = 0;
+      }
+      if (was === '梦游' || was === '冬眠') {
+        log(state, `${p.name} 正在${was}，跳过本回合`);
+        return endTurn(state);
+      }
+    }
+  }
+
   if (state.map.platform) {
     const active = isPlatformActive(state.map, state.day);
     for (const q of state.players.filter(q => q.alive && q.position === state.map.platform.nodeId)) {
@@ -262,6 +280,10 @@ export function endTurn(state) {
   }
 
   const cur = current(state);
+  if (cur?.status === '乌龟' && cur.statusDays <= 0) {
+    cur.status = null;
+    log(state, `${cur.name} 的乌龟状态结束`);
+  }
   if (cur?.pendingDirection?.length) {
     state.pending = { type: 'direction', options: cur.pendingDirection };
     cur.pendingDirection = null;
@@ -298,7 +320,7 @@ export function roll(state, diceCount = 1) {
   const allowed = Math.min(TUNING.maxDice, 1 + Math.max(0, p.vehicle ?? 0));
   if (diceCount > allowed) return state;
   const dice = Math.max(1, diceCount);
-  const n = p.forcedDice ?? Array.from({ length: dice }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
+  const n = p.status === '乌龟' ? 1 : (p.status === '冰冻' ? 0 : (p.forcedDice ?? Array.from({ length: dice }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0)));
   p.forcedDice = null;
   state.stats.rolls += 1;
   log(state, `${p.name} 掷出 ${n} 点`);
@@ -533,6 +555,7 @@ function handleOccupant(state, p, cell) {
   if (occ.kind === 'god') { attachGod(state, p, occ.name); return false; }
   if (occ.kind === 'dog') {
     if (p.vehicle || p.talents.includes('immune_beggar_dog')) log(state, `${p.name} 躲过了野狗`);
+    else if (state.rng.float() < 0.5) { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 回合`); }
     else { log(state, `${p.name} 被野狗咬，损失 ${TUNING.dogFine}`); pay(state, p, null, TUNING.dogFine, '野狗'); }
     return false;
   }
@@ -660,6 +683,10 @@ function resolveLanding(state, p) {
     case 'dog':
       if (p.vehicle || p.talents.includes('immune_beggar_dog')) {
         log(state, `${p.name} 躲过了野狗`);
+      } else if (state.rng.float() < 0.5) {
+        p.hospital = TUNING.hospitalTurns;
+        p.position = state.map.facility?.hospital ?? p.position;
+        log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 回合`);
       } else {
         log(state, `${p.name} 被野狗咬，损失 ${TUNING.dogFine}`);
         pay(state, p, null, TUNING.dogFine, '野狗');
@@ -816,6 +843,8 @@ export function skipPending(state) {
 
 export function setDirection(state, toId) { return chooseDirection(state, toId); }
 
+const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
+
 export function useCard(state, index, target) {
   if (state.phase !== 'action') return state;
   const p = current(state);
@@ -824,6 +853,11 @@ export function useCard(state, index, target) {
   const def = CARD_DEFS[id];
   if (!def) return state;
   if (def.target !== 'self' && def.target !== 'all' && !target) return state;
+  if (TARGET_RANGE_5.has(id) && target) {
+    const q = targetPlayer(state, p, target);
+    if (!q) return state;
+    if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, 5)) return state;
+  }
   if (p.god === '糊涂神' && state.rng.float() < 0.3) {
     p.cards.splice(index, 1);
     log(state, `${p.name} 在糊涂神影响下用卡失败，${def.name} 没了`);
@@ -948,10 +982,11 @@ function applyCard(state, p, id, target) {
       return true;
     }
     case 'superdice': p.forcedDice = 12; return true;
-    case 'turtle': if (!q) return false; q.forcedDice = 1; return true;
+    case 'turtle': if (!q) return false; q.status = '乌龟'; q.statusDays = 3; return true;
     case 'turn': if (!q) return false; q.facing = q.lastNode; return true;
     case 'stay': if (!q) return false; q.skipTurns += 1; return true;
-    case 'sleep': case 'hibernate': if (!q) return false; q.skipTurns += 2; return true;
+    case 'sleep': if (!q) return false; q.status = '梦游'; q.statusDays = 2; return true;
+    case 'hibernate': if (!q) return false; q.status = '冬眠'; q.statusDays = 2; return true;
     case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap': case 'timebomb':
       if (!node || state.placements[node.id]) return false;
       return place(state, node.id, { kind: id, ownerId: p.id });

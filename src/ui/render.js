@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=72';
+import { CARD_DEFS, current } from '../engine/game.js?v=73';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -16,6 +16,18 @@ const BIG_NAME = { commercial: '商业中心', hotel: '大饭店', bookstore: '�
 const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机' };
 const OCC_ICON = { god:'神', dog:'狗', beggar:'乞', merchant:'秘', mine:'雷', dynamite:'炸', timebomb:'弹', banana:'绊', jelly:'冻', trap:'陷', roadblock:'障' };
 const GOD_ICON = { 财神:'财', 穷神:'穷', 福神:'福', 衰神:'衰', 天使:'天', 恶魔:'恶', 土地公:'土', 糊涂神:'糊', 武神:'武', 凶神:'凶' };
+const STATUS_ICON = { 乌龟:'龟', 梦游:'梦', 冬眠:'眠', 冰冻:'冰', 停留:'停' };
+const PASS_ROAD = new Set(['start', 'bank', 'lottery', 'card']);
+const STOP_ROAD = new Set(['shop', 'news', 'magic', 'tax', 'event', 'god', 'dog', 'beggar', 'merchant', 'hospital', 'hospitalGate', 'jail', 'jailGate', 'teleport']);
+const PASS_OCC = new Set(['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock']);
+const STOP_OCC = new Set(['god', 'dog', 'beggar', 'merchant']);
+const OCC_HELP = {
+  god: '神仙：停下触发', dog: '野狗：停下触发；被咬可能住院或损失 5000，载具/免疫天赋可躲',
+  beggar: '乞丐：停下触发；施舍 3000，免疫天赋可免', merchant: '神秘人：停下触发；6 张卡最多买 2 张，每张 1000',
+  mine: '地雷：经过触发；损失 8000', dynamite: '炸药：经过触发；损失 15000',
+  timebomb: '定时炸弹：经过触发；附身 30 天，追上别人可转嫁', banana: '香蕉皮：经过触发；停留 1 回合',
+  jelly: '果冻墙：经过触发；弹回 2 格', trap: '陷阱：经过触发；停留 1 回合', roadblock: '路障：经过触发；停留 1 回合',
+};
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
   start: '经过或停留领取工资', property: '小地产：买地、加盖、收租',
@@ -141,14 +153,20 @@ function renderBoard(el, state, currentP, actions) {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
     const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '' : '?');
-    const title = `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}${n.adjacentPlots?.length ? '｜邻接 ' + n.adjacentPlots.length + ' 块地产' : ''}`;
+    const title = n.kind === 'empty' ? '' : `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}`;
+    const roadStop = STOP_ROAD.has(n.kind);
+    const roadPass = PASS_ROAD.has(n.kind);
+    const occStop = !!place && STOP_OCC.has(place.kind);
+    const occPass = !!place && PASS_OCC.has(place.kind);
     const dirTarget = dirOptions.has(n.id);
     const canPick = pickMode && (!pickCells || pickCells.has(n.id));
     const extra = dirTarget ? 'dir-target' : canPick ? 'pick-target' : '';
     const attr = dirTarget ? ` data-dir-cell="${n.id}"` : canPick ? ` data-pick-cell="${n.id}"` : '';
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
-    return `<div class="cell ${extra}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${title}"${attr}
+    const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
+    const fullTitle = [title, place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '', n.adjacentPlots?.length ? '邻接 ' + n.adjacentPlots.length + ' 块地产' : ''].filter(Boolean).join('｜');
+    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${fullTitle}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${place.kind === 'god' ? (GOD_ICON[place.name] ?? '神') : (OCC_ICON[place.kind] ?? '?')}</div>` : ''}
@@ -156,7 +174,7 @@ function renderBoard(el, state, currentP, actions) {
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
         const a = t ? Math.atan2(t.y - n.y, t.x - n.x) * 180 / Math.PI : 0;
-        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
+        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="--c:${q.color};background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
       }).join('')}</div>
     </div>`;
   }).join('');
@@ -182,8 +200,11 @@ function renderPlayers(el, state, currentP) {
         <span class="avatar" style="background:${p.color}">${p.name[0]}</span>
         <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>
         <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
-        <span class="pslots">神 ${p.god ?? '-'} 状 ${p.status ?? '-'} 载 ${p.vehicle ?? '-'}</span>
-        ${(p.jail || p.hospital) ? `<span class="bad">${p.jail ? '监' + p.jail : ''}${p.hospital ? '医' + p.hospital : ''}</span>` : ''}
+        <span class="pslots">
+          <span class="slot bind" title="绑定状态：${p.god ?? '无'}">${p.god ? (GOD_ICON[p.god] ?? '神') + p.godDays : '—'}</span>
+          <span class="slot body" title="人物状态：${p.status ?? (p.skipTurns ? '停留 ' + p.skipTurns : '无')}">${p.status ? (STATUS_ICON[p.status] ?? '状') + p.statusDays : (p.skipTurns ? '停' + p.skipTurns : '—')}</span>
+          <span class="slot phys" title="物理状态：${p.jail ? '监狱 ' + p.jail : p.hospital ? '医院 ' + p.hospital : '无'}">${p.jail ? '监' + p.jail : p.hospital ? '医' + p.hospital : '—'}</span>
+        </span>
       </div>
     </div>`;
   }).join('');

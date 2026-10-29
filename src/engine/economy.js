@@ -54,9 +54,13 @@ export function pay(state, from, to, amount, reason) {
   amount = Math.max(0, Math.round(amount));
   if (amount === 0) return true;
   if (from.freeCard) {
-    from.freeCard = false;
-    log(state, `${from.name} 的免费卡抵消了 ${amount}（${reason}）`);
-    return true;
+    const ask = typeof window !== 'undefined' && typeof window.confirm === 'function';
+    const use = !ask || window.confirm(`${from.name}：要用免费卡抵消 ${amount}（${reason}）吗？`);
+    if (use) {
+      from.freeCard = false;
+      log(state, `${from.name} 的免费卡抵消了 ${amount}（${reason}）`);
+      return true;
+    }
   }
 
   if (from.cash < amount) {

@@ -433,3 +433,13 @@ test('robot doll clears obstacles only along its chosen path', () => {
   assert.equal(s.placements['7,2']?.kind, 'dog');
   assert.equal(s.placements['8,2']?.kind, 'roadblock');
 });
+
+test('passing a mysterious merchant does not open the merchant panel', () => {
+  const s = createGame({ seed: 40 });
+  const p = current(s);
+  s.placements['4,2'] = { kind: 'merchant' };
+  p.position = '3,2'; p.facing = '4,2'; p.lastNode = '2,2'; p.forcedDice = 2;
+  roll(s, 1);
+  assert.notEqual(s.pending?.type, 'merchant');
+  assert.ok(p.position !== '4,2');
+});
