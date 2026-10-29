@@ -1,4 +1,4 @@
-// 内联 SVG：道路、地产、建筑、卡面、人物头像和放置物都按名字绘制。
+// 内联 SVG：道路、地产、建筑、卡面、人物头像和放置物都按类型绘制。
 const wrap = (body, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 /* ---------------- 路面 ---------------- */

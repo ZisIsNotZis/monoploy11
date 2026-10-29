@@ -1,4 +1,4 @@
-// 所有未证实系数集中在这里。数值是“逻辑相符 + 量级合理”的近似，不是原版。
+// 所有可调系数集中在这里；数值按规则量级设定。
 export const TUNING = {
   startingCash: 100_000,
   startingDeposit: 100_000,

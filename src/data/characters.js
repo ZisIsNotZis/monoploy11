@@ -10,7 +10,7 @@ export const CHARACTERS = [
     { id: 'tudigong_days_plus', name: '天命', desc: '土地公附身时间 +3 天', value: 3 },
   ]},
   { id: 'tangtang', name: '糖糖', color: '#d8a13f', talents: [
-    { id: 'shop_discount', name: '会员价', desc: '大幅降低商店购买卡片的费用', value: 0.5 },
+    { id: 'shop_discount', name: '会员价', desc: '商店购买卡片的费用 ×0.5', value: 0.5 },
     { id: 'shop_extra_card', name: '乖乖女', desc: '离开商店时随机获得 1 张卡片', value: 1 },
   ]},
   { id: 'wumi', name: '乌咪', color: '#4f9de0', talents: [
@@ -34,8 +34,8 @@ export const CHARACTERS = [
     { id: 'god_gives_robotdoll', name: '忍术', desc: '神仙附身时获得 1 张机器娃娃卡' },
   ]},
   { id: 'qiange', name: '千哥', color: '#7a7a3a', talents: [
-    { id: 'worker_to_truck', name: '赢家', desc: '使用机器工人卡，一定几率获得工程车卡' },
-    { id: 'truck_to_worker', name: '利己', desc: '使用工程车卡，一定几率获得机器工人卡' },
+    { id: 'worker_to_truck', name: '赢家', desc: '使用机器工人卡时，有 30% 获得工程车卡' },
+    { id: 'truck_to_worker', name: '利己', desc: '使用工程车卡时，有 30% 获得机器工人卡' },
   ]},
   { id: 'shalagongzhu', name: '莎拉公主', color: '#d070b0', talents: [
     { id: 'immune_shuai_qiong', name: '随心所欲', desc: '免疫衰神和穷神' },
@@ -50,11 +50,11 @@ export const CHARACTERS = [
     { id: 'jelly_banana_x2', name: '完投', desc: '果冻墙卡和香蕉皮卡的使用距离翻倍' },
   ]},
   { id: 'yuehanqiao', name: '约翰乔', color: '#8a6a4a', talents: [
-    { id: 'roadblock_refund', name: '马术', desc: '使用路障卡，一定几率返还 1 张' },
+    { id: 'roadblock_refund', name: '马术', desc: '使用路障卡时，有 30% 返还 1 张' },
     { id: 'roadblock_x2', name: '牛仔', desc: '路障卡使用距离翻倍' },
   ]},
   { id: 'wumeila', name: '舞美拉', color: '#c46a8a', talents: [
-    { id: 'stay_refund', name: '临场发挥', desc: '使用停留卡，一定几率返还 1 张' },
+    { id: 'stay_refund', name: '临场发挥', desc: '使用停留卡时，有 30% 返还 1 张' },
     { id: 'stay_x2', name: '演技', desc: '停留卡使用距离翻倍' },
   ]},
   { id: 'ludwig', name: '路德维希', color: '#6a7ac4', talents: [
