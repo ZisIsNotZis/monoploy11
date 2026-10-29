@@ -92,3 +92,18 @@ test('teammates can build and upgrade each other’s plots', () => {
   assert.equal(s.properties[id].level, 2);
   assert.equal(s.properties[id].ownerId, a.id);
 });
+
+test('machine worker upgrades a team building from any distance', () => {
+  const s = createGame({ seed: 73 });
+  const p = current(s);
+  const teammate = s.players.find(x => x.id !== p.id);
+  teammate.team = p.team;
+  const plot = s.map.plots.find(x => !x.big);
+  s.properties[plot.id] = { ownerId: teammate.id, level: 1, street: plot.street, big: false, bigType: null };
+  teammate.properties = [plot.id];
+  p.cards = ['worker'];
+  s.phase = 'action';
+  useCard(s, 0, plot.id);
+  assert.equal(s.properties[plot.id].level, 2);
+  assert.ok(!p.cards.includes('worker'));
+});

@@ -376,3 +376,11 @@ button { font: inherit; }
 .cell .tokens { right: 0; bottom: 0; transform: translate(50%, 50%); z-index: 45; }
 .tok, .tok-avatar { width: 18px; height: 18px; }
 .tok .ptr { top: -10px; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid var(--c, #fff); }
+/* 地产高亮：机器工人等指向地产的卡也能看见可点目标 */
+.prop.pick-target { cursor: crosshair; box-shadow: inset 0 0 0 2px #5aa9e6, 0 0 8px rgba(90,169,230,.65); z-index: 35; }
+.prop.pick-target:hover { background-color: #16283a !important; }
+.prop.pick-blocked { cursor: not-allowed; opacity: .6; }
+/* structureSvg 的根类不是 .icon，补上实际尺寸 */
+.prop .picon .structure-icon { width: 94%; height: 94%; display: block; margin: auto; }
+.bigprop .picon .structure-icon { width: 88%; height: 88%; }
+.structure-icon path, .structure-icon rect, .structure-icon circle, .structure-icon ellipse { stroke: #e4d3b0; }

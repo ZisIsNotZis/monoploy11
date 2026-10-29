@@ -97,9 +97,9 @@ function makeStocks(rng) {
 }
 
 const CARD_LIST = [
-  ['buyland', '购地卡', 'cell'], ['exchange', '换屋卡', 'cell'], ['rebuild', '改建卡', 'cell'],
-  ['close', '停业卡', 'street'], ['truck', '工程车卡', 'cell'], ['monster', '怪兽卡', 'cell'],
-  ['worker', '机器工人卡', 'cell'], ['inflate', '涨价卡', 'street'], ['remotedice', '遥控骰子卡', 'cell'],
+  ['buyland', '购地卡', 'plot'], ['exchange', '换屋卡', 'plot'], ['rebuild', '改建卡', 'plot'],
+  ['close', '停业卡', 'street'], ['truck', '工程车卡', 'plot'], ['monster', '怪兽卡', 'plot'],
+  ['worker', '机器工人卡', 'plot'], ['inflate', '涨价卡', 'street'], ['remotedice', '遥控骰子卡', 'cell'],
   ['turtle', '乌龟卡', 'player'], ['turn', '转向卡', 'player'], ['stay', '停留卡', 'player'],
   ['sleep', '梦游卡', 'player'], ['hibernate', '冬眠卡', 'player'], ['roadblock', '路障卡', 'cell'],
   ['superdice', '超级骰子卡', 'self'], ['jelly', '果冻墙卡', 'cell'], ['randomdoor', '随意门卡', 'self'],
@@ -392,9 +392,9 @@ export function applyCard(state, p, id, target) {
       const key = targetPlotId(state, target);
       const plot = state.map.plots.find(x => x.id === key);
       if (!plot) return false;
-      const road = state.map.nodes.find(n => n.adjacentPlots?.includes(key));
-      if (!road || !pathWithin(state.map, p.position, road.id, 5)) return false;
-      const pr = state.properties[key]; if (!pr || pr.ownerId !== p.id) return false;
+      const pr = state.properties[key];
+      const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+      if (!pr || !owner || owner.team !== p.team || pr.level <= 0) return false;
       pr.level = Math.min(TUNING.maxLevel, pr.level + 1); return true;
     }
     case 'inflate': {
