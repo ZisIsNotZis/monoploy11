@@ -42,5 +42,6 @@ export const TUNING = {
   // 工资/回合
   startBonus: 20_000,
   godBaseDays: 3,
+  godRangeBonus: 2,
   maxDice: 3,
 };

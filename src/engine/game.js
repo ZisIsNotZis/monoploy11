@@ -3,17 +3,17 @@ import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID, CHARACTERS } from '../data/characters.js';
 import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
-import { GRID_MANOR } from '../data/maps/grid-manor.js';
-import { GRAND_HOTEL } from '../data/maps/grand-hotel.js';
+import { MAPS as PRODUCT_MAPS } from '../data/maps/index.js';
+import { createMapRuntime } from './map-runtime.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
-import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
+import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet, incomeBonus } from './economy.js';
 
 const GENDER = {
   sunxiaomei:'女', atubo:'男', qianfuren:'女', shalongbasi:'男', jinbeibei:'女', rentaro:'男',
   qiange:'男', shalagongzhu:'女', wumi:'女', gongben:'男', xiaodanni:'男', tangtang:'女',
   yuehanqiao:'男', wumeila:'女', ludwig:'男', shiyi:'女', doctor:'男', octopus:'男', bear:'男', yuanyuan:'女',
 };
-const MAPS = { 'grid-manor': GRID_MANOR, 'grand-hotel': GRAND_HOTEL, 'test-manor': TEST_MANOR };
+const MAPS = { ...PRODUCT_MAPS, 'test-manor': TEST_MANOR };
 
 export function teamColor(teamIndex, memberIndex, memberCount) {
   const hue = Math.round((teamIndex * 137.508 + 12) % 360);
@@ -24,7 +24,9 @@ export function teamColor(teamIndex, memberIndex, memberCount) {
 
 export function createGame(config = {}) {
   const mapId = config.mapId ?? 'grand-hotel';
-  const map = MAPS[mapId];
+  const baseMap = MAPS[mapId] ?? PRODUCT_MAPS['grand-hotel'];
+  const map = typeof structuredClone === 'function' ? structuredClone(baseMap) : JSON.parse(JSON.stringify(baseMap));
+  map.runtime = createMapRuntime(map);
   const errors = validateMap(map);
   if (errors.length) throw new Error(`地图校验失败: ${errors.join('; ')}`);
 
@@ -42,7 +44,7 @@ export function createGame(config = {}) {
       deposit: config.startingDeposit ?? TUNING.startingDeposit,
       cards: [], position: map.startId, facing: null,
       jail: 0, hospital: 0, god: null, godDays: 0, status: null, statusDays: 0,
-      vehicle: null, alive: true, properties: [], handLimit: p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : (config.handLimit ?? TUNING.handLimit),
+      vehicle: null, alive: true, properties: [], handLimit: (p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : (config.handLimit ?? TUNING.handLimit)) + (map.mechanic?.handBonus ?? 0),
       talents: char.talents.map(t => t.id),
       freeCard: false, forcedDice: null, skipTurns: 0,
     };
@@ -55,7 +57,7 @@ export function createGame(config = {}) {
   }
 
   const state = {
-    seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
+    seed, rng, mapId, map, mapRuntime: map.runtime, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: config.priceIndexStart ?? TUNING.priceIndexStart, turn: 0,
     phase: 'action', properties: {}, placements: {}, log: [], pending: null,
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: config.lotteryJackpotBase ?? TUNING.lotteryJackpotBase, lastDrawDay: 0 },
@@ -146,6 +148,16 @@ export const CARDS = CARD_LIST.map(([id, name, target]) => ({ id, name, target }
 export const CARD_DEFS = Object.fromEntries(CARD_LIST.map(([id, name, target]) => [id, { id, name, target }]));
 export function randomCard(rng) { return rng.pick(CARD_LIST.filter(([id]) => !ADVANCED.has(id)))[0]; }
 
+// 卡片来源的“熟客”偏向：已经握有 2 张以上同名单卡时，有一半概率再给同名单卡，
+// 让五张同名合成在卡片格/书店/事件里自然发生，同时总供给仍受随机池限制。
+export function drawBaseCard(state, p) {
+  const counts = {};
+  for (const id of p.cards) if (!ADVANCED.has(id) && RECIPES[id]) counts[id] = (counts[id] ?? 0) + 1;
+  const warm = Object.entries(counts).filter(([, n]) => n >= 2).map(([id]) => id);
+  if (warm.length && state.rng.float() < 0.5) return state.rng.pick(warm);
+  return randomCard(state.rng);
+}
+
 export function addCard(state, p, id) {
   p.cards.push(id);
   const adv = RECIPES[id];
@@ -165,7 +177,8 @@ export function current(state) {
 export function applyMonthly(state, p) {
   const every = state.config?.interestEveryDays ?? 30;
   if (state.day % every !== 0) return;
-  const rate = p.isBoss && p.bossId === 'yuanyuan' ? 0.15 : (state.config?.monthlyInterest ?? TUNING.monthlyInterest);
+  const gathered = p.isBoss && p.bossId === 'yuanyuan' && p.bossTier >= 1;
+  const rate = gathered ? 0.15 : (state.config?.monthlyInterest ?? TUNING.monthlyInterest);
   const interest = Math.round(p.deposit * rate);
   p.deposit += interest;
   log(state, `${p.name} 存款利息 +${interest}`);
@@ -198,11 +211,17 @@ export function releaseFrom(state, p, kind) {
   }
 }
 
+// 货架按“每档 3 张同名”铺货：基础卡货源仍有限（买走的卡不会补货），
+// 但只要逛两次商店/神秘人就有机会凑齐 5 张同名卡完成合成。
+// 研究所只出进阶卡，用同样的重复铺法保证 2 个档位可选。
 export function makeOffer(state, n, kind = 'shop') {
   const advanced = kind === 'research';
   const pool = state.rng.shuffle(CARD_LIST.filter(([id]) => advanced ? ADVANCED.has(id) : !ADVANCED.has(id)).map(([id]) => id));
   const mult = kind === 'merchant' ? 0.5 : 1;
-  return pool.slice(0, n).map(id => ({ id, price: Math.round((CARD_PRICES[id] ?? 2000) * mult) }));
+  const distinct = Math.max(1, Math.ceil(n / 3));
+  const featured = pool.slice(0, distinct);
+  const slots = Array.from({ length: n }, (_, i) => featured[i % featured.length]);
+  return state.rng.shuffle(slots).map(id => ({ id, price: Math.round((CARD_PRICES[id] ?? 2000) * mult) }));
 }
 
 export function drawLottery(state) {
@@ -240,6 +259,8 @@ const GOD_IMMUNITY = {
   凶神: 'immune_hutu_xiong',
 };
 
+export const ALL_GODS = ['财神', '穷神', '福神', '衰神', '天使', '恶魔', '土地公', '糊涂神', '武神', '凶神'];
+
 export function attachGod(state, p, name) {
   const immunity = GOD_IMMUNITY[name];
   if (immunity && p.talents.includes(immunity)) {
@@ -272,7 +293,7 @@ export function attachGod(state, p, name) {
     }
     log(state, '穷神附身：向每位对手赠送 10000');
   }
-  if (name === '福神') { addCard(state, p, randomCard(state.rng)); addCard(state, p, randomCard(state.rng)); }
+  if (name === '福神') { addCard(state, p, drawBaseCard(state, p)); addCard(state, p, drawBaseCard(state, p)); }
   if (name === '衰神') {
     const lost = Math.min(2, p.cards.length);
     p.cards.splice(0, lost);
@@ -322,9 +343,21 @@ const RANGE_X2 = {
 export function cardRange(p, id, base = 5) {
   let range = base;
   if (p.talents.includes('card_range_plus')) range += 1;
+  if (p.god === '武神') range += TUNING.godRangeBonus ?? 2;
   const talent = RANGE_X2[id];
   if (talent && p.talents.includes(talent)) range *= 2;
   return range;
+}
+
+// 章鱼王 1 档起：拾取卡和飞弹卡距离无限。
+export function bossInfiniteRange(p, id) {
+  return !!p?.isBoss && p.bossId === 'octopus' && p.bossTier >= 1 && (id === 'pick' || id === 'missile');
+}
+
+// 四名领主共同免疫的指向卡：查账、均贫、魔术；均富卡则把领主排除在结算外。
+export const BOSS_IMMUNE_CARDS = new Set(['audit', 'equalpoor', 'magic']);
+export function bossImmune(q) {
+  return !!q?.isBoss;
 }
 
 // 合奏：队友（或自己队伍）在自身回合外失去卡片时，全队各补 1 张。只由丢卡路径调用。
@@ -350,7 +383,7 @@ export function useCard(state, index, target) {
   if (!def) return state;
   if (def.target !== 'self' && def.target !== 'all' && !target) return state;
   if (target === p.id && !SELF_TARGET.has(id)) return state;
-  if (TARGET_RANGE_5.has(id) && target && !(id === 'turn' && p.talents.includes('turn_card_infinite'))) {
+  if (TARGET_RANGE_5.has(id) && target && !bossInfiniteRange(p, id) && !(id === 'turn' && p.talents.includes('turn_card_infinite'))) {
     const q = targetPlayer(state, p, target);
     if (!q) return state;
     if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, cardRange(p, id))) return state;
@@ -368,7 +401,7 @@ export function useCard(state, index, target) {
   if (!ok) return state;
   p.cards.splice(index, 1);
   const octo = state.players.find(x => x.isBoss && x.bossId === 'octopus' && x.bossTier >= 3 && x.alive);
-  if (octo && id !== 'pick' && state.rng.float() < 0.2) addCard(state, octo, 'pick');
+  if (octo && id !== 'pick' && state.rng.float() < 0.3) addCard(state, octo, 'pick');
   log(state, `${p.name} 使用 ${def.name}${target ? ` → ${target}` : ''}`);
   return state;
 }
@@ -548,20 +581,23 @@ export function applyCard(state, p, id, target) {
     case 'free': p.freeCard = true; return true;
     case 'audit': {
       if (!q) return false;
+      if (bossImmune(q)) { log(state, `${q.name} 免疫查账卡`); return false; }
       if (q.talents.includes('immune_pick_audit') && q.god) { log(state, `${q.name} 的公关：神仙附身期间无法被查账`); return false; }
       log(state, `${q.name} 手牌：${q.cards.map(cardName).join('、') || '无'}`); return true;
     }
     case 'equalpoor': {
       if (!q) return false;
+      if (bossImmune(q)) { log(state, `${q.name} 免疫均贫卡`); return false; }
       const avg = Math.floor((p.cash + q.cash) / 2); p.cash = avg; q.cash = avg; return true;
     }
     case 'equalrich': {
-      const alive = state.players.filter(x => x.alive);
+      const alive = state.players.filter(x => x.alive && !x.isBoss);
+      if (!alive.length) return false;
       const avg = Math.floor(alive.reduce((s, x) => s + x.cash, 0) / alive.length);
       for (const x of alive) x.cash = avg; return true;
     }
     case 'pick': {
-      if (q?.isBoss && q.bossId === 'octopus') { log(state, '章鱼王免疫拾取卡'); return false; }
+      if (q?.isBoss && q.bossId === 'octopus' && q.bossTier >= 1) { log(state, '章鱼王免疫拾取卡'); return false; }
       if (q?.talents.includes('immune_pick_audit') && q.god) { log(state, `${q.name} 的公关：神仙附身期间无法被拾取`); return false; }
       if (!q || !q.cards.length) return false;
       const i = state.rng.int(q.cards.length); addCard(state, p, q.cards.splice(i, 1)[0]); notifyCardLoss(state, q, 1); return true;
@@ -574,6 +610,7 @@ export function applyCard(state, p, id, target) {
     }
     case 'magic': {
       if (!q) return false;
+      if (bossImmune(q)) { log(state, `${q.name} 免疫魔术卡`); return false; }
       [p.cards, q.cards] = [q.cards, p.cards]; return true;
     }
     case 'invitegod': case 'godfavor': {
@@ -619,13 +656,13 @@ export function runNewsEvent(state, p) {
   if (kind === 'price') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
   if (kind === 'boom') { for (const s of state.stocks) s.price = Math.max(1, Math.round(s.price * 1.1)); log(state, '新闻：股市大涨'); }
   if (kind === 'bust') { for (const s of state.stocks) s.price = Math.max(1, Math.round(s.price * 0.9)); log(state, '新闻：股市大跌'); }
-  if (kind === 'prize') { p.cash += Math.round(20_000 * k); log(state, `新闻：${p.name} 中奖 ${Math.round(20_000 * k)}`); }
+  if (kind === 'prize') { const gain = incomeBonus(p, Math.round(20_000 * k)); p.cash += gain; log(state, `新闻：${p.name} 中奖 ${gain}`); }
   if (kind === 'fine') { const amount = Math.round(10_000 * k); pay(state, p, null, amount, '新闻罚款'); log(state, `新闻：${p.name} 被罚款 ${amount}`); }
   if (kind === 'hospital') { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `新闻：${p.name} 住院`); }
   if (kind === 'jail') { p.jail = TUNING.jailTurns; p.position = state.map.facility?.jail ?? p.position; log(state, `新闻：${p.name} 入狱`); }
-  if (kind === 'cards') { addCard(state, p, randomCard(state.rng)); addCard(state, p, randomCard(state.rng)); log(state, `新闻：${p.name} 获得 2 张卡`); }
+  if (kind === 'cards') { addCard(state, p, drawBaseCard(state, p)); addCard(state, p, drawBaseCard(state, p)); log(state, `新闻：${p.name} 获得 2 张卡`); }
   if (kind === 'losecard') { if (p.cards.length) p.cards.splice(state.rng.int(p.cards.length), 1); log(state, `新闻：${p.name} 失去 1 张卡`); }
-  if (kind === 'allgain') { const amount = Math.round(10_000 * k); for (const q of state.players.filter(q => q.alive)) q.cash += amount; log(state, `新闻：所有人获得 ${amount}`); }
+  if (kind === 'allgain') { const amount = Math.round(10_000 * k); for (const q of state.players.filter(q => q.alive)) q.cash += incomeBonus(q, amount); log(state, `新闻：所有人获得 ${amount}`); }
   if (kind === 'allpay') { const amount = Math.round(10_000 * k); for (const q of state.players.filter(q => q.alive)) pay(state, q, null, amount, '新闻共同支出'); log(state, `新闻：所有人支付 ${amount}`); }
   if (kind === 'teleport') {
     const cells = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform' && !state.placements[n.id]);

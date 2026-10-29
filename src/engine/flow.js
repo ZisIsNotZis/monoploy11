@@ -1,11 +1,12 @@
 // 异步回合引擎：一个游戏循环，按阶段 await；回合只在流程自然结束后推进。
 import { TUNING } from '../data/tuning.js';
 import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } from './board-v2.js';
-import { rentFor, buyPrice, buildCost, assetsOf, pay, log } from './economy.js';
+import { rentFor, buyPrice, buildCost, assetsOf, pay, log, bossRentMultiplier, incomeBonus } from './economy.js';
+import { tickMap, mapExtraSteps, mapShopMultiplier } from './map-runtime.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
   useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE, cardRange,
-  applyMonthly, tickGod, tickTimers, spawnOccupants, releaseFrom, runNewsEvent,
+  applyMonthly, tickGod, tickTimers, spawnOccupants, releaseFrom, runNewsEvent, bossInfiniteRange, ALL_GODS, drawBaseCard,
 } from './game.js';
 
 const GROUND_CARDS = new Set(['buyland', 'exchange', 'rebuild', 'worker', 'truck']);
@@ -37,6 +38,7 @@ function beginTurn(state, p) {
   if (!p || !p.alive) return true;
   state.phase = 'action';
   p.aiUsedCard = false;
+  p.builtThisTurn = [];
   if (p.statusDays > 0 && (p.status === '梦游' || p.status === '冬眠')) {
     log(state, `${p.name} 正在${p.status}，跳过本回合`);
     return true;
@@ -70,6 +72,7 @@ function endPlayerTurn(state, p) {
 
 function advanceDay(state) {
   state.day += 1;
+  tickMap(state);
   const every = state.config?.priceIndexEveryDays ?? TUNING.priceIndexEveryDays;
   const step = state.config?.priceIndexStep ?? TUNING.priceIndexStep;
   if ((state.day - 1) % every === 0) {
@@ -121,6 +124,7 @@ async function playTurn(state, p, ui) {
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
   log(state, stay ? `${p.name} 停留，本回合移动 0 步` : `${p.name} 掷出 ${n} 点`);
+  if (!stay) { const extra = mapExtraSteps(state); if (extra) { n += extra; log(state, `地图节拍：本回合额外 +${extra} 步`); } }
   let steps = n;
   while (true) {
     const stopped = await movePhase(state, p, steps, ui);
@@ -158,7 +162,7 @@ async function actionPhase(state, p, ui) {
         const kind = GROUND_CARDS.has(id) || id === 'monster' ? 'plot' : (STREET_CARDS.has(id) ? 'street' : def.target);
         let opts = null;
         if (kind === 'player') {
-          opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && !(id === 'sendgod' && q.talents.includes('no_sendgod_outside_turn') && q.id !== p.id && q.team !== p.team) && (!TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, cardRange(p, id))));
+          opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && !(id === 'sendgod' && q.talents.includes('no_sendgod_outside_turn') && q.id !== p.id && q.team !== p.team) && (bossInfiniteRange(p, id) || !TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, cardRange(p, id))));
         }
         target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? cardRange(p, id, id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
@@ -249,7 +253,10 @@ async function movePhase(state, p, steps, ui) {
         if (!p.alive) return true;
       }
     }
-    if (next === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
+    if (next === state.map.startId) { const salary = incomeBonus(p, TUNING.salary); p.cash += salary; log(state, `${p.name} 经过起点 +${salary}`); }
+    const node = state.map.nodes.find(n => n.id === next);
+    if (node?.surface === 'ice' && p.forceRestart == null) { p.forceRestart = 1; p.forceRandom = true; log(state, `${p.name} 踩到冰面，沿朝向滑行 1 格`); }
+    if (node?.surface === 'slope' && i < steps - 1) { steps -= 1; log(state, `${p.name} 上坡，多消耗 1 步`); }
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
     if (p.forceRestart != null) return false;
@@ -350,6 +357,10 @@ function nextStep(state, p, cameFrom, first) {
   const adj = buildAdj(state.map);
   const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
   if (!exits.length) return null;
+  if (p.god === '糊涂神') {
+    const pool = exits.filter(e => e.to !== cameFrom);
+    return state.rng.pick(pool.length ? pool : exits).to;
+  }
   let choices = exits.filter(e => e.to !== cameFrom);
   if (!choices.length) choices = exits;
   if (exits.length <= 1) return exits[0].to;
@@ -376,7 +387,7 @@ function faceRandom(state, p) {
 
 function gainMoney(state, p, reason = '金钱格') {
   const cap = Math.max(1, state.config?.moneyCap ?? TUNING.moneyCap ?? 30000);
-  const amount = Math.max(1000, Math.round((1 + state.rng.int(cap)) / 1000) * 1000);
+  const amount = incomeBonus(p, Math.max(1000, Math.round((1 + state.rng.int(cap)) / 1000) * 1000));
   p.cash += amount;
   log(state, `${p.name} 在${reason}获得 ${amount}`);
 }
@@ -390,7 +401,7 @@ async function passPhase(state, p, cellId, ui, isLast) {
       if (!p.alive || p.jail > 0 || p.hospital > 0 || p.skipTurns > 0) return true;
     }
     const node = state.map.nodes.find(n => n.id === cellId);
-    if (node.kind === 'card') { addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
+    if (node.kind === 'card') { addCard(state, p, drawBaseCard(state, p)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
     if (node.kind === 'money') gainMoney(state, p, '金钱格');
     if (node.kind === 'bank') { await bankFlow(state, p, ui, true); }
     if (node.kind === 'lottery') { await lotteryFlow(state, p, ui); }
@@ -410,7 +421,11 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
   delete state.placements[cellId];
   if (occ.kind === 'god') { attachGod(state, p, occ.name); return; }
   if (occ.kind === 'dog') { await dogEffect(state, p); return; }
-  if (occ.kind === 'beggar') { if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); return; }
+  if (occ.kind === 'beggar') {
+    if (p.god === '凶神' || p.god === '财神') { log(state, `${p.name} 的${p.god}让乞丐不敢靠近`); return; }
+    if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐');
+    return;
+  }
   const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[occ.kind];
   if (hurt) {
     if (!pay(state, p, null, hurt, occ.kind)) state.stats.bankruptcies += 1;
@@ -423,13 +438,14 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
 }
 
 async function dogEffect(state, p) {
+  if (p.god === '凶神') { log(state, `${p.name} 的凶神吓退了野狗`); return; }
   if (p.vehicle || p.talents.includes('immune_beggar_dog')) { log(state, `${p.name} 躲过了野狗`); return; }
   p.hospital = (state.config?.hospitalTurns ?? TUNING.hospitalTurns);
   p.position = state.map.facility?.hospital ?? p.position;
   log(state, `${p.name} 被野狗咬伤，住院 ${p.hospital} 天`);
 }
 
-async function landingPhase(state, p, ui) {
+export async function landingPhase(state, p, ui) {
   let cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return;
   log(state, `${p.name} 停在 ${cell.label}`);
@@ -447,27 +463,35 @@ async function landingPhase(state, p, ui) {
     if (!cell) return;
   }
   switch (cell.kind) {
-    case 'card': addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
+    case 'card': addCard(state, p, drawBaseCard(state, p)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
     case 'money': gainMoney(state, p, '金钱格'); break;
-    case 'tax': { const amount = Math.min(50_000, Math.max(5_000, Math.round(p.cash * TUNING.taxRate))); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
-    case 'god': { const gods = ['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']; attachGod(state, p, state.rng.pick(gods)); break; }
+    case 'tax': {
+      if (p.god === '凶神') { log(state, `${p.name} 的凶神免除纳税`); break; }
+      if (p.god === '财神') { log(state, `${p.name} 的财神免除纳税`); break; }
+      let amount = Math.min(50_000, Math.max(5_000, Math.round(p.cash * TUNING.taxRate)));
+      if (p.god === '穷神') amount *= 2;
+      log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break;
+    }
+    case 'god': { attachGod(state, p, state.rng.pick(ALL_GODS)); break; }
     case 'dog': await dogEffect(state, p); break;
-    case 'beggar': if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); break;
+    case 'beggar':
+      if (p.god === '凶神' || p.god === '财神') { log(state, `${p.name} 的${p.god}让乞丐不敢靠近`); break; }
+      if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); break;
     case 'hospitalGate': case 'hospital': p.hospital = (state.config?.hospitalTurns ?? TUNING.hospitalTurns); p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 住院 ${p.hospital} 回合`); break;
     case 'jailGate': case 'jail': p.jail = (state.config?.jailTurns ?? TUNING.jailTurns); p.position = state.map.facility?.jail ?? p.position; log(state, `${p.name} 入狱 ${p.jail} 回合`); break;
-    case 'event': runNewsEvent(state, p); break;
+    case 'event': if (p.god === '凶神') log(state, `${p.name} 的凶神让事件无效`); else runNewsEvent(state, p); break;
     case 'teleport': break;
     case 'bank': await bankFlow(state, p, ui, false); break;
     case 'lottery': await lotteryFlow(state, p, ui); break;
     case 'shop': await shopFlow(state, p, ui, 'shop'); break;
     case 'research': await shopFlow(state, p, ui, 'research'); break;
     case 'magic': await magicFlow(state, p, ui); break;
-    case 'news': runNewsEvent(state, p); break;
+    case 'news': if (p.god === '凶神') log(state, `${p.name} 的凶神让新闻无效`); else runNewsEvent(state, p); break;
     default: break;
   }
 }
 
-async function groundPhase(state, p, ui) {
+export async function groundPhase(state, p, ui) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return;
   const ids = cell.adjacentPlots ?? [];
@@ -483,16 +507,30 @@ async function groundPhase(state, p, ui) {
       continue;
     }
     const owner = state.players.find(q => q.id === pr.ownerId);
+    if (p.god === '恶魔') {
+      if (pr.level > 0) { pr.level -= 1; log(state, `${p.name} 的恶魔让 ${labelForPlot(state, id)} 降到 Lv.${pr.level}`); }
+      continue;
+    }
+    if (p.god === '土地公' && owner?.team !== p.team) {
+      if (owner) owner.properties = owner.properties.filter(x => x !== id);
+      pr.ownerId = p.id; p.properties.push(id);
+      log(state, `${p.name} 的土地公把 ${labelForPlot(state, id)} 占为己有`);
+      continue;
+    }
     if (owner?.team === p.team) {
       if (pr.big && !pr.bigType) {
         const type = await ui.ask({ type: 'chooseBig', player: p, plot });
         if (type) chooseBig(state, p, id, type);
       } else if (pr.level < TUNING.maxLevel) {
-        const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level) * state.priceIndex;
-        if (await ui.ask({ type: 'build', player: p, plot, cost })) {
-          buildPlot(state, p, id);
-          ui.render?.(state);
-          if (ui.say) await ui.say(p, 'build');
+        if (p.god === '衰神') {
+          log(state, `${p.name} 的衰神让 ${labelForPlot(state, id)} 无法加盖`);
+        } else {
+          const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level) * state.priceIndex;
+          if (await ui.ask({ type: 'build', player: p, plot, cost })) {
+            buildPlot(state, p, id);
+            ui.render?.(state);
+            if (ui.say) await ui.say(p, 'build');
+          }
         }
       }
       continue;
@@ -506,12 +544,12 @@ async function groundPhase(state, p, ui) {
     if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
     if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
     if (p.god === '穷神') rent *= 2;
-    if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' || owner.bossId === 'yuanyuan' ? 1.5 : 1));
+    rent = Math.round(rent * bossRentMultiplier(state, owner));
     log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
     state.stats.rents += rent;
     if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
     if (!p.alive) return;
-    if (pr.bigType === 'bookstore') { addCard(state, owner, randomCard(state.rng)); log(state, `${owner.name} 的书店卖出 1 本书，获得 1 张卡`); }
+    if (pr.bigType === 'bookstore') { addCard(state, owner, drawBaseCard(state, owner)); log(state, `${owner.name} 的书店卖出 1 本书，获得 1 张卡`); }
     if (pr.bigType === 'research') { const adv = makeOffer(state, 1, 'research')[0]?.id; if (adv) { addCard(state, owner, adv); log(state, `${owner.name} 的研究所产出 1 张进阶卡`); } }
     if (pr.bigType === 'energy') { const fee = Math.round(2_000 * pr.level * state.priceIndex); p.cash = Math.max(0, p.cash - fee); owner.deposit += fee; log(state, `${owner.name} 的能源中心向 ${p.name} 收取 ${fee} 能源费`); }
   }
@@ -532,6 +570,7 @@ export function buildPlot(state, p, id) {
   const cost = Math.round((pr.big ? 30_000 : buildCost(pr.level)) * state.priceIndex);
   if (p.cash < cost) return;
   p.cash -= cost; pr.level += 1;
+  (p.builtThisTurn ??= []).push(id);
   log(state, `${p.name} 将 ${plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）`);
 }
 
@@ -543,10 +582,11 @@ function chooseBig(state, p, id, type, free = false) {
   if (p.cash < cost) return;
   p.cash -= cost;
   pr.bigType = type; pr.level = 1;
+  (p.builtThisTurn ??= []).push(id);
   log(state, `${p.name} 建起 ${BIG_NAMES[type]}${cost ? `（花费 ${cost}）` : '（免费）'}`);
 }
 
-async function postGodPhase(state, p, ui) {
+export async function postGodPhase(state, p, ui) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   const ids = cell?.adjacentPlots ?? [];
   const upgraded = [];
@@ -580,7 +620,13 @@ async function postGodPhase(state, p, ui) {
     if (ids.length) log(state, `${p.name} 的土地公收走了相邻地产`);
   }
   if (p.god === '凶神') {
-    for (const id of upgraded) { const pr = state.properties[id]; if (pr && !pr.big && pr.level > 0) { const owner = state.players.find(q => q.id === pr.ownerId); if (owner?.team === p.team) pr.level -= 1; } }
+    const built = p.builtThisTurn ?? [];
+    let reverted = 0;
+    for (const id of built) {
+      const pr = state.properties[id];
+      if (pr && !pr.big && pr.level > 0) { const owner = state.players.find(q => q.id === pr.ownerId); if (owner?.team === p.team) { pr.level -= 1; reverted += 1; } }
+    }
+    if (reverted) log(state, `${p.name} 的凶神撤销了本次落点建起的 ${reverted} 层房屋`);
   }
 }
 
@@ -635,7 +681,8 @@ export async function shopFlow(state, p, ui, kind) {
     const item = state.shopOffer[a.index]; if (!item) continue;
     const energy = state.players.find(q => q.alive && q.team !== p.team && q.properties.some(id => state.properties[id]?.bigType === 'energy'));
     const energyLv = energy ? Math.max(...energy.properties.map(id => state.properties[id]?.bigType === 'energy' ? state.properties[id].level : 0)) : 0;
-    let price = kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.7 : 1)) : item.price;
+    let price = (kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.7 : 1)) : item.price) * mapShopMultiplier(state);
+    price = Math.round(price);
     if (energyLv > 0 && kind !== 'research') price = Math.round(price * (1 + 0.12 * energyLv));
     if (p.cash < price) continue;
     p.cash -= price; addCard(state, p, item.id); state.shopOffer.splice(a.index, 1); bought += 1;
@@ -757,7 +804,7 @@ async function remoteDiceFlow(state, p, ui, index, max = (1 + Math.max(0, p.vehi
     const id = path[i];
     p.lastNode = p.position; p.position = id; trail.push(id);
     p.facing = path[i + 1] ?? nextForward(state, id, p.lastNode);
-    if (id === state.map.startId) p.cash += TUNING.salary;
+    if (id === state.map.startId) { const salary = incomeBonus(p, TUNING.salary); p.cash += salary; log(state, `${p.name} 经过起点 +${salary}`); }
     if (ui.step) await ui.step(state, p, id);
     if (await passPhase(state, p, id, ui, i === path.length - 1)) return true;
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;

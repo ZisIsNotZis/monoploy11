@@ -457,3 +457,38 @@ button { font: inherit; }
 .setup-help span { display: block; }
 
 .center-pill { color: #e2c47f; border-color: rgba(216,161,63,.45); }
+
+/* 移动端：窄屏上下布局，棋盘可横向滚动，触控目标放大 */
+@media (max-width: 760px) {
+  html, body { height: auto; min-height: 100%; overflow: auto; }
+  #desk { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+  #board { height: 62vh; min-height: 320px; overflow: auto; }
+  #side { width: 100% !important; height: 38vh; min-height: 300px; border-left: 0; border-top: 1px solid var(--line); padding: 7px 10px; }
+  #sideGrip { display: none; }
+  #system { font-size: 12px; }
+  #players { flex-direction: row; overflow-x: auto; gap: 6px; }
+  .player { min-width: 210px; border-left-width: 2px; }
+  .pline { min-width: 0; }
+  #log { flex: 1; min-height: 50px; font-size: 12px; }
+  #hand { min-height: 100px; }
+  #hand.choice { max-height: 34vh; }
+  #cards { overflow-x: auto; }
+  .card { flex: 0 0 62px; height: 62px; }
+  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+  #setup { align-items: stretch; padding: 14px 10px 30px; }
+  .setup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .setup-player { width: 100%; max-width: 320px; }
+  #setupRows { width: 100%; }
+  .setup-help { max-width: 100%; margin: 12px 0 0; font-size: 12px; }
+  .speech-bubble { max-width: min(260px, 78vw); font-size: 12px; }
+  .news-banner { left: 6px; right: 6px; top: 38px; font-size: 12px; }
+}
+
+/* 地图地形表面：在路面底色上叠纹理，不占放置物层 */
+.cell.surface-ice { background: repeating-linear-gradient(135deg, #1c2a31 0 5px, #22343d 5px 10px); border-color: #4d7582; }
+.cell.surface-water { background: repeating-linear-gradient(0deg, #172b33 0 4px, #1c3440 4px 8px); border-color: #3a6b7a; }
+.cell.surface-lava { background: repeating-linear-gradient(45deg, #2a1915 0 6px, #3a2018 6px 12px); border-color: #a35a3a; }
+.cell.surface-cloud { background: rgba(100, 130, 160, .18); border-color: #68869c; }
+.cell.surface-mud { background: #242019; border-color: #6f5f42; }
+.cell.surface-slope { background: linear-gradient(135deg, #20271f, #2c3325); border-color: #69804b; }
+.cell.surface-ice .gicon, .cell.surface-water .gicon, .cell.surface-lava .gicon, .cell.surface-slope .gicon { filter: drop-shadow(0 0 2px #000); }

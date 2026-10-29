@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=143';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=144';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=143';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=144';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -194,7 +194,7 @@ function renderBoard(el, state, currentP, actions) {
     const [nx, ny] = n.id.split(',').map(Number);
     const links = `${nodes[`${nx},${ny - 1}`] ? ' link-n' : ''}${nodes[`${nx},${ny + 1}`] ? ' link-s' : ''}${nodes[`${nx - 1},${ny}`] ? ' link-w' : ''}${nodes[`${nx + 1},${ny}`] ? ' link-e' : ''}`;
     const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
-    return `<div class="cell ${extra} ${flow}${links}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
+    return `<div class="cell ${extra} ${flow}${links}${n.surface ? ` surface-${n.surface}` : ''}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${occTitle}">${obstacleSvg(place.kind, place.name)}</div>` : ''}
@@ -208,7 +208,8 @@ function renderBoard(el, state, currentP, actions) {
   }).join('');
 
   const availW = Number(el.clientWidth) || W, availH = Number(el.clientHeight) || H;
-  const scale = Math.max(0.3, Math.min(3.2, (availW - 24) / W, (availH - 24) / H));
+  const minScale = typeof window !== 'undefined' && window.innerWidth <= 760 ? 0.55 : 0.3;
+  const scale = Math.max(minScale, Math.min(3.2, (availW - 24) / W, (availH - 24) / H));
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';

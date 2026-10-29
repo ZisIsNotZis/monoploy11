@@ -4,6 +4,8 @@ import { CARD_DEFS } from './game.js';
 const ATTACK = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','equalpoor','magic','sendgod']);
 const SELF = new Set(['motorcycle','car','invitegod','godfavor','glory','green','free']);
 const PLOT_CARDS = new Set(['worker','truck','buyland','rebuild','monster','exchange']);
+// 这些基础卡集满 5 张能合成进阶卡；AI 拿到 3 张后不再烧掉，留作合成。
+const FUSION_BASE = new Set(['missile', 'inflate', 'close', 'sendgod', 'monster', 'invitegod']);
 
 function assets(p) {
   return p.cash + p.deposit + p.properties.reduce((s, id) => s + 10000, 0);
@@ -11,9 +13,11 @@ function assets(p) {
 
 function pickCardIndex(p, state) {
   if (p.aiUsedCard) return -1;
+  const counts = {};
+  for (const id of p.cards) counts[id] = (counts[id] ?? 0) + 1;
   for (let i = 0; i < p.cards.length; i++) {
     const id = p.cards[i];
-    if (ATTACK.has(id) || SELF.has(id) || PLOT_CARDS.has(id)) return i;
+    if ((ATTACK.has(id) || SELF.has(id) || PLOT_CARDS.has(id)) && !(FUSION_BASE.has(id) && (counts[id] ?? 0) >= 3)) return i;
   }
   return -1;
 }
@@ -104,7 +108,14 @@ export function aiAnswer(prompt, state) {
     case 'lottery': return { action: 'leave' };
     case 'shop': case 'merchant': case 'research': {
       const offers = prompt.offers ?? [];
-      const idx = offers.findIndex(o => p.cash >= o.price + 20_000);
+      // 优先买自己手里已有同名的那张，凑五卡合成。
+      const held = id => p.cards.filter(c => c === id).length;
+      let idx = -1; let best = -1;
+      offers.forEach((o, i) => {
+        if (p.cash < o.price + 20_000) return;
+        const n = held(o.id);
+        if (n > best) { best = n; idx = i; }
+      });
       return idx >= 0 && (prompt.bought ?? 0) < (prompt.limit ?? 2) ? { action: 'buy', index: idx } : { action: 'leave' };
     }
     case 'magic': {

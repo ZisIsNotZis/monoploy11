@@ -1,4 +1,5 @@
 import { TUNING } from '../data/tuning.js';
+import { mapRentMultiplier } from './map-runtime.js';
 
 export const teamOf = (p) => p.team;
 
@@ -30,7 +31,7 @@ export function rentFor(state, ref) {
   const chain = pr.big ? 1 : 1 + TUNING.streetMultiplier * Math.max(0, ownsStreet(state, owner?.team, pr.street) - 1);
   const big = pr.big ? TUNING.bigRentMultiplier : 1;
   const inflate = pr.inflate > 0 ? 2 : 1;
-  return Math.round(base * chain * big * inflate * state.priceIndex);
+  return Math.round(base * chain * big * inflate * state.priceIndex * mapRentMultiplier(state, { ...pr, id: cellId }));
 }
 
 export function buyPrice(state, ref) {
@@ -43,6 +44,20 @@ export function buyPrice(state, ref) {
 
 export function buildCost(level) {
   return Math.max(1, level) * 5_000;
+}
+
+// 领主收入/租金加成集中在这里，方便按档位测试。
+export function incomeBonus(p, amount) {
+  if (p?.isBoss && p.bossId === 'yuanyuan' && p.bossTier >= 2) return Math.round(amount * 1.5);
+  return amount;
+}
+
+// 小熊 1 档起租金与爆炸伤害 +50%；2 档起每 10 天再 +10%，可累积。
+export function bossRentMultiplier(state, owner) {
+  if (!owner?.isBoss || owner.bossId !== 'bear' || owner.bossTier < 1) return 1;
+  let mult = 1.5;
+  if (owner.bossTier >= 2) mult += 0.1 * Math.floor((state.day ?? 0) / 10);
+  return mult;
 }
 
 export function assetsOf(state, p) {
@@ -96,7 +111,7 @@ export function pay(state, from, to, amount, reason) {
       doctor.cards.push(...from.cards);
       log(state, `神秘博士据为己有：接收 ${from.name} 的 ${from.cards.length} 张卡与 ${from.properties.length} 块地`);
     }
-    if (to) { if (reason === '租金') to.deposit += available; else to.cash += available; }
+    if (to) { if (reason === '租金') to.deposit += incomeBonus(to, available); else to.cash += incomeBonus(to, available); }
     from.cash = 0; from.deposit = 0; from.alive = false;
     for (const id of from.properties) { const pr = state.properties[id]; if (pr) pr.ownerId = null; }
     from.properties = []; from.cards = [];
@@ -108,19 +123,21 @@ export function pay(state, from, to, amount, reason) {
   from.cash -= fromCash;
   const rest = amount - fromCash;
   if (rest > 0) from.deposit -= rest;
-  if (to) { if (reason === '租金') to.deposit += amount; else to.cash += amount; }
+  if (to) { const gain = incomeBonus(to, amount); if (reason === '租金') to.deposit += gain; else to.cash += gain; }
   if (!from.isBoss) {
     const yuan = state.players.find(p => p.isBoss && p.bossId === 'yuanyuan' && p.bossTier >= 3 && p.alive);
     if (yuan) { const siphon = Math.round(yuan.deposit * 0.01 * state.priceIndex); yuan.deposit += siphon; log(state, `圆圆流通手段：抽走 ${siphon}`); }
   }
   if (from.isBoss && from.bossId === 'doctor') {
-    const ratio = from.bossTier >= 3 ? 0.5 : from.bossTier === 2 ? 0.35 : 0.2;
-    const share = Math.round(amount * ratio);
-    for (const q of state.players.filter(p => p.alive && !p.isBoss)) {
-      const take = Math.min(q.cash + q.deposit, share);
-      const c = Math.min(q.cash, take); q.cash -= c;
-      const d = take - c; if (d > 0) q.deposit -= d;
-      log(state, `反噬：${q.name} 承受 ${share}`);
+    const ratio = from.bossTier === 3 ? 0.5 : from.bossTier === 2 ? 0.35 : from.bossTier === 1 ? 0.2 : 0;
+    if (ratio) {
+      const share = Math.round(amount * ratio);
+      for (const q of state.players.filter(p => p.alive && !p.isBoss)) {
+        const take = Math.min(q.cash + q.deposit, share);
+        const c = Math.min(q.cash, take); q.cash -= c;
+        const d = take - c; if (d > 0) q.deposit -= d;
+        log(state, `反噬：${q.name} 承受 ${share}`);
+      }
     }
   }
   return true;

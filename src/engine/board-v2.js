@@ -1,5 +1,6 @@
 // 地图图模型：邻接、校验、逐格移动、岔路规则、机关板。
 // 所有移动都走这里；规则层不直接改 position。
+import { isEdgeClosed } from './map-runtime.js';
 
 export function buildAdj(map) {
   const adj = {};
@@ -19,6 +20,7 @@ export function isPlatformActive(map, day) {
 }
 
 export function edgeUsable(map, day, edge) {
+  if (isEdgeClosed(map, edge.a, edge.b)) return false;
   if (edge.kind !== 'platform') return true;
   return isPlatformActive(map, day);
 }
@@ -148,6 +150,7 @@ export function pathWithin(map, from, to, maxSteps) {
     const [id, path] = q.shift();
     if (path.length >= maxSteps) continue;
     for (const e of adj[id]) {
+      if (!edgeUsable(map, 1, e)) continue;
       const next = e.to;
       if (seen.has(next)) continue;
       seen.add(next);
@@ -169,6 +172,7 @@ export function reachableWithin(map, from, maxSteps) {
     const [id, d] = q.shift();
     if (d >= maxSteps) continue;
     for (const e of adj[id]) {
+      if (!edgeUsable(map, 1, e)) continue;
       if (seen.has(e.to)) continue;
       seen.add(e.to);
       out.add(e.to);
