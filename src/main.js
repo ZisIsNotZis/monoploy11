@@ -118,3 +118,12 @@ $('#mode').onchange = () => { $('#bossRow').hidden = $('#mode').value !== 'boss'
 $('#start').onclick = startGame;
 $('#reset').onclick = showSetup;
 showSetup();
+
+const qs = new URLSearchParams(location.search);
+if (qs.get('mode')) $('#mode').value = qs.get('mode');
+if (qs.get('count')) $('#count').value = qs.get('count');
+if (qs.get('boss')) $('#boss').value = qs.get('boss');
+if (qs.get('tier')) $('#tier').value = qs.get('tier');
+if (qs.get('seed')) $('#seed').value = qs.get('seed');
+$('#bossRow').hidden = $('#mode').value !== 'boss';
+if (qs.get('start')) startGame();

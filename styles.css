@@ -64,3 +64,5 @@ body {
 #setup[hidden] { display: none; }
 .rank { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; }
 .rank th, .rank td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: left; }
+[hidden] { display: none !important; }
+.board-inner { position: relative; }

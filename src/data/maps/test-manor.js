@@ -41,8 +41,8 @@ const PLAN = [
 
 const RING = 48;
 const SIDE_NODES = [
-  { id: 'hospital', kind: 'hospital', label: '医院', x: 410, y: 710 },
-  { id: 'jail', kind: 'jail', label: '监狱', x: 340, y: 710 },
+  { id: 'hospital', kind: 'hospital', label: '医院', x: 410, y: 720 },
+  { id: 'jail', kind: 'jail', label: '监狱', x: 330, y: 720 },
   { id: 't1', kind: 'empty', label: '岔路', x: 165, y: 340 },
   { id: 't2', kind: 'teleport', label: '传送门', x: 270, y: 340 },
   { id: 'p1', kind: 'platform', label: '机关板', x: 235, y: 255 },
@@ -51,10 +51,11 @@ const SIDE_NODES = [
 function ringCoord(i) {
   const side = Math.floor(i / 12);
   const pos = i % 12;
-  if (side === 0) return { x: 60 + pos * 70, y: 60 };
-  if (side === 1) return { x: 830, y: 60 + pos * 70 };
-  if (side === 2) return { x: 830 - pos * 70, y: 830 };
-  return { x: 60, y: 830 - pos * 70 };
+  const a = 45, b = 875, step = (b - a) / 12;
+  if (side === 0) return { x: a + pos * step, y: a };
+  if (side === 1) return { x: b, y: a + pos * step };
+  if (side === 2) return { x: b - pos * step, y: b };
+  return { x: a, y: b - pos * step };
 }
 
 const nodes = [];

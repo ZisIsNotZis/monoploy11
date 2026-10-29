@@ -57,8 +57,11 @@ function renderBoard(el, state) {
     </div>`;
   }).join('');
 
-  el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}`;
-  el.style.minHeight = H + 'px';
+  const avail = Number(el.clientWidth) || 920;
+  const scale = Math.max(0.55, Math.min(1, (avail - 56) / W));
+  el.innerHTML = `<div class="board-inner" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">` +
+    `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}</div>`;
+  el.style.height = Math.round(H * scale) + 'px';
 }
 
 function renderPlayers(el, state, currentP) {
