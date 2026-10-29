@@ -100,7 +100,6 @@ button { font: inherit; }
 .money-float.up { color: #59b36b; }
 .money-float.down { color: #e05a5a; }
 @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
-.cell.path { outline: 2px solid #d8a13f; z-index: 4; }
 #log { flex: 1; max-height: none; }
 #hand.choice { display: block; overflow: auto; max-height: 52vh; min-height: 0; }
 #hand.choice h3 { margin: 2px 0 6px; color: var(--gold); font-size: 13px; }
@@ -226,3 +225,4 @@ button { font: inherit; }
 .slot.body { border-color: #3d8f72; color: #9be0c2; }
 .slot.phys { border-color: #a9772f; color: #e0c07c; }
 .tok .ptr { top: -8px; margin-left: -5.5px; border-left: 5.5px solid transparent; border-right: 5.5px solid transparent; border-bottom: 9px solid var(--c, #fff); }
+.cell .gicon, .cell .occs { pointer-events: auto; }

@@ -98,7 +98,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 ## 状态、提示与颜色实现
 
-人物状态存在 `p.god/godDays`（绑定）、`p.status/statusDays`（人物，乌龟/梦游/冬眠/冰冻）、`p.jail/hospital`（物理）。侧栏玩家行用三个 `.slot` 显示图标和剩余天数；`startTurn` 处理状态倒计时，梦游/冬眠跳过回合，乌龟限制每次走一步，冰冻保留 0 点规则。地块同时带 `road-stop`/`road-pass`/`occ-stop`/`occ-pass` 类，CSS 用实线/虚线、明暗和透明度区分四种组合，不使用高饱和红蓝。地块 `title` 由路面描述、路面上的东西描述和邻接地产数组合，空的普通路面不写描述。方向指针用 `--c` 跟随角色颜色并加长到 9px。
+人物状态存在 `p.god/godDays`（绑定）、`p.status/statusDays`（人物，乌龟/梦游/冬眠/冰冻）、`p.jail/hospital`（物理）。侧栏玩家行用三个 `.slot` 显示图标和剩余天数；`startTurn` 处理状态倒计时，梦游/冬眠跳过回合，乌龟限制每次走一步，冰冻保留 0 点规则。地块同时带 `road-stop`/`road-pass`/`occ-stop`/`occ-pass` 类，CSS 用实线/虚线、明暗和透明度区分四种组合，不使用高饱和红蓝。地块的 `title` 分别挂在 `.gicon`（路面）和 `.occs`（路面上的东西）上，空路面没有图标也没有提示；不再拼接“邻接几块地产”。人物行 `title` 列出该角色两个天赋的名称与说明。方向指针用 `--c` 跟随角色颜色并加长到 9px。移动路径高亮动画已移除，逻辑按 `continueWalk` 逐格立即处理。
 
 卡片的角色目标范围集中在 `TARGET_RANGE_5`，玩家选择器只列 5 步内目标；免费卡在付款时用 `window.confirm` 询问是否消耗，Node 测试环境没有窗口时自动消耗。无懈、转移等响应还没有完整的暂停/询问流程。
 

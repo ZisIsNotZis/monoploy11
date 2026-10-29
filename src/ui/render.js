@@ -1,5 +1,6 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=76';
+import { CHARACTER_BY_ID } from '../data/characters.js';
+import { CARD_DEFS, current } from '../engine/game.js?v=77';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -22,7 +23,7 @@ const STOP_ROAD = new Set(['shop', 'news', 'magic', 'tax', 'event', 'god', 'dog'
 const PASS_OCC = new Set(['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock']);
 const STOP_OCC = new Set(['god', 'dog', 'beggar', 'merchant']);
 const OCC_HELP = {
-  god: '神仙：停下触发', dog: '野狗：停下触发；被咬可能住院或损失 5000，载具/免疫天赋可躲',
+  god: '神仙：停下触发', dog: '野狗：停下触发；50% 住院 2 回合，50% 损失 5000；载具/免疫天赋可躲',
   beggar: '乞丐：停下触发；施舍 3000，免疫天赋可免', merchant: '神秘人：停下触发；6 张卡最多买 2 张，每张 1000',
   mine: '地雷：经过触发；损失 8000', dynamite: '炸药：经过触发；损失 15000',
   timebomb: '定时炸弹：经过触发；附身 30 天，追上别人可转嫁', banana: '香蕉皮：经过触发；停留 1 回合',
@@ -30,17 +31,17 @@ const OCC_HELP = {
 };
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
-  start: '经过或停留领取工资', property: '小地产：买地、加盖、收租',
+  start: '经过或停留：领取工资', property: '小地产：买地、加盖、收租',
   big: '大地产：先买空地，第二次投资时选择大型建筑',
-  bank: '银行：存款、取款、每月利息', stock: '股票：随时买卖',
-  lottery: '乐透：买 1–30 的号码，每 10 天开奖', shop: '商店：9 张卡，最多买 3 张',
-  magic: '魔法屋：选择效果，随机对象', news: '新闻：随机事件',
-  card: '经过获得 1 张卡', tax: '纳税：现金的 5%',
-  event: '随机事件', god: '随机神仙附身', dog: '野狗：损失现金或住院',
-  beggar: '乞丐：施舍现金', merchant: '神秘人：6 张卡，最多买 2 张',
+  bank: '经过或停留：打开存取款面板', stock: '股票：随时买卖',
+  lottery: '经过或停留：买一注 1–30 的号码，每 10 天开奖', shop: '停下触发：9 张卡，最多买 3 张',
+  magic: '停下触发：选择魔法效果', news: '停下触发：立即结算随机新闻',
+  card: '经过或停留：获得 1 张卡', tax: '停下触发：支付现金的 5%',
+  event: '停下触发：随机现金事件', god: '停下触发：随机神仙附身', dog: '停下触发：50% 住院 2 回合，50% 损失 5000',
+  beggar: '停下触发：损失 3000', merchant: '停下触发：6 张卡，最多买 2 张，每张 1000',
   hospitalGate: '医院入口，侧路连回主路', jailGate: '监狱入口，侧路连回主路',
-  hospital: '医院：住院', jail: '监狱：入狱', teleport: '随机传送门',
-  platform: '活动机关板，会周期消失', empty: '普通路面',
+  hospital: '停下触发：住院 2 回合', jail: '停下触发：入狱 2 回合', teleport: '停下触发：随机传送',
+  platform: '活动机关板，会周期消失', empty: '',
 };
 
 export function render(root, state, actions) {
@@ -165,11 +166,11 @@ function renderBoard(el, state, currentP, actions) {
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
     const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
-    const fullTitle = [title, place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '', n.adjacentPlots?.length ? '邻接 ' + n.adjacentPlots.length + ' 块地产' : ''].filter(Boolean).join('｜');
-    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${fullTitle}"${attr}
+    const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
+    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
-      ${ground ? `<div class="gicon">${ground}</div>` : ''}
-      ${place ? `<div class="occs" title="${place.name ?? place.kind}">${place.kind === 'god' ? (GOD_ICON[place.name] ?? '神') : (OCC_ICON[place.kind] ?? '?')}</div>` : ''}
+      ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
+      ${place ? `<div class="occs" title="${occTitle}">${place.kind === 'god' ? (GOD_ICON[place.name] ?? '神') : (OCC_ICON[place.kind] ?? '?')}</div>` : ''}
       ${dirTarget ? `<i class="dir-mark" style="--a:${da}deg"></i>` : ''}
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
@@ -195,7 +196,10 @@ const short = n => n >= 1000 ? Math.round(n / 1000) + 'k' : String(n);
 function renderPlayers(el, state, currentP) {
   el.innerHTML = state.players.map(p => {
     const cls = p.id === currentP?.id ? 'player cur' : 'player';
-    return `<div class="${cls}" style="border-left-color:${p.color}">
+    const char = CHARACTER_BY_ID[p.charId];
+    const skills = (char?.talents ?? []).filter(t => p.talents?.includes(t.id)).map(t => `${t.name}：${t.desc}`).join('\n');
+    const skillTitle = `${p.name}${skills ? '\n' + skills : ''}`;
+    return `<div class="${cls}" style="border-left-color:${p.color}" title="${skillTitle}">
       <div class="pline">
         <span class="avatar" style="background:${p.color}">${p.name[0]}</span>
         <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>

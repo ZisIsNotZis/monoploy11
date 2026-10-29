@@ -2,8 +2,8 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=76';
-import { render } from './ui/render.js?v=76';
+} from './engine/game.js?v=77';
+import { render } from './ui/render.js?v=77';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin, pathWithin } from './engine/board-v2.js';
@@ -26,7 +26,6 @@ const actions = {
       roll(state, n);
       rerender();
       showMoneyDelta(before);
-      flashPath();
       busy = false;
     });
   },
@@ -112,16 +111,6 @@ function showMoneyDelta(before) {
     }
     document.body.appendChild(span);
     setTimeout(() => span.remove(), 1300);
-  });
-}
-
-function flashPath() {
-  const path = state.lastRoll?.path ?? [];
-  path.forEach((id, i) => {
-    const cell = root.board.querySelector(`[data-cell="${id}"]`);
-    if (!cell) return;
-    setTimeout(() => cell.classList.add('path'), i * 70);
-    setTimeout(() => cell.classList.remove('path'), 450 + i * 70);
   });
 }
 
