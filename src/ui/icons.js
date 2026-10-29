@@ -143,22 +143,32 @@ export function obstacleSvg(kind, name) {
   return wrap(`<circle class="occ-bg" cx="32" cy="32" r="29"/>${body}`, 'obstacle-icon');
 }
 
-/* ---------------- 人物头像 ---------------- */
-const HAIR = [
-  '<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-4-6-10-8-18-8s-14 2-18 8z"/>',
-  '<path d="M16 28c0-12 7-20 16-20 10 0 16 8 16 20-6-2-8-8-8-8s-6 8-24 8z"/>',
-  '<path d="M13 30c0-14 9-22 19-22 12 0 19 8 19 22-6-8-12-10-19-10s-13 2-19 10z"/><path d="M12 28l-4-8 8 2M52 28l4-8-8 2"/>',
-  '<path d="M16 26c2-10 8-16 16-16s14 6 16 16c-6-2-10-6-16-6s-10 4-16 6z"/><circle cx="32" cy="12" r="5"/>',
-];
+/* ---------------- 人物头像：每个角色一套独立造型 ---------------- */
+const PORTRAITS = {
+  sunxiaomei: { skin:'#f3c9a4', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-6-11-8-18-8s-13 2-18 8z"/><circle cx="13" cy="18" r="7"/><circle cx="51" cy="18" r="7"/><path d="M10 14l6 6M54 14l-6 6"/>', acc:'<path d="M22 48h20l-2 8H24z"/>' },
+  atubo: { skin:'#dfae83', hair:'<path d="M8 22h48l-6 8H14z"/><path d="M20 22c0-10 5-16 12-16s12 6 12 16"/><path d="M22 48c4 7 16 7 20 0"/>', acc:'<path d="M24 48c2 6 14 6 16 0M28 50v5M36 50v5"/>' },
+  qianfuren: { skin:'#f7d7bd', hair:'<path d="M12 32c-2-16 8-24 20-24s22 8 20 24c-4-8-8-12-20-12s-16 4-20 12z"/><path d="M14 34c-4 8-4 14 0 20M50 34c4 8 4 14 0 20"/>', acc:'<circle cx="14" cy="34" r="2" fill="#f5d67a"/><circle cx="50" cy="34" r="2" fill="#f5d67a"/><path d="M18 52c8 4 20 4 28 0"/>' },
+  shalongbasi: { skin:'#c98f64', hair:'<path d="M12 24c0-10 8-16 20-16s20 6 20 16c-2 8-8 12-20 12s-18-4-20-12z"/><path d="M18 20c8-6 20-6 28 0"/>', acc:'<path d="M24 46c2 10 14 10 16 0M22 52h20M28 42v8M36 42v8"/>' },
+  jinbeibei: { skin:'#f7d7bd', hair:'<path d="M12 30c0-14 8-22 20-22s20 8 20 22c-5-7-11-10-20-10s-15 3-20 10z"/><circle cx="10" cy="26" r="8"/><circle cx="54" cy="26" r="8"/><path d="M6 20l8-6M58 20l-8-6"/>', acc:'<path d="M24 16l8-6 8 6-8 6z"/>' },
+  rentaro: { skin:'#e8c39e', hair:'<path d="M14 26h36v8H14z"/><path d="M14 26c0-10 8-16 18-16s18 6 18 16"/><path d="M14 46c4 6 32 6 36 0"/><path d="M20 46l6 8M44 46l-6 8"/>', acc:'<path d="M10 28h8M46 28h8M24 24h16"/>' },
+  qiange: { skin:'#d7a77b', hair:'<path d="M14 30c0-14 8-22 18-22s18 8 18 22c-5-5-9-7-18-7s-13 2-18 7z"/><path d="M18 18h28"/>', acc:'<path d="M22 28h20M22 26h20M26 28v4M38 28v4" stroke="#111" stroke-width="3"/><path d="M20 52h24"/>' },
+  shalagongzhu: { skin:'#f3c9a4', hair:'<path d="M12 34c-4-18 8-28 20-28s24 10 20 28c-4-10-8-16-20-16s-16 6-20 16z"/><path d="M14 34c-6 8-6 16-2 22M50 34c6 8 6 16 2 22"/>', acc:'<path d="M22 14h8l2-8 2 8h8l-6 6 2 8-6-5-6 5 2-8z"/>' },
+  wumi: { skin:'#f3c9a4', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-7-11-10-18-10s-13 3-18 10z"/><path d="M16 22l-6-12 14 4M48 22l6-12-14 4"/>', acc:'<path d="M20 34h6M38 34h6M14 40h8M42 40h8M26 44c4 2 8 2 12 0"/>' },
+  gongben: { skin:'#e0b48c', hair:'<path d="M16 26c0-10 7-18 16-18s16 8 16 18c-5-5-9-7-16-7s-11 2-16 7z"/><path d="M32 8v-6"/><path d="M10 22h12"/>', acc:'<path d="M18 30h12v8H18zM36 30h10M42 27v16"/><path d="M20 32h8"/>' },
+  xiaodanni: { skin:'#f3c9a4', hair:'<path d="M12 26h40L34 12h-8z"/><path d="M14 26c0-8 6-14 18-14s18 6 18 14"/><path d="M40 12h12v6H40z"/>', acc:'<circle cx="21" cy="38" r="1.5"/><circle cx="28" cy="40" r="1.5"/><circle cx="36" cy="38" r="1.5"/>' },
+  tangtang: { skin:'#f7d7bd', hair:'<path d="M12 32c0-16 8-24 20-24s20 8 20 24c-5-8-11-12-20-12s-15 4-20 12z"/><path d="M14 32c-2 8 0 14 4 18M50 32c2 8 0 14-4 18"/>', acc:'<circle cx="50" cy="46" r="8"/><path d="M50 38v16M42 46h16"/>' },
+  yuehanqiao: { skin:'#d7a77b', hair:'<path d="M8 22h48l-8-8H16z"/><path d="M18 14c0-6 6-10 14-10s14 4 14 10"/><path d="M18 22v6"/>', acc:'<path d="M20 40c4-4 20-4 24 0M24 42h16M22 48h20"/>' },
+  wumeila: { skin:'#f3c9a4', hair:'<path d="M12 32c0-16 9-24 20-24s20 8 20 24c-5-8-10-12-20-12s-15 4-20 12z"/><path d="M12 34c-4 8-2 14 2 18M52 34c4 8 2 14-2 18"/>', acc:'<path d="M42 14l4-8 4 8-4 8z"/><path d="M40 44c8-6 14 2 12 10-8 2-14-2-12-10z"/>' },
+  ludwig: { skin:'#f3c9a4', hair:'<path d="M12 26c0-14 8-22 20-22s20 8 20 22c-5-8-10-12-20-12s-15 4-20 12z"/><circle cx="12" cy="26" r="8"/><circle cx="52" cy="26" r="8"/><path d="M20 26h24"/>', acc:'<path d="M24 50h16l-4 6h-8zM32 44v6"/>' },
+  shiyi: { skin:'#f7d7bd', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-7-11-10-18-10s-13 3-18 10z"/><path d="M12 24c-6 0-10 4-10 8M52 24c6 0 10 4 10 8"/>', acc:'<path d="M10 20h8v12h-8zM46 20h8v12h-8zM18 26h28"/><path d="M32 8v-6"/>' },
+  doctor: { skin:'#f3c9a4', hair:'<path d="M12 28c-2-16 8-24 20-24s22 8 20 24c-3-8-6-12-9-10 1-6-4-10-11-10s-12 4-11 10c-3-2-6 2-9 10z"/>', acc:'<circle cx="24" cy="28" r="6"/><circle cx="40" cy="28" r="6"/><path d="M30 28h4M18 28h-4M46 28h4"/><path d="M20 52h24M24 44v8M40 44v8"/>' },
+  octopus: { skin:'#c9a4d8', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-7-11-10-18-10s-13 3-18 10z"/><path d="M12 40h40l-4 18H16z"/><path d="M20 58v-8M28 58v-8M36 58v-8M44 58v-8"/>', acc:'<path d="M14 14h36v8H14z"/><circle cx="24" cy="30" r="2"/><circle cx="40" cy="30" r="2"/>' },
+  bear: { skin:'#b98a63', hair:'<circle cx="14" cy="14" r="8"/><circle cx="50" cy="14" r="8"/><path d="M12 28c0-12 8-20 20-20s20 8 20 20c-5-7-11-10-20-10s-15 3-20 10z"/>', acc:'<ellipse cx="32" cy="38" rx="8" ry="6" fill="#e8c39e"/><path d="M28 34h8M32 34v4"/><circle cx="24" cy="28" r="2"/><circle cx="40" cy="28" r="2"/>' },
+  yuanyuan: { skin:'#f7d7bd', hair:'<path d="M12 30c0-14 8-22 20-22s20 8 20 22c-5-7-11-10-20-10s-15 3-20 10z"/><path d="M12 30c-8 0-12 6-10 14 6 2 10-2 10-8M52 30c8 0 12 6 10 14-6 2-10-2-10-8"/>', acc:'<path d="M20 16l6-8 6 8-6 6zM38 16l6-8 6 8-6 6z"/><circle cx="24" cy="30" r="3"/><circle cx="40" cy="30" r="3"/>' },
+};
 export function avatarSvg(charId, color, name) {
-  const hash = [...charId].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const skin = ['#f3c9a4', '#dfae83', '#f7d7bd', '#c98f64'][hash % 4];
-  const hair = HAIR[hash % HAIR.length];
-  const acc = charId === 'doctor' ? '<path d="M22 44c0 8 20 8 20 0"/><circle cx="42" cy="48" r="3"/>' :
-    charId === 'octopus' ? '<path d="M16 48c-4 8 4 12 8 4M28 50c-4 8 4 12 8 4M40 50c-4 8 4 12 8 4"/>' :
-    charId === 'bear' ? '<circle cx="18" cy="16" r="7"/><circle cx="46" cy="16" r="7"/>' :
-    charId === 'yuanyuan' ? '<path d="M42 14l8-6 2 8-8 4"/>' : '';
-  return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${color}" opacity=".22"/><circle cx="32" cy="26" r="14" fill="${skin}"/>${hair}<path d="M12 58c2-12 10-18 20-18s18 6 20 18" fill="${color}"/><circle cx="26" cy="27" r="1.5" fill="#222"/><circle cx="38" cy="27" r="1.5" fill="#222"/><path d="M27 34c3 2 7 2 10 0" stroke="#222" stroke-width="1.5" fill="none"/><text x="32" y="58" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${name.slice(0,1)}</text>${acc}<title>${name}</title></svg>`;
+  const p = PORTRAITS[charId] ?? PORTRAITS.sunxiaomei;
+  return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${color}" opacity=".22"/><circle cx="32" cy="32" r="29" fill="none" stroke="${color}" stroke-width="2"/><circle cx="32" cy="26" r="14" fill="${p.skin}"/>${p.hair}<path d="M10 58c3-13 11-19 22-19s19 6 22 19" fill="${color}"/><circle cx="26" cy="28" r="1.6" fill="#222"/><circle cx="38" cy="28" r="1.6" fill="#222"/><path d="M27 35c3 2 7 2 10 0" stroke="#222" stroke-width="1.4" fill="none"/>${p.acc}<text x="32" y="59" text-anchor="middle" font-size="7" fill="#fff" font-weight="700">${name.slice(0,1)}</text><title>${name}</title></svg>`;
 }
 
 export function tokenSvg() {
