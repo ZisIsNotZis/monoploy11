@@ -210,7 +210,7 @@ async function passPhase(state, p, cellId, ui, isLast) {
     const occ = state.placements[cellId];
     if (occ && !['god', 'dog', 'beggar', 'merchant'].includes(occ.kind)) {
       await triggerObstacle(state, p, cellId, occ, ui);
-      if (!p.alive) return true;
+      if (!p.alive || p.jail > 0 || p.hospital > 0 || p.skipTurns > 0) return true;
     }
     const node = state.map.nodes.find(n => n.id === cellId);
     if (node.kind === 'card') { addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
@@ -226,10 +226,15 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
   if (occ.kind === 'dog') { await dogEffect(state, p); return; }
   if (occ.kind === 'beggar') { if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); return; }
   const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[occ.kind];
-  if (hurt) { if (!pay(state, p, null, hurt, occ.kind)) state.stats.bankruptcies += 1; }
+  if (hurt) {
+    if (!pay(state, p, null, hurt, occ.kind)) state.stats.bankruptcies += 1;
+    if (p.alive) { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被炸伤住院 ${p.hospital} 天`); }
+  }
   else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 30; }
-  else if (occ.kind === 'jelly') { log(state, `${p.name} 碰到果冻墙，被弹开`); }
-  else { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停留 1 回合`); }
+  else if (occ.kind === 'jelly') { p.bounceSteps = 2; log(state, `${p.name} 碰到果冻墙，被弹回 2 格`); }
+  else if (occ.kind === 'banana') { pay(state, p, null, 5_000 * state.priceIndex, '香蕉皮'); }
+  else if (occ.kind === 'roadblock' || occ.kind === 'trap') { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停止移动`); }
+  else { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停留 1 天`); }
 }
 
 async function dogEffect(state, p) {
