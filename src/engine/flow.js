@@ -41,8 +41,18 @@ function beginTurn(state, p) {
     log(state, `${p.name} 正在${p.status}，跳过本回合`);
     return true;
   }
-  if (p.jail > 0) { log(state, `${p.name} 在监狱中，跳过本回合`); return true; }
-  if (p.hospital > 0) { log(state, `${p.name} 在医院中，跳过本回合`); return true; }
+  if (p.jail > 0) {
+    p.jail -= 1;
+    if (p.jail === 0) releaseFrom(state, p, 'jail');
+    log(state, `${p.name} 在监狱中，跳过本回合`);
+    return true;
+  }
+  if (p.hospital > 0) {
+    p.hospital -= 1;
+    if (p.hospital === 0) releaseFrom(state, p, 'hospital');
+    log(state, `${p.name} 在医院中，跳过本回合`);
+    return true;
+  }
   if (p.skipTurns > 0) { p.skipTurns -= 1; log(state, `${p.name} 停留，跳过本回合`); return true; }
   while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
   log(state, `—— 第 ${state.day} 天 · ${p.name} 的回合 ——`);
@@ -56,8 +66,6 @@ function endPlayerTurn(state, p) {
     if (p.statusDays <= 0) { log(state, `${p.name} 的 ${p.status} 状态结束`); p.status = null; }
   }
   tickGod(state, p);
-  if (p.jail > 0) { p.jail -= 1; if (p.jail === 0) releaseFrom(state, p, 'jail'); }
-  if (p.hospital > 0) { p.hospital -= 1; if (p.hospital === 0) releaseFrom(state, p, 'hospital'); }
 }
 
 function advanceDay(state) {
