@@ -1,5 +1,5 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=102';
+import { render } from './ui/render.js?v=103';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
@@ -168,10 +168,12 @@ const actions = {
 function numberInput() { return Number($('#amount')?.value ?? 0); }
 
 const CHOICES = [
+  { value: 'random', id: 'random', name: '随机角色' },
   ...CHARACTERS.map(c => ({ value: `char:${c.id}`, id: c.id, name: c.name })),
   ...BOSSES.flatMap(b => [1,2,3].map(t => ({ value: `boss:${b.id}:${t}`, id: b.id, name: `${b.name}·${['简单','普通','困难'][t-1]}`, boss: true }))),
 ];
 function choiceMeta(value) {
+  if (value === 'random') return { id: 'random', name: '随机角色', boss: false };
   if (value.startsWith('boss:')) {
     const [, id, tier] = value.split(':');
     const b = BOSSES.find(x => x.id === id);
@@ -192,8 +194,8 @@ function renderSetupRows() {
     const char = CHARACTERS[i % CHARACTERS.length];
     const teams = Array.from({ length: count }, (_, j) => `<option value="t${j+1}" ${i === j ? 'selected' : ''}>队伍 ${j+1}</option>`).join('');
     return `<div class="setup-player">
-      <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai">AI</option></select>
-      <div class="char-picker" data-value="char:${char.id}">
+      <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai" ${i > 0 ? 'selected' : ''}>AI</option></select>
+      <div class="char-picker" data-value="random">
         <button type="button" class="char-current"></button>
         <div class="char-menu" hidden></div>
       </div>
@@ -233,10 +235,16 @@ function refreshSetupColors() {
 
 function startGame() {
   const rows = [...document.querySelectorAll('.setup-player')];
+  const used = new Set();
   const participants = rows.map((row, i) => {
     const controller = row.querySelector('.ctrl').value;
     const team = row.querySelector('.team').value;
-    const value = row.querySelector('.char-picker').dataset.value;
+    let value = row.querySelector('.char-picker').dataset.value;
+    if (value === 'random') {
+      const pool = CHARACTERS.filter(c => !used.has(c.id));
+      const c = pool.length ? pool[Math.floor(Math.random() * pool.length)] : CHARACTERS[i % CHARACTERS.length];
+      value = `char:${c.id}`;
+    }
     if (value.startsWith('boss:')) {
       const [, bossId, tier] = value.split(':');
       const b = BOSSES.find(x => x.id === bossId);
@@ -244,6 +252,7 @@ function startGame() {
     }
     const charId = value.slice(5);
     const c = CHARACTERS.find(x => x.id === charId);
+    used.add(charId);
     return { name: c?.name ?? charId, charId, team, controller };
   });
   const startingHand = $('#testcards').checked ? ['remotedice', 'roadblock', 'jelly', 'turn'] : undefined;

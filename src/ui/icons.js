@@ -145,6 +145,7 @@ export function obstacleSvg(kind, name) {
 
 /* ---------------- 人物头像：每个角色一套独立造型 ---------------- */
 const PORTRAITS = {
+  random: { skin:'#d8d0c0', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-7-11-10-18-10s-13 3-18 10z"/>', acc:'<path d="M25 30c0-8 14-8 14 0 0 5-7 5-7 10M32 46v.1" stroke="#f0c07a" stroke-width="3"/><circle cx="32" cy="54" r="2" fill="#f0c07a"/>' },
   sunxiaomei: { skin:'#f3c9a4', hair:'<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-5-6-11-8-18-8s-13 2-18 8z"/><circle cx="13" cy="18" r="7"/><circle cx="51" cy="18" r="7"/><path d="M10 14l6 6M54 14l-6 6"/>', acc:'<path d="M22 48h20l-2 8H24z"/>' },
   atubo: { skin:'#dfae83', hair:'<path d="M8 22h48l-6 8H14z"/><path d="M20 22c0-10 5-16 12-16s12 6 12 16"/><path d="M22 48c4 7 16 7 20 0"/>', acc:'<path d="M24 48c2 6 14 6 16 0M28 50v5M36 50v5"/>' },
   qianfuren: { skin:'#f7d7bd', hair:'<path d="M12 32c-2-16 8-24 20-24s22 8 20 24c-4-8-8-12-20-12s-16 4-20 12z"/><path d="M14 34c-4 8-4 14 0 20M50 34c4 8 4 14 0 20"/>', acc:'<circle cx="14" cy="34" r="2" fill="#f5d67a"/><circle cx="50" cy="34" r="2" fill="#f5d67a"/><path d="M18 52c8 4 20 4 28 0"/>' },

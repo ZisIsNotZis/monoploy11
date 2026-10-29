@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=102';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=103';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -176,14 +176,14 @@ function renderBoard(el, state, currentP, actions) {
     const occStop = !!place && STOP_OCC.has(place.kind);
     const occPass = !!place && PASS_OCC.has(place.kind);
     const dirTarget = dirOptions.has(n.id);
-    const canPick = pickMode && (!pickCells || pickCells.has(n.id));
+    const canPick = pickMode && !state.mapPick?.plot && (!pickCells || pickCells.has(n.id));
     const extra = dirTarget ? 'dir-target' : canPick ? 'pick-target' : '';
     const attr = dirTarget ? ` data-dir-cell="${n.id}"` : canPick ? ` data-pick-cell="${n.id}"` : '';
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
     const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
     const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
-    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}"${attr}
+    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${occTitle}">${obstacleSvg(place.kind, place.name)}</div>` : ''}

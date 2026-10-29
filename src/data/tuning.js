@@ -2,7 +2,7 @@
 export const TUNING = {
   startingCash: 100_000,
   startingDeposit: 100_000,
-  startingCards: 3,
+  startingCards: 4,
   handLimit: 8,
   dayLimit: 100,
   priceIndexStart: 1,
