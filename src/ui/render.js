@@ -1,0 +1,151 @@
+import { TUNING } from '../data/tuning.js';
+import { CARD_DEFS, cardName, current, assetsOf } from '../engine/game.js';
+import { isPlatformActive } from '../engine/board.js';
+
+const KIND_TAG = {
+  start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
+  shop: '店', magic: '魔', news: '新', card: '卡', tax: '税', event: '事',
+  god: '神', dog: '狗', beggar: '乞', merchant: '秘', hospitalGate: '医',
+  jailGate: '监', hospital: '医', jail: '监', teleport: '传', platform: '机',
+  empty: '·',
+};
+
+const BIG_TAG = {
+  commercial: '商', hotel: '饭', bookstore: '书', energy: '能',
+  realestate: '地', research: '研', park: '公',
+};
+
+export function render(root, state, actions) {
+  const p = current(state);
+  root.topbar.textContent = `第 ${state.day} 天 · 物价 ${state.priceIndex.toFixed(2)} · ${state.phase} · seed ${state.seed}`;
+  renderBoard(root.board, state);
+  renderPlayers(root.players, state, p);
+  renderActions(root.actions, state, p, actions);
+  renderLog(root.log, state);
+  renderHand(root.hand, state, p, actions);
+}
+
+function renderBoard(el, state) {
+  const W = 920, H = 920;
+  const nodes = state.map.nodes;
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const platformOn = isPlatformActive(state.map, state.day);
+  const lines = state.map.edges.map(e => {
+    const a = byId[e.a], b = byId[e.b];
+    const off = e.kind === 'platform' && !platformOn;
+    return `<line x1="${a.x + 31}" y1="${a.y + 19}" x2="${b.x + 31}" y2="${b.y + 19}"
+      stroke="${off ? '#7a2a2a' : e.kind === 'platform' ? '#8a6a2a' : '#333842'}"
+      stroke-width="${e.kind === 'road' ? 2 : 3}" stroke-dasharray="${off ? '4 6' : e.kind === 'side' ? '6 4' : ''}" />`;
+  }).join('');
+
+  const cells = nodes.map(n => {
+    const pr = state.properties[n.id];
+    const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+    const here = state.players.filter(q => q.alive && q.position === n.id);
+    const place = state.placements[n.id];
+    const tag = KIND_TAG[n.kind] ?? '?';
+    const big = BIG_TAG[n.bigType] ?? '';
+    const border = owner ? owner.color : '#333842';
+    const off = n.kind === 'platform' && !platformOn;
+    return `<div class="cell ${off ? 'off' : ''}" style="left:${n.x}px;top:${n.y}px;border-color:${border}"
+      title="${n.label}${pr ? ` · Lv.${pr.level}` : ''}">
+      <div class="tag">${tag}${big ? '·' + big : ''} ${n.label}</div>
+      <div class="lvl">${pr ? 'Lv' + pr.level : ''}</div>
+      ${place ? `<div class="place">${place.kind === 'mine' ? '雷' : '障'}</div>` : ''}
+      <div class="tokens">${here.map(q => `<span class="tok" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}`;
+  el.style.minHeight = H + 'px';
+}
+
+function renderPlayers(el, state, currentP) {
+  el.innerHTML = state.players.map(p => {
+    const cls = p.id === currentP?.id ? 'player cur' : 'player';
+    return `<div class="${cls}" style="border-color:${p.color}">
+      <div class="ptitle"><span class="dot" style="background:${p.color}"></span>${p.name}
+        <span class="team">${p.team}</span>${p.isBoss ? '<span class="boss">BOSS</span>' : ''}</div>
+      <div class="prow">现金 ${p.cash.toLocaleString()} · 存款 ${p.deposit.toLocaleString()}</div>
+      <div class="prow">资产 ${assetsOf(state, p).toLocaleString()} · 卡 ${p.cards.length}/${p.handLimit}</div>
+      <div class="prow">位置 ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</div>
+      <div class="prow">槽 ${p.god ?? '—'} / ${p.status ?? '—'} / ${p.vehicle ?? '—'}</div>
+      ${p.jail ? `<div class="bad">监禁 ${p.jail}</div>` : ''}
+      ${p.hospital ? `<div class="bad">住院 ${p.hospital}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderActions(el, state, p, actions) {
+  if (state.phase === 'over') {
+    el.innerHTML = `<div class="big-msg">比赛结束，队伍 ${state.winnerTeam ?? '—'} 获胜</div>`;
+    return;
+  }
+  const pending = state.pending;
+  if (pending?.type === 'buy') {
+    el.innerHTML = `<h3>购买 ${state.map.nodes.find(n => n.id === pending.cellId).label}</h3>
+      <p>售价 ${pending.price.toLocaleString()}</p>
+      <button data-act="buy">买下</button><button data-act="skip">放弃</button>`;
+  } else if (pending?.type === 'build') {
+    el.innerHTML = `<h3>加盖 ${state.map.nodes.find(n => n.id === pending.cellId).label}</h3>
+      <p>费用 ${pending.cost.toLocaleString()}</p>
+      <button data-act="build">加盖</button><button data-act="skip">放弃</button>`;
+  } else if (pending?.type === 'direction') {
+    el.innerHTML = `<h3>选择方向</h3>${pending.options.map(id =>
+      `<button data-dir="${id}">${state.map.nodes.find(n => n.id === id).label}</button>`).join('')}`;
+  } else if (pending?.type === 'bank') {
+    el.innerHTML = `<h3>银行</h3><input id="amount" type="number" value="10000" step="1000">
+      <button data-act="deposit">存款</button><button data-act="withdraw">取款</button>
+      <button data-act="leave">离开</button>`;
+  } else if (pending?.type === 'stock') {
+    el.innerHTML = `<h3>股票</h3>${state.stocks.map(s => `<div class="row">
+      ${s.name} ${s.price.toFixed(1)} <button data-buy="${s.id}">买10</button>
+      <button data-sell="${s.id}">卖10</button></div>`).join('')}
+      <button data-act="leave">离开</button>`;
+  } else if (pending?.type === 'lottery') {
+    el.innerHTML = `<h3>乐透</h3><p>票价 ${TUNING.lotteryTicket}，奖池 ${state.lottery.jackpot}</p>
+      <button data-act="ticket">买一张</button><button data-act="skip">离开</button>`;
+  } else if (pending?.type === 'shop') {
+    el.innerHTML = `<h3>商店</h3>${state.shopOffer?.map(id => `<button data-shop="${id}">${cardName(id)} 2000</button>`).join('') ?? ''}
+      <button data-act="skip">离开</button>`;
+  } else if (pending?.type === 'magic') {
+    el.innerHTML = `<h3>魔法屋</h3>
+      <button data-magic="money">获得 10000</button>
+      <button data-magic="lose">随机对手 -10000</button>
+      <button data-magic="card">获得 1 张卡</button>
+      <button data-magic="jail">随机对手入狱</button>`;
+  } else if (pending?.type === 'news') {
+    el.innerHTML = `<h3>新闻</h3><button data-act="news">看新闻</button>`;
+  } else if (pending?.type === 'merchant') {
+    el.innerHTML = `<h3>神秘人（1000/张）</h3>${state.shopOffer?.map(id => `<button data-merchant="${id}">${cardName(id)}</button>`).join('') ?? ''}
+      <button data-act="skip">离开</button>`;
+  } else if (state.phase === 'action') {
+    el.innerHTML = `<h3>${p.name} 的行动</h3>
+      <div class="dice">${[1, 2, 3].map(n => `<button data-roll="${n}">${n} 骰</button>`).join('')}</div>
+      <p class="hint">先用卡/存取款，再掷骰；掷骰后回合结束。</p>`;
+  } else {
+    el.innerHTML = `<h3>结算中</h3><button data-act="next">继续</button>`;
+  }
+  el.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => actions.act(b.dataset.act));
+  el.querySelectorAll('button[data-roll]').forEach(b => b.onclick = () => actions.roll(+b.dataset.roll));
+  el.querySelectorAll('button[data-dir]').forEach(b => b.onclick = () => actions.direction(b.dataset.dir));
+  el.querySelectorAll('button[data-buy]').forEach(b => b.onclick = () => actions.stock(b.dataset.buy, 10, 'buy'));
+  el.querySelectorAll('button[data-sell]').forEach(b => b.onclick = () => actions.stock(b.dataset.sell, 10, 'sell'));
+  el.querySelectorAll('button[data-shop]').forEach(b => b.onclick = () => actions.shop(b.dataset.shop));
+  el.querySelectorAll('button[data-magic]').forEach(b => b.onclick = () => actions.magic(b.dataset.magic));
+  el.querySelectorAll('button[data-merchant]').forEach(b => b.onclick = () => actions.merchant(b.dataset.merchant));
+}
+
+function renderLog(el, state) {
+  el.innerHTML = state.log.slice(-80).map(l => `<li>D${l.day} ${l.text}</li>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderHand(el, state, p, actions) {
+  if (!p) { el.innerHTML = ''; return; }
+  el.innerHTML = p.cards.map((id, i) => {
+    const def = CARD_DEFS[id];
+    return `<button class="card" data-card="${i}">${def?.name ?? id}</button>`;
+  }).join('') + `<span class="handhint">${p.cards.length}/${p.handLimit}</span>`;
+  el.querySelectorAll('button[data-card]').forEach(b => b.onclick = () => actions.card(+b.dataset.card));
+}
