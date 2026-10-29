@@ -216,12 +216,12 @@ button { font: inherit; }
 #sideGrip::after { content: ''; position: absolute; left: 3px; top: 50%; width: 2px; height: 34px; margin-top: -17px; border-radius: 1px; background: rgba(216,161,63,.55); }
 
 /* 路面/障碍物 2×2 颜色语义：路面停/过，障碍物停/过 */
-.cell.road-stop { border-color: #a9772f; background: #211b14; }
-.cell.road-pass { border-color: #3b7894; background: #131f28; }
-.cell.road-stop .gicon { color: #e0b36a; }
-.cell.road-pass .gicon { color: #7fc3e0; }
-.cell.occ-stop .occs { color: #ff6b6b; text-shadow: 0 0 4px rgba(255, 80, 80, .35); }
-.cell.occ-pass .occs { color: #59d2c3; text-shadow: 0 0 4px rgba(89, 210, 195, .35); }
+.cell.road-stop { border-color: #6f6757; border-style: solid; background: #1b1916; box-shadow: inset 0 0 0 1px rgba(154, 143, 120, .16); }
+.cell.road-pass { border-color: #4b565c; border-style: dashed; background: #15191b; }
+.cell.road-stop .gicon { color: #b9ac93; }
+.cell.road-pass .gicon { color: #8d9aa1; opacity: .82; }
+.cell.occ-stop .occs { color: #e2dbcf; opacity: 1; font-weight: 700; background: rgba(226, 219, 207, .10); border: 1px solid rgba(226, 219, 207, .22); }
+.cell.occ-pass .occs { color: #aab4b8; opacity: .78; background: rgba(0, 0, 0, .10); border: 1px dashed rgba(170, 180, 184, .22); }
 .slot.bind { border-color: #7b5ca8; color: #c7b0ee; }
 .slot.body { border-color: #3d8f72; color: #9be0c2; }
 .slot.phys { border-color: #a9772f; color: #e0c07c; }

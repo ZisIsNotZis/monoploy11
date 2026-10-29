@@ -2,8 +2,8 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=73';
-import { render } from './ui/render.js?v=73';
+} from './engine/game.js?v=74';
+import { render } from './ui/render.js?v=74';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin, pathWithin } from './engine/board-v2.js';

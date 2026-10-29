@@ -9,6 +9,13 @@ import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './
 
 const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
 
+function teamColor(teamIndex, memberIndex, memberCount) {
+  const hue = Math.round((teamIndex * 137.508 + 12) % 360);
+  const sat = 58 + (memberIndex % 3) * 7;
+  const light = 44 + (memberIndex % 4) * 6 + (memberCount === 1 ? 4 : 0);
+  return `hsl(${hue} ${sat}% ${light}%)`;
+}
+
 export function createGame(config = {}) {
   const mapId = config.mapId ?? 'grid-manor';
   const map = MAPS[mapId];
@@ -26,7 +33,7 @@ export function createGame(config = {}) {
   const players = order.map((p, i) => {
     const char = CHARACTER_BY_ID[p.charId] ?? CHARACTERS[0];
     return {
-      id: p.id, name: p.name ?? char.name, charId: char.id, color: p.color ?? (p.isBoss ? BOSS_BY_ID[p.bossId]?.color : char.color) ?? char.color,
+      id: p.id, name: p.name ?? char.name, charId: char.id, color: char.color,
       team: p.team ?? (p.isBoss ? 'boss' : `t${i + 1}`),
       controller: p.controller ?? 'human', isBoss: !!p.isBoss, bossId: p.bossId ?? null, bossTier: p.bossTier ?? 0, revived: false,
       cash: config.startingCash ?? TUNING.startingCash,
@@ -38,6 +45,12 @@ export function createGame(config = {}) {
       freeCard: false, forcedDice: null, skipTurns: 0,
     };
   });
+
+  const teams = [...new Set(players.map(p => p.team))];
+  for (const p of players) {
+    const mates = players.filter(q => q.team === p.team);
+    p.color = teamColor(teams.indexOf(p.team), mates.indexOf(p), mates.length);
+  }
 
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
