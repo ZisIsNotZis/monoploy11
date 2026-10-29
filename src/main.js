@@ -149,7 +149,7 @@ const actions = {
     if (name === 'skip') return answer(false);
     if (name === 'leave') return answer({ action: 'leave' });
     if (name === 'news') return answer(true);
-    if (name === 'deposit' || name === 'withdraw') return answer({ action: name, amount: numberInput() });
+    if (name === 'bank-confirm') return answer({ action: 'bank', keep: numberInput() });
     if (name === 'cancel-pick') return answer(null);
   },
   openBank() {},
@@ -172,7 +172,7 @@ function startGame() {
       participants.push({ name: c.name, charId: c.id, team: 'ch', controller: 'human' });
     }
     const b = BOSSES.find(x => x.id === $('#boss').value) ?? BOSSES[0];
-    participants.push({ name: b.name, charId: CHARACTERS[0].id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
+    participants.push({ name: b.name, charId: b.id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
   }
   const startingHand = $('#testcards').checked ? ['remotedice', 'roadblock', 'jelly', 'turn'] : undefined;
   const seed = Number(new URLSearchParams(location.search).get('seed')) || (Date.now() % 1_000_000_000);

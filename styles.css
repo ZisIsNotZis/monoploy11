@@ -237,3 +237,15 @@ button { font: inherit; }
 .prop .mark.stop { background: rgba(210, 80, 80, .55); color: #fff; }
 .prop .mark.inflate { background: rgba(90, 150, 210, .55); color: #fff; }
 .prop .mark + .mark { bottom: 12px; }
+/* 右侧信息区整体放大，保证桌面宽度下可读 */
+#system { font-size: 13px; }
+.ptitle { font-size: 15px; }
+.prow { font-size: 12px; }
+.team, .boss { font-size: 10px; }
+.slot { font-size: 11px; padding: 1px 5px; }
+#log { font-size: 12px; line-height: 1.45; }
+#actions, #choice { font-size: 13px; }
+#actions h3, #hand.choice h3, #choice h3 { font-size: 14px; }
+#actions .offer, #hand.choice .offer, #choice .offer { font-size: 12px; }
+#actions .offer b, #hand.choice .offer b, #choice .offer b { font-size: 13px; }
+.hint { font-size: 12px; }

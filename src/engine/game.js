@@ -7,6 +7,11 @@ import { GRID_MANOR } from '../data/maps/grid-manor.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
 
+const GENDER = {
+  sunxiaomei:'女', atubo:'男', qianfuren:'女', shalongbasi:'男', jinbeibei:'女', rentaro:'男',
+  qiange:'男', shalagongzhu:'女', wumi:'女', gongben:'男', xiaodanni:'男', tangtang:'女',
+  yuehanqiao:'男', wumeila:'女', ludwig:'男', shiyi:'女', doctor:'男', octopus:'男', bear:'男', yuanyuan:'女',
+};
 const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
 
 function teamColor(teamIndex, memberIndex, memberCount) {
@@ -29,7 +34,7 @@ export function createGame(config = {}) {
   const players = order.map((p, i) => {
     const char = CHARACTER_BY_ID[p.charId] ?? CHARACTERS[0];
     return {
-      id: p.id, name: p.name ?? char.name, charId: char.id, color: char.color,
+      id: p.id, name: p.name ?? char.name, charId: char.id, color: char.color, gender: GENDER[p.charId] ?? '男',
       team: p.team ?? (p.isBoss ? 'boss' : `t${i + 1}`),
       controller: p.controller ?? 'human', isBoss: !!p.isBoss, bossId: p.bossId ?? null, bossTier: p.bossTier ?? 0, revived: false,
       cash: config.startingCash ?? TUNING.startingCash,

@@ -98,15 +98,17 @@ function finish(state, team) {
 async function playTurn(state, p, ui) {
   const diceCount = await actionPhase(state, p, ui);
   if (diceCount === null) return;
-  if (p.skipMove) { p.skipMove = 0; log(state, `${p.name} 停留，跳过本回合移动`); return; }
+  const stay = !!p.skipMove;
+  if (stay) p.skipMove = 0;
   let n;
-  if (p.status === '乌龟') n = 1;
+  if (stay) n = 0;
+  else if (p.status === '乌龟') n = 1;
   else if (p.status === '冰冻') n = 0;
   else if (p.forcedDice != null) { n = p.forcedDice; p.forcedDice = null; }
   else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
-  log(state, `${p.name} 掷出 ${n} 点`);
+  log(state, stay ? `${p.name} 停留，本回合移动 0 步` : `${p.name} 掷出 ${n} 点`);
   const stopped = await movePhase(state, p, n, ui);
   if (state.over || !p.alive) return;
   if (!stopped) await landingPhase(state, p, ui);
@@ -206,10 +208,21 @@ function nextStep(state, p, cameFrom, first) {
   return state.rng.pick(choices).to;
 }
 
+function portalDestination(state, from) {
+  const portals = state.map.nodes.filter(n => n.kind === 'teleport' && n.id !== from);
+  return portals.length ? state.rng.pick(portals).id : null;
+}
+
+function faceRandom(state, p) {
+  const adj = buildAdj(state.map);
+  const exits = adj[p.position] ?? [];
+  if (exits.length) p.facing = state.rng.pick(exits).to;
+}
+
 async function passPhase(state, p, cellId, ui, isLast) {
   if (!isLast) {
     const occ = state.placements[cellId];
-    if (occ && !['god', 'dog', 'beggar', 'merchant'].includes(occ.kind)) {
+    if (occ && !['god', 'dog', 'beggar', 'merchant', 'banana'].includes(occ.kind)) {
       await triggerObstacle(state, p, cellId, occ, ui);
       if (!p.alive || p.jail > 0 || p.hospital > 0 || p.skipTurns > 0) return true;
     }
@@ -217,6 +230,14 @@ async function passPhase(state, p, cellId, ui, isLast) {
     if (node.kind === 'card') { addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 经过卡片格，获得 1 张卡`); }
     if (node.kind === 'bank') { await bankFlow(state, p, ui, true); }
     if (node.kind === 'lottery') { await lotteryFlow(state, p, ui); }
+    if (node.kind === 'teleport') { const to = portalDestination(state, cellId); if (to) { p.position = to; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); } }
+  }
+  if (isLast) {
+    const node = state.map.nodes.find(n => n.id === cellId);
+    if (node?.kind === 'teleport') {
+      const to = portalDestination(state, cellId);
+      if (to) { p.position = to; faceRandom(state, p); log(state, `${p.name} 经过传送门，被传送到 ${to}`); }
+    }
   }
   return false;
 }
@@ -233,7 +254,13 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
   }
   else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 30; }
   else if (occ.kind === 'jelly') { p.bounceSteps = 2; log(state, `${p.name} 碰到果冻墙，被弹回 2 格`); }
-  else if (occ.kind === 'banana') { pay(state, p, null, 5_000 * state.priceIndex, '香蕉皮'); }
+  else if (occ.kind === 'banana') {
+    const adj = buildAdj(state.map);
+    const exits = adj[p.position] ?? [];
+    const forward = exits.find(e => e.to === p.facing) ?? exits[0];
+    if (forward) { p.position = forward.to; p.lastNode = cellId; }
+    log(state, `${p.name} 踩到香蕉皮，向前滑 1 格`);
+  }
   else if (occ.kind === 'roadblock' || occ.kind === 'trap') { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停止移动`); }
   else { p.skipTurns += 1; log(state, `${p.name} 碰到${occ.kind}，停留 1 天`); }
 }
@@ -246,7 +273,7 @@ async function dogEffect(state, p) {
 }
 
 async function landingPhase(state, p, ui) {
-  const cell = state.map.nodes.find(n => n.id === p.position);
+  let cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return;
   log(state, `${p.name} 停在 ${cell.label}`);
   const occ = state.placements[cell.id];
@@ -256,6 +283,10 @@ async function landingPhase(state, p, ui) {
     else if (!['god','dog','beggar','merchant'].includes(occ.kind)) await triggerObstacle(state, p, cell.id, occ, ui);
   }
   if (!p.alive || p.jail > 0 || p.hospital > 0) return;
+  if (p.position !== cell.id) {
+    cell = state.map.nodes.find(n => n.id === p.position);
+    if (!cell) return;
+  }
   switch (cell.kind) {
     case 'card': addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
     case 'tax': { const amount = Math.min(50_000, Math.max(5_000, Math.round(p.cash * TUNING.taxRate))); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
@@ -265,7 +296,7 @@ async function landingPhase(state, p, ui) {
     case 'hospitalGate': case 'hospital': p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 住院 ${p.hospital} 回合`); break;
     case 'jailGate': case 'jail': p.jail = TUNING.jailTurns; p.position = state.map.facility?.jail ?? p.position; log(state, `${p.name} 入狱 ${p.jail} 回合`); break;
     case 'event': runNewsEvent(state, p); break;
-    case 'teleport': { const walkable = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform'); p.position = state.rng.pick(walkable).id; log(state, `${p.name} 被随机传送到 ${p.position}`); break; }
+    case 'teleport': break;
     case 'bank': await bankFlow(state, p, ui, false); break;
     case 'lottery': await lotteryFlow(state, p, ui); break;
     case 'shop': await shopFlow(state, p, ui, 'shop'); break;
@@ -390,14 +421,14 @@ async function directionPhase(state, p, ui) {
   if (to) p.facing = to;
 }
 
-async function bankFlow(state, p, ui, fromPass) {
-  while (true) {
-    const a = await ui.ask({ type: 'bank', player: p, fromPass });
-    if (!a || a.action === 'leave') return;
-    const amount = Math.max(0, Math.round(a.amount ?? 0));
-    if (a.action === 'deposit' && p.cash >= amount) { p.cash -= amount; p.deposit += amount; log(state, `${p.name} 存入 ${amount}`); }
-    if (a.action === 'withdraw' && p.deposit >= amount) { p.deposit -= amount; p.cash += amount; log(state, `${p.name} 取出 ${amount}`); }
-  }
+async function bankFlow(state, p, ui) {
+  const a = await ui.ask({ type: 'bank', player: p });
+  if (!a || a.action === 'leave') return;
+  const keep = Math.max(0, Math.min(p.cash, Math.round(a.keep ?? p.cash)));
+  const deposit = p.cash - keep;
+  p.cash = keep;
+  p.deposit += deposit;
+  log(state, `${p.name} 留下 ${keep} 现金，存入 ${deposit}`);
 }
 
 async function stockFlow(state, p, ui) {
@@ -440,55 +471,97 @@ async function shopFlow(state, p, ui, kind) {
 
 async function merchantFlow(state, p, ui) { return shopFlow(state, p, ui, 'merchant'); }
 
+const MAGIC_CONDITIONS = [
+  { id: 'cashHigh', label: '现金最多', value: p => p.cash, max: true, apply: q => q.alive },
+  { id: 'cashLow', label: '现金最少', value: p => p.cash, max: false, apply: q => q.alive },
+  { id: 'depositHigh', label: '存款最多', value: p => p.deposit, max: true, apply: q => q.alive },
+  { id: 'depositLow', label: '存款最少', value: p => p.deposit, max: false, apply: q => q.alive },
+  { id: 'plotsHigh', label: '地产最多', value: p => p.properties.length, max: true, apply: q => q.alive },
+  { id: 'plotsLow', label: '地产最少', value: p => p.properties.length, max: false, apply: q => q.alive },
+  { id: 'male', label: '男性', test: q => q.gender === '男', apply: q => q.alive },
+  { id: 'female', label: '女性', test: q => q.gender === '女', apply: q => q.alive },
+  { id: 'driving', label: '正在驾驶载具', test: q => !!q.vehicle, apply: q => q.alive },
+  { id: 'walking', label: '没有驾驶载具', test: q => !q.vehicle, apply: q => q.alive },
+  { id: 'jailed', label: '在监狱', test: q => q.jail > 0, apply: q => q.alive },
+  { id: 'notJailed', label: '不在监狱', test: q => q.jail <= 0, apply: q => q.alive },
+  { id: 'hospitalized', label: '在医院', test: q => q.hospital > 0, apply: q => q.alive },
+  { id: 'notHospitalized', label: '不在医院', test: q => q.hospital <= 0, apply: q => q.alive },
+  { id: 'god', label: '身上有神仙', test: q => !!q.god, apply: q => q.alive },
+  { id: 'noGod', label: '身上没有神仙', test: q => !q.god, apply: q => q.alive },
+  { id: 'onPlot', label: '站在有主地产旁', test: q => (state.map.nodes.find(n => n.id === q.position)?.adjacentPlots ?? []).some(id => state.properties[id]?.ownerId), apply: q => q.alive },
+  { id: 'offPlot', label: '没有站在有主地产旁', test: q => !(state.map.nodes.find(n => n.id === q.position)?.adjacentPlots ?? []).some(id => state.properties[id]?.ownerId), apply: q => q.alive },
+];
+
+function pickConditionTarget(state, p, filter = () => true) {
+  const pool = state.rng.shuffle(MAGIC_CONDITIONS.filter(c => c.apply(p)));
+  for (const cond of pool) {
+    let candidates = state.players.filter(q => q.alive && filter(q) && (cond.test ? cond.test(q) : true));
+    if (cond.value && !cond.test) {
+      const vals = candidates.map(q => cond.value(q));
+      const best = cond.max ? Math.max(...vals) : Math.min(...vals);
+      candidates = candidates.filter(q => cond.value(q) === best);
+    }
+    if (candidates.length) return { cond, target: state.rng.pick(candidates) };
+  }
+  return null;
+}
+
 async function magicFlow(state, p, ui) {
-  const others = state.players.filter(q => q.alive && q.id !== p.id);
-  const teamPlots = Object.entries(state.properties).filter(([id, pr]) => {
-    const owner = state.players.find(q => q.id === pr.ownerId);
-    return owner?.team === p.team && !pr.big && pr.level > 0 && !pr.closed;
-  }).map(([id]) => id);
-  const enemyPlots = Object.entries(state.properties).filter(([id, pr]) => {
-    const owner = state.players.find(q => q.id === pr.ownerId);
-    return owner && owner.team !== p.team && !pr.big && pr.level > 0;
-  }).map(([id]) => id);
-  const jailable = others.filter(q => q.jail <= 0 && q.hospital <= 0);
   const options = [
-    { id: 'cards', name: '获得三张卡片', desc: '随机获得 3 张基础卡', disabled: false },
-    { id: 'cash', name: '天降横财', desc: `现金 +${TUNING.magicCash}`, disabled: false },
-    { id: 'build', name: '免费加盖', desc: '己方一处已建成小地产 +1 级', disabled: !teamPlots.length },
-    { id: 'demolish', name: '强制降级', desc: '对手一处已建成小地产 −1 级', disabled: !enemyPlots.length },
-    { id: 'god', name: '神仙附身', desc: '随机神仙附身 3 天', disabled: false },
-    { id: 'jail', name: '牢狱之灾', desc: '指定对手入狱 2 天', disabled: !jailable.length },
+    { id: 'god', name: '随机请神', desc: '随机对象获得地图上随机一位神仙' },
+    { id: 'cards', name: '获得三张卡片', desc: '自己随机获得 3 张基础卡' },
+    { id: 'destroy', name: '随机摧毁建筑', desc: '随机对象的一处建筑降一级' },
+    { id: 'deposit', name: '全部存入银行', desc: '自己的现金全部转入存款' },
+    { id: 'teleport', name: '随机传送', desc: '自己随机传送到空路面' },
+    { id: 'punish', name: '立即住院或入狱', desc: '随机对象立即住院或入狱' },
   ];
-  while (true) {
-    const a = await ui.ask({ type: 'magic', player: p, options });
-    if (!a) return;
-    let target = null;
-    if (a.id === 'build' || a.id === 'demolish') {
-      target = await ui.ask({ type: 'target', player: p, cardId: 'magic', label: a.name, kind: 'plot', plotFilter: a.id === 'build' ? 'teamBuiltSmall' : 'enemyBuiltSmall' });
-      if (!target) continue;
-    } else if (a.id === 'jail') {
-      target = await ui.ask({ type: 'target', player: p, cardId: 'magic', label: a.name, kind: 'player', players: jailable });
-      if (!target) continue;
-    }
-    if (a.id === 'cards') { for (let i = 0; i < 3; i++) addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 魔法屋获得 3 张卡`); }
-    if (a.id === 'cash') { p.cash += TUNING.magicCash; log(state, `${p.name} 魔法屋获得 ${TUNING.magicCash}`); }
-    if (a.id === 'build') {
-      const pr = state.properties[target];
-      if (!pr || !teamPlots.includes(target)) continue;
-      pr.level = Math.min(TUNING.maxLevel, pr.level + 1); log(state, `${p.name} 魔法屋免费加盖 ${labelForPlot(state, target)} 到 Lv.${pr.level}`);
-    }
-    if (a.id === 'demolish') {
-      const pr = state.properties[target];
-      if (!pr || !enemyPlots.includes(target)) continue;
-      pr.level = Math.max(0, pr.level - 1); log(state, `${p.name} 魔法屋把 ${labelForPlot(state, target)} 降到 Lv.${pr.level}`);
-    }
-    if (a.id === 'god') { const gods = ['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']; attachGod(state, p, state.rng.pick(gods)); }
-    if (a.id === 'jail') {
-      const q = state.players.find(x => x.id === target);
-      if (!q) continue;
-      q.jail = TUNING.jailTurns; q.position = state.map.facility?.jail ?? q.position; log(state, `${p.name} 把 ${q.name} 送进监狱`);
+  const a = await ui.ask({ type: 'magic', player: p, options });
+  if (!a) return;
+  if (a.id === 'cards') {
+    for (let i = 0; i < 3; i++) addCard(state, p, randomCard(state.rng));
+    log(state, `${p.name} 魔法屋获得 3 张卡`); return;
+  }
+  if (a.id === 'deposit') {
+    const amount = p.cash; p.deposit += amount; p.cash = 0;
+    log(state, `${p.name} 魔法屋把 ${amount} 现金全部存入银行`); return;
+  }
+  if (a.id === 'teleport') {
+    const cells = state.map.nodes.filter(n => n.kind !== 'platform' && !state.placements[n.id]);
+    if (cells.length) {
+      p.position = state.rng.pick(cells).id;
+      faceRandom(state, p);
+      log(state, `${p.name} 被魔法屋传送到 ${p.position}`);
     }
     return;
+  }
+  if (a.id === 'destroy') {
+    const picked = pickConditionTarget(state, p, q => q.properties.some(id => state.properties[id]?.level > 0));
+    if (!picked) return;
+    const { cond, target } = picked;
+    const ids = target.properties.filter(id => state.properties[id]?.level > 0);
+    const id = state.rng.pick(ids);
+    const pr = state.properties[id]; pr.level = Math.max(0, pr.level - 1);
+    log(state, `魔法屋按“${cond.label}”选中 ${target.name}，摧毁 ${labelForPlot(state, id)} 到 Lv.${pr.level}`);
+    return;
+  }
+  if (a.id === 'punish') {
+    const picked = pickConditionTarget(state, p);
+    if (!picked) return;
+    const { cond, target } = picked;
+    if (state.rng.float() < 0.5) { target.hospital = TUNING.hospitalTurns; target.position = state.map.facility?.hospital ?? target.position; log(state, `魔法屋按“${cond.label}”选中 ${target.name}，住院`); }
+    else { target.jail = TUNING.jailTurns; target.position = state.map.facility?.jail ?? target.position; log(state, `魔法屋按“${cond.label}”选中 ${target.name}，入狱`); }
+    return;
+  }
+  if (a.id === 'god') {
+    const picked = pickConditionTarget(state, p);
+    if (!picked) return;
+    const { cond, target } = picked;
+    const onMap = Object.entries(state.placements).filter(([, o]) => o.kind === 'god');
+    let name;
+    if (onMap.length) { const [cell, occ] = state.rng.pick(onMap); name = occ.name; delete state.placements[cell]; }
+    else name = state.rng.pick(['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']);
+    attachGod(state, target, name);
+    log(state, `魔法屋按“${cond.label}”选中 ${target.name}，请来 ${name}`);
   }
 }
 

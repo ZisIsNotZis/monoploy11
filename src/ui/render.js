@@ -272,9 +272,11 @@ function renderChoice(el, state, p, actions) {
   } else if (pending.type === 'direction') {
     html = box('选择方向', `<p class="hint">直接点地图上高亮的路面</p>`);
   } else if (pending.type === 'bank') {
-    html = box('银行', `<input id="amount" type="number" value="10000" step="1000">
-      <div><button data-act="deposit">存款</button><button data-act="withdraw">取款</button>
-      <button data-act="leave">${pending.free ? '关闭' : '离开'}</button></div>`);
+    const cash = p?.cash ?? 0;
+    html = box('银行', `<p class="hint">拖动选择留在身上的现金；其余全部存入银行。</p>
+      <input id="amount" type="range" min="0" max="${cash}" step="1000" value="${cash}">
+      <p class="hint">留下 <b id="amountOut">${cash.toLocaleString()}</b> 现金，存入 <b id="depositOut">0</b></p>
+      <div><button data-act="bank-confirm">确定</button><button data-act="leave">取消</button></div>`);
   } else if (pending.type === 'stock') {
     html = box('股票', state.stocks.map(s => `<div class="row">${s.name} ${s.price.toFixed(1)}
       <button data-buy="${s.id}">买 10</button><button data-sell="${s.id}">卖 10</button></div>`).join('') +
@@ -316,6 +318,12 @@ function renderChoice(el, state, p, actions) {
   el.querySelectorAll('button[data-shop]').forEach(b => b.onclick = () => actions.shop(+b.dataset.shop));
   el.querySelectorAll('button[data-research]').forEach(b => b.onclick = () => actions.research(+b.dataset.research));
   el.querySelectorAll('button[data-magic]').forEach(b => b.onclick = () => actions.magic(b.dataset.magic));
+  const amount = el.querySelector('#amount');
+  if (amount && pending.type === 'bank') {
+    const max = p?.cash ?? 0;
+    const out = () => { const v = Number(amount.value); el.querySelector('#amountOut').textContent = v.toLocaleString(); el.querySelector('#depositOut').textContent = (max - v).toLocaleString(); };
+    amount.addEventListener('input', out);
+  }
   el.querySelectorAll('button[data-merchant]').forEach(b => b.onclick = () => actions.merchant(+b.dataset.merchant));
 }
 
