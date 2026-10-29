@@ -1,5 +1,5 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=83';
+import { render } from './ui/render.js?v=84';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
@@ -161,7 +161,8 @@ function startGame() {
     const b = BOSSES.find(x => x.id === $('#boss').value) ?? BOSSES[0];
     participants.push({ name: b.name, charId: CHARACTERS[0].id, team: 'boss', controller: 'human', isBoss: true, bossId: b.id, bossTier: Number($('#tier').value), color: b.color });
   }
-  state = startSession({ seed: 1, participants });
+  const startingHand = $('#testcards').checked ? ['remotedice', 'roadblock', 'jelly', 'turn'] : undefined;
+  state = startSession({ seed: 1, participants, startingHand });
   $('#setup').hidden = true;
   runGame(state, ui).then(() => ui.render(state));
 }
@@ -178,5 +179,6 @@ if (qs.get('mode')) $('#mode').value = qs.get('mode');
 if (qs.get('count')) $('#count').value = qs.get('count');
 if (qs.get('boss')) $('#boss').value = qs.get('boss');
 if (qs.get('tier')) $('#tier').value = qs.get('tier');
+if (qs.get('testcards')) $('#testcards').checked = true;
 $('#bossRow').hidden = $('#mode').value !== 'boss';
 if (qs.get('start')) startGame();

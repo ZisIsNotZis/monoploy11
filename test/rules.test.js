@@ -56,3 +56,9 @@ test('missile sends the target to hospital', () => {
   assert.equal(q.hospital, 2);
   assert.ok(!p.cards.includes('missile'));
 });
+
+test('test starting hand is copied to every player', () => {
+  const hand = ['remotedice', 'roadblock', 'jelly', 'turn'];
+  const s = createGame({ seed: 65, startingHand: hand });
+  assert.ok(s.players.every(p => JSON.stringify(p.cards) === JSON.stringify(hand)));
+});

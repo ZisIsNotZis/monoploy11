@@ -132,6 +132,25 @@ async function actionPhase(state, p, ui) {
         target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? (id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
       }
+      if (id === 'turn') {
+        const q = state.players.find(x => x.id === target);
+        if (!q) continue;
+        const adj = buildAdj(state.map);
+        const exits = adj[q.position].map(e => e.to);
+        if (adj[q.position].length >= 3) {
+          const options = exits.filter(x => x !== q.facing);
+          if (options.length) {
+            const to = await ui.ask({ type: 'direction', player: q, options });
+            if (!to) continue;
+            q.facing = to;
+          } else q.facing = q.lastNode;
+        } else {
+          q.facing = exits.find(x => x !== q.facing) ?? q.lastNode;
+        }
+        p.cards.splice(a.index, 1);
+        log(state, `${p.name} 使用 转向卡：${q.name} 被强制转向`);
+        continue;
+      }
       useCard(state, a.index, target);
       continue;
     }

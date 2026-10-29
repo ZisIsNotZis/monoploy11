@@ -73,8 +73,9 @@ export function createGame(config = {}) {
     if (!p.isBoss) continue;
     p.cash = 200_000; p.deposit = 100_000;
   }
-  for (let i = 0; i < TUNING.startingCards; i++) {
-    for (const p of players) p.cards.push(randomCard(rng));
+  const fixedHand = Array.isArray(config.startingHand) ? config.startingHand : null;
+  for (let i = 0; i < (fixedHand ? fixedHand.length : TUNING.startingCards); i++) {
+    for (const p of players) p.cards.push(fixedHand ? fixedHand[i] : randomCard(rng));
   }
   log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
   state.phase = 'action';
@@ -389,7 +390,7 @@ export function applyCard(state, p, id, target) {
     }
     case 'superdice': p.forcedDice = 12; return true;
     case 'turtle': if (!q) return false; q.status = '乌龟'; q.statusDays = 3; return true;
-    case 'turn': if (!q) return false; q.facing = q.lastNode; return true;
+    case 'turn': if (!q) return false; { const adj = buildAdj(state.map); const exits = adj[q.position].map(e => e.to); q.facing = exits.find(x => x !== q.facing) ?? q.lastNode; return true; }
     case 'stay': if (!q) return false; q.skipTurns += 1; return true;
     case 'sleep': if (!q) return false; q.status = '梦游'; q.statusDays = 2; return true;
     case 'hibernate': if (!q) return false; q.status = '冬眠'; q.statusDays = 2; return true;
@@ -427,7 +428,7 @@ export function applyCard(state, p, id, target) {
     case 'quantum': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage * 1.5, '量子飞弹'); return true;
     case 'rushmissile': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage, '急速弹'); return true;
     case 'free': p.freeCard = true; return true;
-    case 'audit': if (!q) return false; log(state, `${q.name} 现金 ${q.cash}，存款 ${q.deposit}`); return true;
+    case 'audit': if (!q) return false; log(state, `${q.name} 手牌：${q.cards.map(cardName).join('、') || '无'}`); return true;
     case 'equalpoor': {
       if (!q) return false;
       const avg = Math.floor((p.cash + q.cash) / 2); p.cash = avg; q.cash = avg; return true;
