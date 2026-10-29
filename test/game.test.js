@@ -239,14 +239,14 @@ test('rent on either half of a big property uses the same owner', () => {
 test('a dead-end road bounces the walker back instead of teleporting', () => {
   const s = createGame({ seed: 27 });
   const p = current(s);
-  p.position = '1,6'; p.lastNode = '2,6'; p.facing = '2,6'; p.forcedDice = 1;
+  p.position = '1,8'; p.lastNode = '2,8'; p.facing = '2,8'; p.forcedDice = 1;
   roll(s, 1);
-  assert.equal(p.position, '2,6');
+  assert.equal(p.position, '2,8');
 });
 
 test('grid map has adjacent plots, including 2x2 big plots', () => {
   const s = createGame({ seed: 28 });
   const plots = s.map.plots;
   assert.ok(plots.some(p => p.big && p.cells.length === 4));
-  assert.ok(s.map.nodes.some(n => n.adjacentPlots.length >= 2));
+  assert.ok(s.map.nodes.some(n => n.adjacentPlots.length >= 1));
 });

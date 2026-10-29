@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=48';
+import { CARD_DEFS, current } from '../engine/game.js?v=53';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -123,17 +123,15 @@ function renderBoard(el, state, currentP) {
     const pr = state.properties[plot.id];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
-    const cells = plot.cells.map((c, i) => {
-      const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
-      return `<div class="prop ${plot.big ? 'bigprop' : ''}" data-plot="${plot.id}" title="${title}"
-        style="left:${c.x * S + 1}px;top:${c.y * S + 1}px;width:${S - 2}px;height:${S - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
-        ${i === 0 ? `<div class="pname">${name}</div><div class="plv">${pr ? 'Lv' + pr.level : ''}</div>` : ''}
-      </div>`;
-    }).join('');
-    if (!plot.big) return cells;
+    const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : '地';
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
-    return cells + `<div class="big-outline" style="left:${x}px;top:${y}px;width:${2 * S}px;height:${2 * S}px;border-color:${owner?.color ?? '#4a5260'}"></div>`;
+    const w = (plot.big ? 2 : 1) * S;
+    const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
+    return `<div class="prop ${plot.big ? 'bigprop' : ''}" data-plot="${plot.id}" title="${title}"
+      style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
+      <div class="picon">${glyph}</div>
+    </div>`;
   }).join('');
 
   const roads = map.nodes.map(n => {
@@ -143,8 +141,7 @@ function renderBoard(el, state, currentP) {
     const title = `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}${n.adjacentPlots?.length ? '｜邻接 ' + n.adjacentPlots.length + ' 块地产' : ''}`;
     return `<div class="cell" data-cell="${n.id}" title="${title}"
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
-      <div class="gicon">${ground}</div>
-      <div class="subtag">${n.kind === 'empty' ? '' : n.label}</div>
+      <div class="gicon ${place ? 'small' : ''}">${ground}</div>
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
