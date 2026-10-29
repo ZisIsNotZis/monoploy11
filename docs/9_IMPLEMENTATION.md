@@ -49,12 +49,12 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 `createGame(config)` 返回纯对象：
 
-- `players[]`：现金、存款、卡、位置、朝向、pendingDirection、槽、地产、状态。
+- `players[]`：现金、存款、卡、位置、朝向、槽、地产、状态。
 - `map`：上面的地图对象。
 - `properties{}`：key 为 `plotId`；值 `{ownerId, level, big, bigType, street, closed, inflate}`。
 - `placements{}`：key 为路面 id；值 `{kind, name?}`；每格最多 1 个。
 - `rng`：种子 RNG；规则层只通过它取随机。
-- `pending`：当前选择（buy/build/direction/bank/stock/lottery/shop/research/magic/news/merchant/chooseBig）。
+- `pending`：只属于 UI 的显示状态，用来让旧渲染器显示选择面板；引擎流程由 `flow.js` 的 `await ui.ask()` 驱动。
 - `shopOffer[]`：`{id, price}`；买过立即从数组删除。
 - `lottery`：`{tickets[], sold[], jackpot, lastDrawDay}`。
 - `stats/log/lastRoll`：统计与 UI。
@@ -76,7 +76,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 侧栏由 `#system`、`#players`、`#log` 和 `#hand` 四段组成，宽度由 `--side-w` 控制，默认 390px；`#sideGrip` 拖动这个变量，`#desk` 和 `#side` 同时跟着变，松手后重绘棋盘。`renderHand` 在没有 pending 时画骰子行和卡片行，有 pending 或 `state.mapPick` 时给 `#hand` 加 `.choice`，让 `#choice` 变成全宽块并画选择面板；没有这个 class 时 `#choice` 会缩成右侧一条，商店和乐透都会变形。
 
-方向选择由 `state.pending.type === 'direction'` 驱动：`renderBoard` 给合法路面加 `data-dir-cell`、高亮和箭头，点击调用 `actions.direction`。卡片点选由 `state.mapPick = { index }` 驱动：`actions.card` 遇到 `target === 'cell'` 时不弹选择器，地图所有路面加 `data-pick-cell`，点击调用 `actions.pickCell`，取消走 `cancel-pick`。这套机制也适用于后续新增的炸弹、障碍和其他选格卡。
+方向选择由 `ui.ask({type:'direction'})` 驱动，main 把它映射成侧栏提示和地图高亮，点路面调用 `actions.direction` 并 resolve。卡牌目标由 `ui.ask({type:'target', kind})` 驱动：`kind='cell'` 点路面、`kind='plot'` 点地产、`kind='street'` 点地产取街区、`kind='player'` 点角色。`state.mapPick` 只是渲染高亮，不再承担引擎流程。
 
 商店、神秘人和研究所用 `.shop-grid` 的 `repeat(auto-fill, minmax(62px, 1fr))` 自动排列；`.shop-card` 是方形卡面占位加价格，不渲染卡名和效果，名字与说明放在 tooltip。手牌间距按数量动态计算，少时散开，多时负 margin 加轻微旋转，不横向滚动。
 
@@ -84,18 +84,18 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 ## 事后神实现
 
-`resolveLanding` 同时记下 `landingCell` 和 `postGodCell`，`advanceTurn` 先处理 `landingCell` 的相邻地产，再处理 `postGodCell`，最后才进入方向或换人。`state.landingBuilt` 记录本次落点里玩家自己加盖/建起的地产，供凶神判断“刚升级的房子”。`applyPostGods` 的顺序是：福神/天使先给相邻地产加盖，己方大空地打开 `chooseBig`；凶神再把本次刚建起的小房屋降一层；土地公最后收走所有非己方相邻地产，并保留原有的层数和建筑类型。空地由土地公收走时创建 `level=0` 的地产记录。
+`playTurn` 在 `groundPhase` 之后调用 `postGodPhase`，再调用 `directionPhase`。福神/天使先对相邻地产免费加层，己方大空地打开 `chooseBig`；凶神把本次落点里刚加盖的己方小房屋降一层；土地公最后收走所有非己方相邻地产，保留原有层数和建筑类型。位置和状态都从当前 `p.position` 读取，没有 `landingCell`/`postGodCell` 这类延迟字段。
 
 ## 测试覆盖
 
-测试覆盖地图校验、开局、同 seed 复现、整局无崩溃、48 卡不抛异常、同街指数租金、租金进存款、大空地/建筑选择、2×2 共享产权、乐透号码去重、商店买三张自动退出、死路反弹、方向不能回头、步行不能掷两颗骰、定时炸弹主动送出、新闻自动结算并继续相邻地产，魔法屋/乐透/商店落点各自打开正确面板，离开商店/银行/乐透/魔法屋后继续相邻地产，乐透一次只能买一注且号码全局唯一，果冻墙弹回两格、遥控骰子选范围目的地、机器娃娃沿路径清障、经过神秘人不触发、免费卡付款询问，买小地后保持空地、下一次才建第一层，大地产不增加小房屋街区倍率，以及破产后建筑保留、只清空归属。
+测试覆盖地图校验、空地开局、买地/升级、街区倍率只算小房屋、彩票号码保留与奖池累计、飞弹进医院、测试卡组复制到所有玩家、异步整局能结束，以及流程测试中的一局无残留 pending。旧同步 API 测试已经随旧引擎删除。
 
 ## 状态、提示与颜色实现
 
-人物状态存在 `p.god/godDays`（绑定）、`p.status/statusDays`（人物，乌龟/梦游/冬眠/冰冻）、`p.jail/hospital`（物理）。侧栏玩家行用三个 `.slot` 显示图标和剩余天数；`startTurn` 处理状态倒计时，梦游/冬眠跳过回合，乌龟限制每次走一步，冰冻保留 0 点规则。地块同时带 `road-stop`/`road-pass`/`occ-stop`/`occ-pass` 类，CSS 用实线/虚线、明暗和透明度区分四种组合，不使用高饱和红蓝。地块的 `title` 分别挂在 `.gicon`（路面）和 `.occs`（路面上的东西）上，空路面没有图标也没有提示；不再拼接“邻接几块地产”。人物行 `title` 列出该角色两个天赋的名称与说明。方向指针用 `--c` 跟随角色颜色并加长到 9px。移动路径高亮动画已移除，逻辑按 `continueWalk` 逐格立即处理。
+人物状态存在 `p.god/godDays`（绑定）、`p.status/statusDays`（人物，乌龟/梦游/冬眠/冰冻）、`p.jail/hospital`（物理）。侧栏玩家行用三个 `.slot` 显示图标和剩余天数；`beginTurn` 处理状态倒计时，梦游/冬眠跳过回合，乌龟限制每次走一步，冰冻保留 0 点规则。地块同时带 `road-stop`/`road-pass`/`occ-stop`/`occ-pass` 类，CSS 用实线/虚线、明暗和透明度区分四种组合，不使用高饱和红蓝。地块的 `title` 分别挂在 `.gicon`（路面）和 `.occs`（路面上的东西）上，空路面没有图标也没有提示；不再拼接“邻接几块地产”。人物行 `title` 列出该角色两个天赋的名称与说明。方向指针用 `--c` 跟随角色颜色并加长到 9px。移动路径高亮动画已移除，逻辑按 `movePhase` 逐格渲染、每格约 0.5 秒。
 
-卡片的角色目标范围集中在 `TARGET_RANGE_5`，玩家选择器只列 5 步内目标；免费卡在付款时用 `window.confirm` 询问是否消耗，Node 测试环境没有窗口时自动消耗。无懈、转移等响应还没有完整的暂停/询问流程。
+卡片的角色目标范围集中在 `TARGET_RANGE_5`，玩家选择器只列 5 步内目标；地块目标默认 5 步，机器娃娃 10 步。免费卡、同命卡、转移卡、无懈卡是灰色不可主动使用的被动卡；免费卡付款时用 `window.confirm` 询问是否消耗，Node 测试环境没有窗口时自动消耗。无懈、转移、同命的响应还没有完整的暂停/询问流程。魔法屋目前仍是四个无资料依据的占位选项，且缺少已证实的“获得三张卡片”，这是当前文档与实现的最大不一致。
 
 ## 已知实现缺口
 
-所有落点事件现在都通过 `landingCell` 在二次操作结束后继续相邻地产；冻结或冰冻的零点规则还没有状态来源。结盟、背叛、AI、16 张图、热斗和抢房还没有实现，体验层素材、语音和 BGM 也还没有接。数值全是近似值，乐透十天和银行三十天是暂定值。
+所有落点事件现在都在 `playTurn` 内按顺序 await，没有中途换人入口。冻结或冰冻的零点规则还没有状态来源。结盟、背叛、AI、16 张图、热斗和抢房还没有实现，体验层素材、语音和 BGM 也还没有接。数值全是近似值，乐透十天和银行三十天是暂定值。
