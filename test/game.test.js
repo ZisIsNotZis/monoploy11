@@ -286,3 +286,17 @@ test('lotto allows buying several different numbers in one visit', () => {
   assert.deepEqual(s.lottery.tickets.map(t => t.number), [3, 4]);
   assert.equal(s.lottery.tickets.length, 2);
 });
+
+test('leaving an interactive road event continues to adjacent plots', () => {
+  for (const kind of ['shop', 'magic', 'lottery', 'bank']) {
+    const s = createGame({ seed: 24 });
+    const cell = s.map.nodes.find(n => n.kind === kind && n.adjacentPlots?.length);
+    const p = current(s);
+    s.pending = null; s.phase = 'action';
+    p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+    roll(s, 1);
+    assert.equal(s.pending?.type, kind, `${kind} should open first`);
+    leavePending(s);
+    assert.equal(s.pending?.type, 'buy', `${kind} should continue to an unowned adjacent plot`);
+  }
+});

@@ -42,7 +42,7 @@ export function createGame(config = {}) {
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
-    phase: 'action', properties: {}, placements: {}, log: [], pending: null,
+    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null,
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
@@ -245,6 +245,14 @@ export function endTurn(state) {
   }
   const aliveTeams = new Set(state.players.filter(p => p.alive).map(p => p.team));
   if (aliveTeams.size <= 1) return finish(state, [...aliveTeams][0] ?? null);
+
+  if (state.landingCell) {
+    const cell = state.map.nodes.find(n => n.id === state.landingCell);
+    state.landingCell = null;
+    state.pending = null;
+    const p = current(state);
+    if (p?.alive && cell?.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
+  }
 
   const cur = current(state);
   if (cur?.pendingDirection?.length) {
@@ -609,6 +617,7 @@ function resolvePlot(state, p, key) {
 const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 
 function finishLanding(state, p, cell) {
+  state.landingCell = null;
   if (!p.alive) return endTurn(state);
   if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
   return endTurn(state);
@@ -617,9 +626,11 @@ function finishLanding(state, p, cell) {
 function resolveLanding(state, p) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return endTurn(state);
+  state.landingCell = cell.id;
   log(state, `${p.name} 停在 ${cell.label}`);
   if (p.god === '凶神' && state.rng.float() < 0.2) {
     log(state, '凶神附身，部分地格无效');
+    state.landingCell = null;
     return endTurn(state);
   }
 
@@ -712,6 +723,7 @@ function resolveLanding(state, p) {
       runNewsEvent(state, p);
       return finishLanding(state, p, cell);
     default:
+      state.landingCell = null;
       if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
       if (state.passPrompt) {
         state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
