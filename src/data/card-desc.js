@@ -4,7 +4,7 @@ export const CARD_DESC = {
   rebuild: '把目标大建筑改成公园',
   close: '目标街道停业 3 天',
   truck: '目标建筑降 1 级',
-  monster: '目标建筑降 2 级',
+  monster: '火龙：目标街区所有小房屋降 1 级',
   worker: '己方目标建筑升 1 级',
   inflate: '目标街道租金翻倍 6 天',
   remotedice: '下次骰子固定为 7',
