@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=63';
+import { CARD_DEFS, current } from '../engine/game.js?v=64';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -144,7 +144,7 @@ function renderBoard(el, state, currentP) {
     const attr = dirTarget ? ` data-dir-cell="${n.id}"` : pickMode ? ` data-pick-cell="${n.id}"` : '';
     const cur = state.map.nodes.find(x => x.id === currentP?.position);
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
-    return `<div class="cell ${extra}${!ground ? ' no-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${title}"${attr}
+    return `<div class="cell ${extra}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}" title="${title}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}

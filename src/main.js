@@ -2,8 +2,8 @@ import {
   createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, useCard,
   doBank, doStock, leaveStock, doLottery, doMagic, doNews, doMerchant,
   doShop, doResearch, skipPending, current, CARD_DEFS, leavePending, openStock, openBank,
-} from './engine/game.js?v=63';
-import { render } from './ui/render.js?v=63';
+} from './engine/game.js?v=64';
+import { render } from './ui/render.js?v=64';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 

@@ -608,6 +608,12 @@ function resolvePlot(state, p, key) {
 
 const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 
+function finishLanding(state, p, cell) {
+  if (!p.alive) return endTurn(state);
+  if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
+  return endTurn(state);
+}
+
 function resolveLanding(state, p) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return endTurn(state);
@@ -624,14 +630,14 @@ function resolveLanding(state, p) {
       const amount = Math.round(p.cash * TUNING.taxRate);
       log(state, `${p.name} 纳税 ${amount}`);
       pay(state, p, null, amount, '纳税');
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     }
     case 'card':
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     case 'god': {
       const gods = ['财神', '穷神', '福神', '衰神', '天使', '恶魔', '土地公', '糊涂神', '武神', '凶神'];
       attachGod(state, p, state.rng.pick(gods));
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     }
     case 'dog':
       if (p.vehicle || p.talents.includes('immune_beggar_dog')) {
@@ -640,7 +646,7 @@ function resolveLanding(state, p) {
         log(state, `${p.name} 被野狗咬，损失 ${TUNING.dogFine}`);
         pay(state, p, null, TUNING.dogFine, '野狗');
       }
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     case 'beggar':
       if (p.talents.includes('immune_beggar_dog')) {
         log(state, `${p.name} 免疫乞丐`);
@@ -648,30 +654,30 @@ function resolveLanding(state, p) {
         log(state, `${p.name} 给乞丐 ${TUNING.beggarAsk}`);
         pay(state, p, null, TUNING.beggarAsk, '乞丐');
       }
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     case 'hospitalGate':
     case 'hospital':
       p.hospital = TUNING.hospitalTurns;
       p.position = state.map.facility?.hospital ?? p.position;
       log(state, `${p.name} 住院 ${p.hospital} 回合`);
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     case 'jailGate':
     case 'jail':
       p.jail = TUNING.jailTurns;
       p.position = state.map.facility?.jail ?? p.position;
       log(state, `${p.name} 入狱 ${p.jail} 回合`);
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     case 'event': {
       const delta = state.rng.pick([-10_000, -5_000, 5_000, 10_000, 20_000]);
       p.cash = Math.max(0, p.cash + delta);
       log(state, `${p.name} 遇到事件，现金 ${delta >= 0 ? '+' : ''}${delta}`);
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     }
     case 'teleport': {
       const walkable = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform');
       p.position = state.rng.pick(walkable).id;
       log(state, `${p.name} 被随机传送到 ${label(state, p.position)}`);
-      return endTurn(state);
+      return finishLanding(state, p, cell);
     }
     case 'bank':
       state.pending = { type: 'bank', cellId: cell.id };
@@ -702,9 +708,9 @@ function resolveLanding(state, p) {
       log(state, `${p.name} 进入魔法屋`);
       return state;
     case 'news':
-      state.pending = { type: 'news', cellId: cell.id };
-      log(state, `${p.name} 进入新闻`);
-      return state;
+      log(state, `${p.name} 停在新闻`);
+      runNewsEvent(state, p);
+      return finishLanding(state, p, cell);
     default:
       if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
       if (state.passPrompt) {
@@ -1039,14 +1045,17 @@ export function doMagic(state, effect) {
   return endTurn(state);
 }
 
-export function doNews(state) {
-  if (state.pending?.type !== 'news') return state;
-  const p = current(state);
+function runNewsEvent(state, p) {
   const kind = state.rng.pick(['boom', 'bust', 'grant', 'storm']);
   if (kind === 'boom') { state.priceIndex = +(state.priceIndex + 0.1).toFixed(2); log(state, '新闻：物价上涨 0.1'); }
   if (kind === 'bust') { state.priceIndex = Math.max(1, +(state.priceIndex - 0.1).toFixed(2)); log(state, '新闻：物价下跌 0.1'); }
   if (kind === 'grant') { p.cash += 15_000; log(state, `新闻：${p.name} 获得补助 15000`); }
   if (kind === 'storm') { for (const q of state.players.filter(q => q.alive)) q.cash = Math.max(0, q.cash - 3_000); log(state, '新闻：风暴，所有人 -3000'); }
+}
+
+export function doNews(state) {
+  if (state.pending?.type !== 'news') return state;
+  runNewsEvent(state, current(state));
   state.pending = null;
   return endTurn(state);
 }

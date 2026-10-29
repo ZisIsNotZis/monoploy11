@@ -252,8 +252,8 @@ test('grid map has adjacent plots, including 2x2 big plots', () => {
 });
 
 
-test('landing on lotto/news/magic/shop opens the matching panel, not a shop for everything', () => {
-  for (const kind of ['shop', 'lottery', 'news', 'magic']) {
+test('landing on lotto/magic/shop opens the matching panel, not a shop for everything', () => {
+  for (const kind of ['shop', 'lottery', 'magic']) {
     const s = createGame({ seed: 21 });
     const cell = s.map.nodes.find(n => n.kind === kind);
     const p = current(s);
@@ -262,6 +262,17 @@ test('landing on lotto/news/magic/shop opens the matching panel, not a shop for 
     roll(s, 1);
     assert.equal(s.pending?.type, kind, `${kind} should open ${kind}, got ${s.pending?.type}`);
   }
+});
+
+test('news resolves without a click, then adjacent plots are offered', () => {
+  const s = createGame({ seed: 23 });
+  const cell = s.map.nodes.find(n => n.kind === 'news' && n.adjacentPlots?.length);
+  const p = current(s);
+  s.pending = null; s.phase = 'action';
+  p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+  roll(s, 1);
+  assert.ok(s.log.some(l => l.text.startsWith('新闻：')), 'news event should be logged immediately');
+  assert.equal(s.pending?.type, 'buy', 'the adjacent unowned plot should be offered after news');
 });
 
 test('lotto allows buying several different numbers in one visit', () => {
