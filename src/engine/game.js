@@ -3,13 +3,14 @@ import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID, CHARACTERS } from '../data/characters.js';
 import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
+import { GRID_MANOR } from '../data/maps/grid-manor.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable } from './board.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
 
-const MAPS = { 'test-manor': TEST_MANOR };
+const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
 
 export function createGame(config = {}) {
-  const mapId = config.mapId ?? 'test-manor';
+  const mapId = config.mapId ?? 'grid-manor';
   const map = MAPS[mapId];
   const errors = validateMap(map);
   if (errors.length) throw new Error(`地图校验失败: ${errors.join('; ')}`);
@@ -49,11 +50,9 @@ export function createGame(config = {}) {
   for (const p of players) {
     if (!p.isBoss) continue;
     p.cash = 200_000; p.deposit = 100_000;
-    for (const id of ['r1', 'r2', 'r13', 'r14', 'r25', 'r32']) {
-      const n = map.nodes.find(x => x.id === id);
-      if (!n?.plotId) continue;
-      p.properties.push(n.plotId);
-      state.properties[n.plotId] = { ownerId: p.id, level: 2, street: n.street ?? null, big: !!map.plots.find(x => x.id === n.plotId)?.big, bigType: null };
+    for (const plot of map.plots.slice(0, 6)) {
+      p.properties.push(plot.id);
+      state.properties[plot.id] = { ownerId: p.id, level: plot.big ? 1 : 2, street: plot.street ?? null, big: plot.big, bigType: plot.big ? 'commercial' : null };
     }
   }
   for (let i = 0; i < TUNING.startingCards; i++) {
@@ -71,6 +70,12 @@ function defaultParticipants() {
     { name: '糖糖', charId: 'tangtang', team: 't3', controller: 'human' },
     { name: '乌咪', charId: 'wumi', team: 't4', controller: 'human' },
   ];
+}
+
+function initialFacing(map, id) {
+  const e = map.edges.find(e => e.a === id || e.b === id);
+  if (!e) return null;
+  return e.a === id ? e.b : e.a;
 }
 
 function nextRing(map, id) {
@@ -432,6 +437,50 @@ function godOnProperty(state, p, pr) {
   }
 }
 
+function resolveAdjacentPlots(state, p, cell) {
+  const ids = cell.adjacentPlots ?? [];
+  let unowned = null;
+  for (const id of ids) {
+    const plot = state.map.plots.find(x => x.id === id);
+    const pr = state.properties[id];
+    if (!pr || !pr.ownerId) { unowned ??= id; continue; }
+    if (pr.ownerId === p.id) {
+      if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: id }; return state; }
+      if (pr.level < TUNING.maxLevel && !state.pending) { state.pending = { type: 'build', cellId: id, cost: buildCost(pr.level), label: plot?.label }; }
+      continue;
+    }
+    const owner = state.players.find(q => q.id === pr.ownerId);
+    if (owner?.team === p.team) continue;
+    if (pr.bigType === 'park') continue;
+    if (pr.bigType === 'energy') { pay(state, p, owner, 5000, '能源'); continue; }
+    let rent = rentFor(state, id);
+    if (pr.bigType === 'commercial') rent = Math.round(rent * (1 + state.rng.float() * 2));
+    if (pr.bigType === 'hotel') { rent = Math.round(rent * 0.6); p.skipTurns += 1; }
+    if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
+    if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
+    if (p.properties.some(x => state.properties[x]?.bigType === 'realestate')) rent = Math.round(rent * 0.7);
+    if (p.god === '财神') continue;
+    if (p.god === '穷神') rent = Math.round(rent * 2);
+    if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' || owner.bossId === 'yuanyuan' ? 1.5 : 1));
+    log(state, `${p.name} 向 ${owner.name} 支付 ${labelForPlot(state, id)} 租金 ${rent}`);
+    state.stats.rents += rent;
+    if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
+  }
+  if (unowned) {
+    const plot = state.map.plots.find(x => x.id === unowned);
+    const price = buyPrice(state, unowned);
+    state.pending = { type: 'buy', cellId: unowned, price, label: plot?.label };
+    log(state, `${labelForPlot(state, unowned)} 无主，售价 ${price}`);
+    return state;
+  }
+  return state.pending ? state : endTurn(state);
+}
+
+function labelForPlot(state, id) {
+  const plot = state.map.plots.find(x => x.id === id);
+  return plot ? (plot.big ? (state.properties[id]?.bigType ? BIG_NAMES[state.properties[id].bigType] : '大空地') : plot.label) : id;
+}
+
 function handleOccupant(state, p, cell) {
   const occ = state.placements[cell.id];
   if (!occ) return false;
@@ -477,8 +526,7 @@ function spawnOccupants(state) {
   log(state, `路面上随机出现了 ${occ.kind}${occ.name ? '：' + occ.name : ''}`);
 }
 
-function resolvePlot(state, p, cell) {
-  const key = cell.plotId;
+function resolvePlot(state, p, key) {
   const plot = state.map.plots.find(x => x.id === key);
   const label = plot?.big ? ((state.properties[key]?.bigType ? BIG_NAMES[state.properties[key].bigType] : '大空地')) : (plot?.label ?? key);
   const pr = state.properties[key];
@@ -621,12 +669,13 @@ function resolveLanding(state, p) {
     case 'magic':
     case 'news':
     default:
+      if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
       if (state.passPrompt) {
         state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
         state.passPrompt = null;
         return state;
       }
-      return cell.plotId ? resolvePlot(state, p, cell) : endTurn(state);
+      return endTurn(state);
   }
 }
 
@@ -719,8 +768,8 @@ function applyCard(state, p, id, target) {
   const q = targetPlayer(state, p, target);
   switch (id) {
     case 'buyland': {
-      if (!node || !['property', 'big'].includes(node.kind)) return false;
-      const key = node.plotId ?? node.propertyKey ?? node.id;
+      if (!node) return false;
+      const key = node.plotId ?? node.adjacentPlots?.find(id => !state.properties[id]?.ownerId) ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
       const pr = state.properties[key];
       if (pr?.ownerId === p.id) return false;
       const price = buyPrice(state, key);
@@ -747,7 +796,7 @@ function applyCard(state, p, id, target) {
     }
     case 'rebuild': {
       if (!node) return false;
-      const key = node.plotId ?? node.propertyKey ?? node.id;
+      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
       const pr = state.properties[key];
       if (!pr || !pr.big || pr.ownerId === p.id) return false;
       pr.bigType = 'park';

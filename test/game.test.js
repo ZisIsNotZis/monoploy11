@@ -33,7 +33,7 @@ test('same seed and actions replay', () => {
 });
 
 test('street chain rent reaches million scale at 5 max properties', () => {
-  const s = createGame({ seed: 5 });
+  const s = createGame({ seed: 5, mapId: 'test-manor' });
   const owner = s.players[0];
   // A1..A5
   for (const id of ['plot_r1', 'plot_r2', 'plot_r3', 'plot_r4', 'plot_r5']) {
@@ -138,14 +138,14 @@ test('all 48 card definitions can be used without throwing', () => {
     const def = CARD_DEFS[id];
     let target = null;
     if (def.target === 'player') target = s.players.find(q => q.id !== p.id).id;
-    if (def.target === 'cell') target = s.map.nodes.find(n => n.plotId)?.id;
+    if (def.target === 'cell') target = s.map.nodes.find(n => n.plotId)?.id ?? s.map.nodes.find(n => n.adjacentPlots?.length)?.id;
     if (def.target === 'street') target = 'A';
     assert.doesNotThrow(() => useCard(s, 0, target), `card ${id}`);
   }
 });
 
 test('passing a card cell grants a card', () => {
-  const s = createGame({ seed: 20 });
+  const s = createGame({ seed: 20, mapId: 'test-manor' });
   const p = current(s);
   p.cards = [];
   p.position = 'r20';
@@ -157,7 +157,7 @@ test('passing a card cell grants a card', () => {
 });
 
 test('an active catcher can hand the timed bomb to another player', () => {
-  const s = createGame({ seed: 21 });
+  const s = createGame({ seed: 21, mapId: 'test-manor' });
   const p = current(s);
   const q = s.players.find(x => x.id !== p.id);
   p.position = 'r1'; p.lastNode = 'r0'; p.facing = 'r2'; p.forcedDice = 1;
@@ -178,7 +178,7 @@ test('rent goes to the owner bank deposit, not cash', () => {
 });
 
 test('big land starts empty and the second investment chooses a building', () => {
-  const s = createGame({ seed: 23 });
+  const s = createGame({ seed: 23, mapId: 'test-manor' });
   const p = current(s);
   s.properties.plot_r10 = { ownerId: p.id, level: 0, big: true, bigType: null, street: null };
   p.properties.push('plot_r10');
@@ -228,10 +228,25 @@ test('a big property is two walkable cells sharing one property key', () => {
 });
 
 test('rent on either half of a big property uses the same owner', () => {
-  const s = createGame({ seed: 26 });
+  const s = createGame({ seed: 26, mapId: 'test-manor' });
   const p = current(s);
   s.properties.plot_r10 = { ownerId: p.id, level: 2, big: true, bigType: 'commercial', street: null };
   p.properties.push('plot_r10');
   assert.equal(rentFor(s, 'br10'), rentFor(s, 'r10'));
   assert.ok(rentFor(s, 'br10') > 0);
+});
+
+test('a dead-end road bounces the walker back instead of teleporting', () => {
+  const s = createGame({ seed: 27 });
+  const p = current(s);
+  p.position = '1,6'; p.lastNode = '2,6'; p.facing = '2,6'; p.forcedDice = 1;
+  roll(s, 1);
+  assert.equal(p.position, '2,6');
+});
+
+test('grid map has adjacent plots, including 2x2 big plots', () => {
+  const s = createGame({ seed: 28 });
+  const plots = s.map.plots;
+  assert.ok(plots.some(p => p.big && p.cells.length === 4));
+  assert.ok(s.map.nodes.some(n => n.adjacentPlots.length >= 2));
 });

@@ -142,3 +142,10 @@ button { font: inherit; }
 .gicon { font-size: 18px; line-height: 1; text-align: center; margin-top: 3px; color: #d9dde5; }
 .subtag { font-size: 8px; text-align: center; color: #8b93a1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .occs { position: absolute; left: 2px; bottom: 2px; font-size: 9px; color: #ffd166; background: rgba(0,0,0,.45); border-radius: 2px; padding: 0 2px; }
+.grid-board { position: relative; }
+.prop { position: absolute; z-index: 1; border: 1px solid #3a404b; border-radius: 3px; overflow: hidden; color: #b9c0cc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.prop.bigprop { border-width: 2px; }
+.prop .pname { font-size: 8px; line-height: 1.1; text-align: center; word-break: break-all; padding: 0 1px; }
+.prop .plv { font-size: 8px; color: var(--gold); }
+.grid-fit { position: relative; overflow: hidden; }
+.big-outline { position: absolute; z-index: 3; border: 2px solid; border-radius: 4px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }

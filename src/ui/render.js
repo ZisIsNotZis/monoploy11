@@ -108,62 +108,56 @@ function cellTitle(n, pr, owner, state) {
 }
 
 function renderBoard(el, state, currentP) {
-  const W = Math.max(360, el.clientWidth), H = Math.max(320, el.clientHeight);
-  const coords = layout(state.map, W, H);
-  const platformOn = isPlatformActive(state.map, state.day);
-  const lines = state.map.edges.map(e => {
-    const a = coords[e.a], b = coords[e.b];
-    const off = e.kind === 'platform' && !platformOn;
-    return `<line x1="${a.cx}" y1="${a.cy}" x2="${b.cx}" y2="${b.cy}"
-      stroke="${off ? '#7a2a2a' : e.kind === 'platform' ? '#8a6a2a' : '#333842'}"
-      stroke-width="${e.kind === 'road' ? 2 : 3}" stroke-dasharray="${off ? '4 6' : e.kind === 'side' ? '6 4' : ''}" />`;
-  }).join('');
-  const pos = currentP ? coords[currentP.position] : null;
+  const map = state.map;
+  const S = map.cell ?? 48;
+  const W = (map.w ?? 19) * S, H = (map.h ?? 13) * S;
+  const plotCells = new Map();
+  for (const plot of map.plots ?? []) for (const c of plot.cells) plotCells.set(`${c.x},${c.y}`, plot);
+  const nodes = Object.fromEntries(map.nodes.map(n => [n.id, n]));
   const dir = currentP ? (currentP.facing ?? currentP.lastNode) : null;
-  const to = dir ? coords[dir] : null;
-  const angle = pos && to ? Math.atan2(to.cy - pos.cy, to.cx - pos.cx) * 180 / Math.PI : null;
-  const cells = state.map.nodes.map(n => {
-    const c = coords[n.id];
-    const key = n.plotId ?? n.id;
-    const pr = state.properties[key];
+  const cur = currentP ? nodes[currentP.position] : null;
+  const tgt = dir ? nodes[dir] : null;
+  const angle = cur && tgt ? Math.atan2(tgt.y - cur.y, tgt.x - cur.x) * 180 / Math.PI : null;
+
+  const plots = (map.plots ?? []).map(plot => {
+    const pr = state.properties[plot.id];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
+    const cells = plot.cells.map((c, i) => {
+      const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
+      return `<div class="prop ${plot.big ? 'bigprop' : ''}" data-plot="${plot.id}" title="${title}"
+        style="left:${c.x * S + 1}px;top:${c.y * S + 1}px;width:${S - 2}px;height:${S - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
+        ${i === 0 ? `<div class="pname">${name}</div><div class="plv">${pr ? 'Lv' + pr.level : ''}</div>` : ''}
+      </div>`;
+    }).join('');
+    if (!plot.big) return cells;
+    const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
+    const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
+    return cells + `<div class="big-outline" style="left:${x}px;top:${y}px;width:${2 * S}px;height:${2 * S}px;border-color:${owner?.color ?? '#4a5260'}"></div>`;
+  }).join('');
+
+  const roads = map.nodes.map(n => {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
-    const border = '#333842';
-    const off = n.kind === 'platform' && !platformOn;
-    const title = cellTitle(n, pr, owner, state);
-    const ground = n.plotId ? '路' : (GROUND_ICON[n.kind] ?? '·');
-    return `<div class="cell ${off ? 'off' : ''}" data-cell="${n.id}" style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;border-color:${border}" title="${title}">
+    const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '·' : '?');
+    const title = `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}${n.adjacentPlots?.length ? '｜邻接 ' + n.adjacentPlots.length + ' 块地产' : ''}`;
+    return `<div class="cell" data-cell="${n.id}" title="${title}"
+      style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       <div class="gicon">${ground}</div>
-      ${n.plotId ? '' : `<div class="subtag">${n.label}</div>`}
+      <div class="subtag">${n.kind === 'empty' ? '' : n.label}</div>
       ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
       <div class="tokens">${here.map(q => `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
       ${n.id === currentP?.position && angle != null ? `<span class="face" style="transform:rotate(${angle}deg)">➤</span>` : ''}
     </div>`;
   }).join('');
-  const plots = (state.map.plots ?? []).map(plot => {
-    const cs = plot.cells.map(id => coords[id]).filter(Boolean);
-    if (!cs.length) return '';
-    const minX = Math.min(...cs.map(c => c.x));
-    const minY = Math.min(...cs.map(c => c.y));
-    const maxX = Math.max(...cs.map(c => c.x + c.w));
-    const maxY = Math.max(...cs.map(c => c.y + c.h));
-    const pr = state.properties[plot.id];
-    const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
-    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
-    const side = Math.floor((state.map.nodes.find(n => n.id === plot.cells[0])?.ring ?? 0) / 12);
-    const size = plot.big ? 50 : 40;
-    let x = minX + (maxX - minX - size) / 2;
-    let y = minY - size - 4;
-    if (side === 1) { x = maxX + 4; y = minY + (maxY - minY - size) / 2; }
-    if (side === 2) { y = maxY + 4; }
-    if (side === 3) { x = minX - size - 4; y = minY + (maxY - minY - size) / 2; }
-    const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
-    return `<div class="plot ${plot.big ? 'bigplot' : ''}" style="left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-color:${owner?.color ?? '#3a404b'}" title="${title}">
-      <div class="pname">${name}</div><div class="plv">${pr ? 'Lv' + pr.level : ''}</div>
-    </div>`;
-  }).join('');
-  el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}${plots}`;
+
+  const availW = Number(el.clientWidth) || W, availH = Number(el.clientHeight) || H;
+  const scale = Math.max(0.3, Math.min(1.25, (availW - 24) / W, (availH - 24) / H));
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
+  el.innerHTML = `<div class="grid-fit" style="width:${Math.round(W * scale)}px;height:${Math.round(H * scale)}px">` +
+    `<div class="grid-board" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">${plots}${roads}</div></div>`;
 }
 
 function renderPlayers(el, state, currentP) {

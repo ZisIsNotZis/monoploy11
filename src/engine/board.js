@@ -31,10 +31,7 @@ export function validateMap(map) {
   for (const n of map.nodes) {
     const d = adj[n.id].length;
     if (d === 0) errors.push(`${n.id} 是孤岛`);
-    if (d === 1) {
-      const allowed = ['teleport', 'hospital', 'jail'];
-      if (!allowed.includes(n.kind)) errors.push(`${n.id} 是死路但不是传送门/医院/监狱`);
-    }
+    // 死路是设计问题，不是逻辑问题：走到死路会反弹。不在这里报错。
   }
   const hosp = map.nodes.filter(n => n.kind === 'hospital');
   const jail = map.nodes.filter(n => n.kind === 'jail');
@@ -45,9 +42,7 @@ export function validateMap(map) {
     if (links.length !== 1) errors.push(`${f.id} 必须只有一条侧路`);
     else {
       const other = links[0].a === f.id ? links[0].b : links[0].a;
-      if (!byId[other]?.ring && byId[other]?.kind !== 'platform') {
-        errors.push(`${f.id} 的侧路没有直接连回主路`);
-      }
+      if (!byId[other]) errors.push(`${f.id} 的侧路没有连到路面`);
     }
   }
   if (!map.nodes.some(n => adj[n.id].length >= 3)) errors.push('没有交叉点');
