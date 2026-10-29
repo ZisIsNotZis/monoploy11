@@ -236,6 +236,15 @@ async function movePhase(state, p, steps, ui) {
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
+    if (p.bounceSteps) {
+      const back = Math.max(0, path.length - 1 - p.bounceSteps);
+      p.position = path[back];
+      p.lastNode = back > 0 ? path[back - 1] : cameFrom;
+      p.facing = back > 0 ? path[back - 1] : cameFrom;
+      p.bounceSteps = 0;
+      log(state, `${p.name} 被果冻墙沿原路弹回`);
+      return true;
+    }
   }
   return false;
 }
@@ -259,7 +268,7 @@ function nextStep(state, p, cameFrom, first) {
     const forward = choices.find(e => e.to === p.facing) ?? choices[0] ?? exits[0];
     return forward.to;
   }
-  if (first && p.facing && choices.some(e => e.to === p.facing)) return p.facing;
+  if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
   return state.rng.pick(choices).to;
 }
 
