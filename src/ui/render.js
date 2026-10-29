@@ -52,7 +52,7 @@ export function render(root, state, actions) {
   const centerOwner = centerPr?.ownerId ? state.players.find(q => q.id === centerPr.ownerId) : null;
   root.system.innerHTML = `<span class="pill">第 ${state.day} 天</span>
     <span class="pill">物价 ${state.priceIndex.toFixed(2)}</span>
-    ${center ? `<span class="pill center-pill" title="${centerOwner ? centerOwner.name : '无主'}｜Lv.${centerPr?.level ?? 0}｜${center.cells.length} 格｜${(centerPr?.price ?? 0).toLocaleString()}">中心 ${centerOwner?.name ?? '无主'} Lv.${centerPr?.level ?? 0}</span>` : ''}
+    ${center ? `<span class="pill center-pill" title="${centerOwner ? centerOwner.name : '无主'}｜Lv.${centerPr?.level ?? 0}｜${state.map.nodes.filter(n => n.adjacentPlots?.includes(center.id)).length} 个入口｜${(centerPr?.price ?? 0).toLocaleString()}">中心 ${centerOwner?.name ?? '无主'} Lv.${centerPr?.level ?? 0}</span>` : ''}
     <span class="grow"></span>
     <button data-stock="1" ${state.phase === 'action' && !state.pending ? '' : 'disabled'}>股票</button>`;
   root.system.querySelector('[data-stock]').onclick = () => actions.openStock();

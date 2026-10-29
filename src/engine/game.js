@@ -232,7 +232,20 @@ export function tickTimers(state) {
   }
 }
 
+// 免疫神仙：天赋 id → 该天赋挡下的神仙名单；attachGod 附身前直接跳过。
+const GOD_IMMUNITY = {
+  衰神: 'immune_shuai_qiong',
+  穷神: 'immune_shuai_qiong',
+  糊涂神: 'immune_hutu_xiong',
+  凶神: 'immune_hutu_xiong',
+};
+
 export function attachGod(state, p, name) {
+  const immunity = GOD_IMMUNITY[name];
+  if (immunity && p.talents.includes(immunity)) {
+    log(state, `${p.name} 免疫 ${name}，${name}没能附身`);
+    return;
+  }
   if (p.god && p.god !== '定时炸弹') {
     log(state, `${p.name} 身上的 ${p.god} 被 ${name} 顶掉`);
   }
@@ -260,7 +273,11 @@ export function attachGod(state, p, name) {
     log(state, '穷神附身：向每位对手赠送 10000');
   }
   if (name === '福神') { addCard(state, p, randomCard(state.rng)); addCard(state, p, randomCard(state.rng)); }
-  if (name === '衰神') { p.cards.splice(0, Math.min(2, p.cards.length)); }
+  if (name === '衰神') {
+    const lost = Math.min(2, p.cards.length);
+    p.cards.splice(0, lost);
+    notifyCardLoss(state, p, lost);
+  }
   if (p.talents.includes('god_gives_sendgod') || p.talents.includes('god_gives_robotdoll')) {
     addCard(state, p, p.talents.includes('god_gives_sendgod') ? 'sendgod' : 'robotdoll');
   }
@@ -290,6 +307,40 @@ export const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'equal
 export const SELF_TARGET = new Set(['turtle', 'turn', 'stay']);
 export const PASSIVE = new Set(['free', 'samefate', 'transfer', 'wuxie']);
 
+// 距离翻倍的天赋：卡 id → 天赋 id。基础距离 5，card_range_plus 再 +1，然后翻倍。
+const RANGE_X2 = {
+  turtle: 'leave_shop_turtle',
+  jelly: 'jelly_banana_x2',
+  banana: 'jelly_banana_x2',
+  roadblock: 'roadblock_x2',
+  stay: 'stay_x2',
+  sendgod: 'god_gives_sendgod',
+};
+
+// 一张卡对 p 而言的可用距离；所有 TARGET_RANGE_5 与 cell 卡的范围判定都走这里。
+// base 是该卡的基准距离（机器娃娃为 10），card_range_plus 在基准上 +1，距离翻倍的天赋再 x2。
+export function cardRange(p, id, base = 5) {
+  let range = base;
+  if (p.talents.includes('card_range_plus')) range += 1;
+  const talent = RANGE_X2[id];
+  if (talent && p.talents.includes(talent)) range *= 2;
+  return range;
+}
+
+// 合奏：队友（或自己队伍）在自身回合外失去卡片时，全队各补 1 张。只由丢卡路径调用。
+export function notifyCardLoss(state, victim, lost = 1) {
+  if (!victim || lost <= 0) return;
+  if (state.ensembleBusy) return;
+  const active = state.order?.[state.turn % state.order.length];
+  if (victim.id === active) return;
+  const team = state.players.filter(x => x.alive && x.team === victim.team);
+  if (!team.some(x => x.talents.includes('ensemble'))) return;
+  state.ensembleBusy = true;
+  for (const mate of team) addCard(state, mate, randomCard(state.rng));
+  state.ensembleBusy = false;
+  log(state, `合奏：${victim.name} 回合外失去卡片，我方全体各获得 1 张卡`);
+}
+
 export function useCard(state, index, target) {
   if (state.phase !== 'action') return state;
   const p = current(state);
@@ -302,10 +353,10 @@ export function useCard(state, index, target) {
   if (TARGET_RANGE_5.has(id) && target && !(id === 'turn' && p.talents.includes('turn_card_infinite'))) {
     const q = targetPlayer(state, p, target);
     if (!q) return state;
-    if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, 5)) return state;
+    if (q.position !== p.position && !pathWithin(state.map, p.position, q.position, cardRange(p, id))) return state;
   }
   if (def.target === 'cell' && target) {
-    const max = id === 'robotdoll' ? 10 : 5;
+    const max = cardRange(p, id, id === 'robotdoll' ? 10 : 5);
     if (!pathWithin(state.map, p.position, target, max)) return state;
   }
   if (p.god === '糊涂神' && state.rng.float() < 0.3) {
@@ -385,7 +436,12 @@ export function applyCard(state, p, id, target) {
     case 'truck': {
       const key = targetPlotId(state, target);
       const pr = state.properties[key]; if (!pr) return false;
-      pr.level = Math.max(1, pr.level - 1); return true;
+      pr.level = Math.max(1, pr.level - 1);
+      if (p.talents.includes('truck_to_worker') && state.rng.float() < 0.3) {
+        addCard(state, p, 'worker');
+        log(state, `${p.name} 利己：工程车用毕，获得 1 张机器工人卡`);
+      }
+      return true;
     }
     case 'monster': {
       const key = targetPlotId(state, target);
@@ -407,7 +463,12 @@ export function applyCard(state, p, id, target) {
       const pr = state.properties[key];
       const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
       if (!pr || !owner || owner.team !== p.team || pr.level <= 0) return false;
-      pr.level = Math.min(TUNING.maxLevel, pr.level + 1); return true;
+      pr.level = Math.min(TUNING.maxLevel, pr.level + 1);
+      if (p.talents.includes('worker_to_truck') && state.rng.float() < 0.3) {
+        addCard(state, p, 'truck');
+        log(state, `${p.name} 赢家：机器工人用毕，获得 1 张工程车卡`);
+      }
+      return true;
     }
     case 'inflate': {
       const street = String(target ?? '');
@@ -415,17 +476,48 @@ export function applyCard(state, p, id, target) {
       return true;
     }
     case 'superdice': p.forcedDice = 12; return true;
-    case 'turtle': if (!q) return false; q.status = '乌龟'; q.statusDays = 3; return true;
+    case 'turtle': {
+      if (!q) return false;
+      q.status = '乌龟'; q.statusDays = 3;
+      if (q.talents.includes('turtle_gives_banana')) {
+        addCard(state, q, 'banana');
+        log(state, `${q.name} 的手段大师：被乌龟卡击中，获得 1 张香蕉皮卡`);
+      }
+      return true;
+    }
     case 'turn': if (!q) return false; { const adj = buildAdj(state.map); const exits = adj[q.position].map(e => e.to); q.facing = exits.find(x => x !== q.facing) ?? q.lastNode; return true; }
-    case 'stay': if (!q) return false; q.skipMove = 1; return true;
-    case 'sleep': if (!q) return false; q.status = '梦游'; q.statusDays = 2; return true;
+    case 'stay': {
+      if (!q) return false;
+      q.skipMove = 1;
+      if (p.talents.includes('stay_refund') && state.rng.float() < 0.3) {
+        addCard(state, p, 'stay');
+        log(state, `${p.name} 的临场发挥：停留卡用毕，返还 1 张`);
+      }
+      return true;
+    }
+    case 'sleep': {
+      if (!q) return false;
+      if (q.talents.includes('immune_sleep')) { log(state, `${q.name} 免疫梦游，梦游卡无效`); return false; }
+      q.status = '梦游'; q.statusDays = 2; return true;
+    }
     case 'hibernate': if (!q) return false; q.status = '冬眠'; q.statusDays = 2; return true;
-    case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap': case 'timebomb':
+    case 'roadblock': case 'jelly': case 'mine': case 'dynamite': case 'banana': case 'trap': case 'timebomb': {
       if (!node || state.placements[node.id]) return false;
-      return place(state, node.id, { kind: id, ownerId: p.id });
+      if (!place(state, node.id, { kind: id, ownerId: p.id })) return false;
+      if (id === 'roadblock' && p.talents.includes('roadblock_refund') && state.rng.float() < 0.3) {
+        addCard(state, p, 'roadblock');
+        log(state, `${p.name} 的马术：路障卡用毕，返还 1 张`);
+      }
+      return true;
+    }
     case 'randomdoor': {
       const walkable = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform');
-      p.position = state.rng.pick(walkable).id; return true;
+      p.position = state.rng.pick(walkable).id;
+      if (p.talents.includes('suishimen_to_superdice')) {
+        addCard(state, p, 'superdice');
+        log(state, `${p.name} 的探索：使用随意门，获得 1 张超级骰子卡`);
+      }
+      return true;
     }
     case 'portal': {
       if (!q) return false;
@@ -454,7 +546,11 @@ export function applyCard(state, p, id, target) {
     case 'quantum': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage * 1.5, '量子飞弹'); return true;
     case 'rushmissile': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage, '急速弹'); return true;
     case 'free': p.freeCard = true; return true;
-    case 'audit': if (!q) return false; log(state, `${q.name} 手牌：${q.cards.map(cardName).join('、') || '无'}`); return true;
+    case 'audit': {
+      if (!q) return false;
+      if (q.talents.includes('immune_pick_audit') && q.god) { log(state, `${q.name} 的公关：神仙附身期间无法被查账`); return false; }
+      log(state, `${q.name} 手牌：${q.cards.map(cardName).join('、') || '无'}`); return true;
+    }
     case 'equalpoor': {
       if (!q) return false;
       const avg = Math.floor((p.cash + q.cash) / 2); p.cash = avg; q.cash = avg; return true;
@@ -466,12 +562,15 @@ export function applyCard(state, p, id, target) {
     }
     case 'pick': {
       if (q?.isBoss && q.bossId === 'octopus') { log(state, '章鱼王免疫拾取卡'); return false; }
+      if (q?.talents.includes('immune_pick_audit') && q.god) { log(state, `${q.name} 的公关：神仙附身期间无法被拾取`); return false; }
       if (!q || !q.cards.length) return false;
-      const i = state.rng.int(q.cards.length); addCard(state, p, q.cards.splice(i, 1)[0]); return true;
+      const i = state.rng.int(q.cards.length); addCard(state, p, q.cards.splice(i, 1)[0]); notifyCardLoss(state, q, 1); return true;
     }
     case 'scheme': {
       if (!q || !q.cards.length) return false;
-      q.cards.splice(state.rng.int(q.cards.length), 1); return true;
+      q.cards.splice(state.rng.int(q.cards.length), 1);
+      notifyCardLoss(state, q, 1);
+      return true;
     }
     case 'magic': {
       if (!q) return false;
@@ -481,7 +580,14 @@ export function applyCard(state, p, id, target) {
       const gods = ['财神', '福神', '土地公', '武神', '天使', '糊涂神'];
       attachGod(state, p, state.rng.pick(gods)); return true;
     }
-    case 'sendgod': if (!q || !q.god) return false; q.god = null; q.godDays = 0; q.bombSteps = 0; return true;
+    case 'sendgod': {
+      if (!q || !q.god) return false;
+      if (q.talents.includes('no_sendgod_outside_turn') && q.id !== current(state).id && q.team !== p.team) {
+        log(state, `${q.name} 的乐园规则：回合外无法被对手送神`);
+        return false;
+      }
+      q.god = null; q.godDays = 0; q.bombSteps = 0; return true;
+    }
     case 'samefate': if (!q || !q.god) return false; p.god = q.god; p.godDays = q.godDays; return true;
     case 'transfer': p.transfer = true; return true;
     case 'wuxie': return true;

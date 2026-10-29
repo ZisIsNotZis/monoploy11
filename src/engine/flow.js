@@ -4,13 +4,12 @@ import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } fro
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log } from './economy.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
-  useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE,
+  useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE, cardRange,
   applyMonthly, tickGod, tickTimers, spawnOccupants, releaseFrom, runNewsEvent,
 } from './game.js';
 
 const GROUND_CARDS = new Set(['buyland', 'exchange', 'rebuild', 'worker', 'truck']);
 const STREET_CARDS = new Set(['close', 'inflate']);
-const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
 const RESPONSE_CARDS = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','magic','sendgod','equalpoor']);
 const SAME_CARDS = new Set(['sleep','hibernate','scheme']);
 const TRANSFER_CARDS = new Set(['scheme','missile','equalpoor']);
@@ -44,7 +43,7 @@ function beginTurn(state, p) {
   }
   if (p.jail > 0) { log(state, `${p.name} 在监狱中，跳过本回合`); return true; }
   if (p.hospital > 0) { log(state, `${p.name} 在医院中，跳过本回合`); return true; }
-  if (p.skipTurns > 0) { log(state, `${p.name} 停留，跳过本回合`); return true; }
+  if (p.skipTurns > 0) { p.skipTurns -= 1; log(state, `${p.name} 停留，跳过本回合`); return true; }
   while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
   log(state, `—— 第 ${state.day} 天 · ${p.name} 的回合 ——`);
   return false;
@@ -59,7 +58,6 @@ function endPlayerTurn(state, p) {
   tickGod(state, p);
   if (p.jail > 0) { p.jail -= 1; if (p.jail === 0) releaseFrom(state, p, 'jail'); }
   if (p.hospital > 0) { p.hospital -= 1; if (p.hospital === 0) releaseFrom(state, p, 'hospital'); }
-  if (p.skipTurns > 0) p.skipTurns -= 1;
 }
 
 function advanceDay(state) {
@@ -152,9 +150,9 @@ async function actionPhase(state, p, ui) {
         const kind = GROUND_CARDS.has(id) || id === 'monster' ? 'plot' : (STREET_CARDS.has(id) ? 'street' : def.target);
         let opts = null;
         if (kind === 'player') {
-          opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && (!TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5)));
+          opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && !(id === 'sendgod' && q.talents.includes('no_sendgod_outside_turn') && q.id !== p.id && q.team !== p.team) && (!TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, cardRange(p, id))));
         }
-        target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? (id === 'robotdoll' ? 10 : 5) : null });
+        target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? cardRange(p, id, id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
       }
       if (id === 'turn') {
@@ -619,13 +617,13 @@ async function lotteryFlow(state, p, ui) {
   log(state, `${p.name} 买下乐透 ${n}（${state.config?.lotteryTicket ?? TUNING.lotteryTicket}）`);
 }
 
-async function shopFlow(state, p, ui, kind) {
+export async function shopFlow(state, p, ui, kind) {
   state.shopOffer = makeOffer(state, kind === 'shop' ? 9 : 6, kind);
   const limit = kind === 'shop' ? 3 : 2;
   let bought = 0;
   while (bought < limit) {
     const a = await ui.ask({ type: kind, player: p, offers: state.shopOffer, bought, limit });
-    if (!a || a.action === 'leave') return;
+    if (!a || a.action === 'leave') break;
     const item = state.shopOffer[a.index]; if (!item) continue;
     const energy = state.players.find(q => q.alive && q.team !== p.team && q.properties.some(id => state.properties[id]?.bigType === 'energy'));
     const energyLv = energy ? Math.max(...energy.properties.map(id => state.properties[id]?.bigType === 'energy' ? state.properties[id].level : 0)) : 0;
@@ -636,7 +634,12 @@ async function shopFlow(state, p, ui, kind) {
     if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));
     log(state, `${p.name} 花 ${price} 买到 ${CARD_DEFS[item.id].name}（${bought}/${limit}）`);
   }
+  if (p.talents.includes('leave_shop_turtle')) {
+    addCard(state, p, 'turtle');
+    log(state, `${p.name} 的心机：离开商店类设施，获得 1 张乌龟卡`);
+  }
 }
+
 
 async function merchantFlow(state, p, ui) { return shopFlow(state, p, ui, 'merchant'); }
 

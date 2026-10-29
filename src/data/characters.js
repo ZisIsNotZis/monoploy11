@@ -1,5 +1,5 @@
-// 16 名角色。M1 只启用前 4 个；其余数据先就位，天赋钩子在 M2 接。
-// talents: [{id, name, desc}]，钩子由 engine/talents.js 解释。
+// 16 名角色，全部可选；天赋钩子由 engine/game.js 与 engine/flow.js 解释。
+// talents: [{id, name, desc}]，钩子由 engine/game.js 与 engine/flow.js 解释。
 export const CHARACTERS = [
   { id: 'sunxiaomei', name: '孙小美', color: '#e05a5a', talents: [
     { id: 'rent_dealt_up', name: '历练', desc: '租金和爆炸伤害提高 20%', value: 0.2 },

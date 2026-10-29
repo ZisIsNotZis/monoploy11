@@ -68,6 +68,10 @@ export function pay(state, from, to, amount, reason) {
     const use = !ask || window.confirm(`${from.name}：要用免费卡抵消 ${amount}（${reason}）吗？`);
     if (use) {
       from.cards.splice(freeIdx, 1);
+      if (from.talents?.includes('freecard_to_remotedice')) {
+        from.cards.push('remotedice'); // 遥控骰子无合成配方，直接入手的语义与 addCard 相同
+        log(state, `${from.name} 的机智：使用免费卡，获得 1 张遥控骰子卡`);
+      }
       log(state, `${from.name} 的免费卡抵消了 ${amount}（${reason}）`);
       return true;
     }
