@@ -257,7 +257,7 @@ async function landingPhase(state, p, ui) {
   if (!p.alive || p.jail > 0 || p.hospital > 0) return;
   switch (cell.kind) {
     case 'card': addCard(state, p, randomCard(state.rng)); log(state, `${p.name} 停在卡片格，获得 1 张卡`); break;
-    case 'tax': { const amount = Math.round(p.cash * TUNING.taxRate); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
+    case 'tax': { const amount = Math.min(50_000, Math.max(5_000, Math.round(p.cash * TUNING.taxRate))); log(state, `${p.name} 纳税 ${amount}`); pay(state, p, null, amount, '纳税'); break; }
     case 'god': { const gods = ['财神','穷神','福神','衰神','天使','恶魔','土地公','糊涂神','武神','凶神']; attachGod(state, p, state.rng.pick(gods)); break; }
     case 'dog': await dogEffect(state, p); break;
     case 'beggar': if (!p.talents.includes('immune_beggar_dog')) pay(state, p, null, TUNING.beggarAsk, '乞丐'); break;
