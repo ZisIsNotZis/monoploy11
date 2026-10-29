@@ -39,7 +39,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 - `w/h/cell`：25×17，格 44px。
 - `nodes`：所有**路面**格；`id = "x,y"`；`kind` 为路面类型；`x/y` 为像素坐标；`adjacentPlots` 是四邻接的地产 id。
 - `edges`：路面正交邻接，用于移动与图算法。
-- `plots`：地产；`cells` 为 1 或 4 个格子坐标；`big` 标记 2×2；`street` 用于连锁租金；`label` 名字。
+- `plots`：地产；`cells` 为 1 或 4 个格子坐标；`big` 标记 2×2；`street` 用于连锁租金；没有名字或编号，只有内部 id。
 - `facility`：医院/监狱侧路入口。
 - 地产格不是 `nodes`，不可走；只通过 `adjacentPlots` 与路面关联。
 - 死路不要求传送门；移动时 `walk` 在度数 1 处会取唯一出边（原路）继续走，即反弹。
