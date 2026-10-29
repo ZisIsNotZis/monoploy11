@@ -4,6 +4,7 @@ import { CHARACTER_BY_ID, CHARACTERS } from '../data/characters.js';
 import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
 import { GRID_MANOR } from '../data/maps/grid-manor.js';
+import { GRAND_HOTEL } from '../data/maps/grand-hotel.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet } from './economy.js';
 
@@ -12,7 +13,7 @@ const GENDER = {
   qiange:'男', shalagongzhu:'女', wumi:'女', gongben:'男', xiaodanni:'男', tangtang:'女',
   yuehanqiao:'男', wumeila:'女', ludwig:'男', shiyi:'女', doctor:'男', octopus:'男', bear:'男', yuanyuan:'女',
 };
-const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
+const MAPS = { 'grid-manor': GRID_MANOR, 'grand-hotel': GRAND_HOTEL, 'test-manor': TEST_MANOR };
 
 export function teamColor(teamIndex, memberIndex, memberCount) {
   const hue = Math.round((teamIndex * 137.508 + 12) % 360);
@@ -22,7 +23,7 @@ export function teamColor(teamIndex, memberIndex, memberCount) {
 }
 
 export function createGame(config = {}) {
-  const mapId = config.mapId ?? 'grid-manor';
+  const mapId = config.mapId ?? 'grand-hotel';
   const map = MAPS[mapId];
   const errors = validateMap(map);
   if (errors.length) throw new Error(`地图校验失败: ${errors.join('; ')}`);
@@ -61,6 +62,16 @@ export function createGame(config = {}) {
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
 
+  for (const init of map.initialProperties ?? []) {
+    const plot = map.plots.find(x => x.id === init.plotId);
+    if (!plot) continue;
+    state.properties[init.plotId] = {
+      ownerId: null, level: init.level ?? 0, street: plot.street ?? null,
+      big: !!plot.big, bigType: init.bigType ?? null, closed: 0, inflate: 0,
+      price: init.price ?? plot.price ?? null,
+    };
+  }
+
   const roadPool = rng.shuffle(map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform').map(n => n.id));
   const adjMap = buildAdj(map);
   players.forEach((p, i) => {
@@ -75,6 +86,7 @@ export function createGame(config = {}) {
     for (const p of players) p.cards.push(fixedHand ? fixedHand[i] : randomCard(rng));
   }
   log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
+  if (map.intro) log(state, map.intro);
   state.phase = 'action';
   return state;
 }
@@ -339,7 +351,7 @@ export function applyCard(state, p, id, target) {
       p.cash -= price;
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== key); }
       p.properties.push(key);
-      state.properties[key] = { ownerId: p.id, level: pr?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null };
+      state.properties[key] = { ownerId: p.id, level: pr?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null, closed: pr?.closed ?? 0, inflate: pr?.inflate ?? 0, price: pr?.price ?? plot?.price ?? null };
       return true;
     }
     case 'exchange': {

@@ -5,10 +5,13 @@ import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS, teamColor } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
-import { speak } from './ui/voice.js?v=115';
+import { EXPERIENCE, aiPauseMs, CSS_TIMINGS } from './data/experience.js';
+import { say, flushSpeech } from './ui/speech.js?v=115';
 import { avatarSvg } from './ui/icons.js?v=115';
 
 const $ = s => document.querySelector(s);
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+for (const [name, value] of Object.entries(CSS_TIMINGS)) document.documentElement.style.setProperty(name, value);
 const root = {
   system: $('#system'), players: $('#players'), board: $('#board'),
   log: $('#log'), dice: $('#dice'), cards: $('#cards'), hand: $('#hand'), choice: $('#choice'),
@@ -30,7 +33,7 @@ function spawnFloat(p, text, kind) {
     span.style.top = `${rect.top - 4}px`;
   }
   document.body.appendChild(span);
-  setTimeout(() => span.remove(), 1200);
+  setTimeout(() => span.remove(), EXPERIENCE.floatMs);
 }
 
 function rerender() {
@@ -38,45 +41,57 @@ function rerender() {
   render(root, state, actions);
   if (!lastMoney) {
     lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
-    lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital }]));
+    lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital, props: p.properties.length, built: p.properties.reduce((n, id) => n + (state.properties[id]?.level ?? 0), 0) }]));
     return;
   }
   for (const p of state.players) {
+    const prev = lastSnap.get(p.id);
+    const built = p.properties.reduce((n, id) => n + (state.properties[id]?.level ?? 0), 0);
+    const propertyChanged = !!prev && (p.properties.length > prev.props || built > prev.built);
     const old = lastMoney.get(p.id);
     const now = p.cash + p.deposit;
     if (old != null && now !== old) {
       const delta = now - old;
       spawnFloat(p, (delta > 0 ? '+' : '') + delta.toLocaleString(), delta > 0 ? 'up' : 'down');
-      speak(p, delta > 0 ? 'gain' : 'lose');
+      if (!propertyChanged) say(p, delta > 0 ? 'gain' : 'lose');
     }
-    const prev = lastSnap.get(p.id);
     if (prev) {
       const gained = p.cards.filter((id, i) => !prev.cards.includes(id));
       const lost = prev.cards.filter((id, i) => !p.cards.includes(id));
-      if (gained.length) { spawnFloat(p, '+' + (CARD_DEFS[gained[0]]?.name ?? '卡'), 'card'); speak(p, 'card'); }
+      if (gained.length) { spawnFloat(p, '+' + (CARD_DEFS[gained[0]]?.name ?? '卡'), 'card'); say(p, 'card'); }
       if (lost.length) spawnFloat(p, '-' + (CARD_DEFS[lost[0]]?.name ?? '卡'), 'card');
-      if (p.god !== prev.god) { spawnFloat(p, p.god ? '+' + p.god : '-' + (prev.god ?? '神'), 'status'); speak(p, 'god'); }
+      if (p.god !== prev.god) { spawnFloat(p, p.god ? '+' + p.god : '-' + (prev.god ?? '神'), 'status'); say(p, 'god'); }
       if (p.status !== prev.status) spawnFloat(p, p.status ? '+' + p.status : '-' + (prev.status ?? '状态'), 'status');
-      if (p.jail !== prev.jail) { spawnFloat(p, p.jail > prev.jail ? '+监狱' : '-监狱', 'status'); if (p.jail > prev.jail) speak(p, 'jail'); }
-      if (p.hospital !== prev.hospital) { spawnFloat(p, p.hospital > prev.hospital ? '+医院' : '-医院', 'status'); if (p.hospital > prev.hospital) speak(p, 'hospital'); }
+      if (p.jail !== prev.jail) { spawnFloat(p, p.jail > prev.jail ? '+监狱' : '-监狱', 'status'); if (p.jail > prev.jail) say(p, 'jail'); }
+      if (p.hospital !== prev.hospital) { spawnFloat(p, p.hospital > prev.hospital ? '+医院' : '-医院', 'status'); if (p.hospital > prev.hospital) say(p, 'hospital'); }
     }
   }
   lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
-  lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital }]));
+  lastSnap = new Map(state.players.map(p => [p.id, { cards: [...p.cards], god: p.god, status: p.status, jail: p.jail, hospital: p.hospital, props: p.properties.length, built: p.properties.reduce((n, id) => n + (state.properties[id]?.level ?? 0), 0) }]));
 }
 
 const ui = {
   render: rerender,
+  say: (p, event) => say(p, event),
   async step() {
     rerender();
-    await new Promise(r => setTimeout(r, 500));
+    await wait(EXPERIENCE.stepMs);
+    // 移动途中触发的金钱/状态台词也会先播完，再走下一格。
+    await flushSpeech();
   },
-  ask(prompt) {
+  async ask(prompt) {
+    // 上一轮 render 触发的气泡/语音先结束，避免 AI 在台词播放时继续行动。
+    await flushSpeech();
     if (prompt.player?.controller === 'ai') {
-      return new Promise(resolve => setTimeout(() => resolve(aiAnswer(prompt, state)), 220));
+      await wait(aiPauseMs(prompt.type));
+      return aiAnswer(prompt, state);
     }
     return new Promise(resolve => {
-      active = { prompt, resolve };
+      const settle = value => {
+        // 人类点完按钮后也等当前气泡关闭，再让引擎继续。
+        flushSpeech().then(() => resolve(value));
+      };
+      active = { prompt, resolve: settle };
       applyPromptToState(prompt);
       rerender();
     });
@@ -107,7 +122,7 @@ function applyPromptToState(p) {
     state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, label: p.label, players: p.players };
     return;
   }
-  if (p.type === 'buy') { state.pending = { type: 'buy', cellId: p.plot.id, price: p.price, label: p.plot.big ? '大空地' : '小地产' }; return; }
+  if (p.type === 'buy') { state.pending = { type: 'buy', cellId: p.plot.id, price: p.price, label: p.plot.big ? '大空地' : '小地产', level: p.level ?? 0, bigType: p.bigType ?? null }; return; }
   if (p.type === 'build') { state.pending = { type: 'build', cellId: p.plot.id, cost: p.cost, label: p.plot.big ? '大空地' : '小地产' }; return; }
   if (p.type === 'chooseBig') { state.pending = { type: 'chooseBig', cellId: p.plot.id }; return; }
   if (p.type === 'direction') { state.pending = { type: 'direction', options: p.options }; return; }

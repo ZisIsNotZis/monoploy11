@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GRID_MANOR } from '../src/data/maps/grid-manor.js';
+import { GRAND_HOTEL } from '../src/data/maps/grand-hotel.js';
 import { validateMap } from '../src/engine/board-v2.js';
 import { createGame, current, drawLottery, useCard } from '../src/engine/game.js';
 import { pay } from '../src/engine/economy.js';
@@ -10,7 +11,7 @@ import { rentFor } from '../src/engine/economy.js';
 test('grid map validates', () => assert.deepEqual(validateMap(GRID_MANOR), []));
 
 test('all ground starts empty and buying creates empty land', () => {
-  const s = createGame({ seed: 61 });
+  const s = createGame({ seed: 61, mapId: 'grid-manor' });
   assert.equal(Object.keys(s.properties).length, 0);
   const p = current(s);
   const plot = s.map.plots.find(x => !x.big);
@@ -106,4 +107,38 @@ test('machine worker upgrades a team building from any distance', () => {
   useCard(s, 0, plot.id);
   assert.equal(s.properties[plot.id].level, 2);
   assert.ok(!p.cards.includes('worker'));
+});
+
+test('grand hotel map has a 3x3 center with 12 adjoining roads', () => {
+  assert.deepEqual(validateMap(GRAND_HOTEL), []);
+  const center = GRAND_HOTEL.plots.find(p => p.id === 'plot_b5');
+  assert.equal(center.cells.length, 9);
+  const adjoining = GRAND_HOTEL.nodes.filter(n => n.adjacentPlots?.includes(center.id));
+  assert.equal(adjoining.length, 12);
+});
+
+test('corner big plots are wrapped by six roads', () => {
+  for (const id of ['plot_b1', 'plot_b2', 'plot_b3', 'plot_b4']) {
+    const plot = GRAND_HOTEL.plots.find(p => p.id === id);
+    const adjoining = GRAND_HOTEL.nodes.filter(n => n.adjacentPlots?.includes(id));
+    assert.equal(adjoining.length, 6, id);
+    const xs = new Set(plot.cells.map(c => c.x));
+    const ys = new Set(plot.cells.map(c => c.y));
+    assert.equal(xs.size, 2);
+    assert.equal(ys.size, 2);
+  }
+});
+
+test('unowned prebuilt hotel earns no rent and keeps its level when bought', () => {
+  const s = createGame({ seed: 81 });
+  const hotel = s.map.plots.find(p => p.id === 'plot_b5');
+  assert.equal(rentFor(s, hotel.id), 0);
+  assert.equal(s.properties[hotel.id].level, 3);
+  const p = current(s);
+  p.cash = 200_000;
+  buyPlot(s, p, hotel.id, hotel);
+  assert.equal(s.properties[hotel.id].ownerId, p.id);
+  assert.equal(s.properties[hotel.id].level, 3);
+  assert.equal(s.properties[hotel.id].bigType, 'hotel');
+  assert.ok(rentFor(s, hotel.id) > 0);
 });

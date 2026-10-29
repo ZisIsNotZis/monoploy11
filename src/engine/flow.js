@@ -225,7 +225,7 @@ async function movePhase(state, p, steps, ui) {
   p.trail = trail;
   let cameFrom = p.lastNode;
   for (let i = 0; i < steps; i++) {
-    const next = nextStep(state, p, cameFrom, i === 0);
+    const next = await chooseStep(state, p, cameFrom, i === 0, ui, i < steps - 1);
     if (!next) break;
     cameFrom = p.position;
     p.position = next;
@@ -322,6 +322,22 @@ function nextForward(state, pos, cameFrom) {
   const exits = adj[pos].filter(e => edgeUsable(state.map, state.day, e));
   const forward = exits.find(e => e.to !== cameFrom) ?? exits[0];
   return forward?.to ?? pos;
+}
+
+async function chooseStep(state, p, cameFrom, first, ui, allowAsk) {
+  const adj = buildAdj(state.map);
+  const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
+  if (exits.length >= 3 && !p.forceRandom && allowAsk && typeof ui.ask === 'function') {
+    const options = exits.filter(e => e.to !== cameFrom).map(e => e.to);
+    if (options.length > 1) {
+      const to = await ui.ask({ type: 'direction', player: p, options });
+      if (to && options.includes(to)) {
+        p.facing = to;
+        return to;
+      }
+    }
+  }
+  return nextStep(state, p, cameFrom, first);
 }
 
 function nextStep(state, p, cameFrom, first) {
@@ -453,7 +469,11 @@ async function groundPhase(state, p, ui) {
     const plot = state.map.plots.find(x => x.id === id);
     const pr = state.properties[id];
     if (!pr || !pr.ownerId) {
-      if (await ui.ask({ type: 'buy', player: p, plot, price: buyPrice(state, id) })) buyPlot(state, p, id, plot);
+      if (await ui.ask({ type: 'buy', player: p, plot, price: buyPrice(state, id), level: pr?.level ?? 0, bigType: pr?.bigType ?? null })) {
+        buyPlot(state, p, id, plot);
+        ui.render?.(state);
+        if (ui.say) await ui.say(p, 'buy');
+      }
       continue;
     }
     const owner = state.players.find(q => q.id === pr.ownerId);
@@ -463,14 +483,18 @@ async function groundPhase(state, p, ui) {
         if (type) chooseBig(state, p, id, type);
       } else if (pr.level < TUNING.maxLevel) {
         const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level) * state.priceIndex;
-        if (await ui.ask({ type: 'build', player: p, plot, cost })) buildPlot(state, p, id);
+        if (await ui.ask({ type: 'build', player: p, plot, cost })) {
+          buildPlot(state, p, id);
+          ui.render?.(state);
+          if (ui.say) await ui.say(p, 'build');
+        }
       }
       continue;
     }
     if (pr.bigType === 'park' || p.god === '财神') continue;
     let rent = rentFor(state, id);
     if (pr.bigType === 'commercial') rent = Math.round(3_000 * pr.level * state.priceIndex * (1 + state.rng.int(6)));
-    if (pr.bigType === 'hotel') { rent = Math.round(1_000 * pr.level * state.priceIndex); p.skipTurns += 2; }
+    if (pr.bigType === 'hotel') { rent = Math.round(rent * 2); p.skipTurns += 2; }
     const realestate = p.properties.map(x => state.properties[x]).find(x => x?.bigType === 'realestate');
     if (realestate) rent = Math.round(rent * Math.max(0.5, 1 - 0.1 * realestate.level));
     if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
@@ -481,6 +505,9 @@ async function groundPhase(state, p, ui) {
     state.stats.rents += rent;
     if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
     if (!p.alive) return;
+    if (pr.bigType === 'bookstore') { addCard(state, owner, randomCard(state.rng)); log(state, `${owner.name} 的书店卖出 1 本书，获得 1 张卡`); }
+    if (pr.bigType === 'research') { const adv = makeOffer(state, 1, 'research')[0]?.id; if (adv) { addCard(state, owner, adv); log(state, `${owner.name} 的研究所产出 1 张进阶卡`); } }
+    if (pr.bigType === 'energy') { const fee = Math.round(2_000 * pr.level * state.priceIndex); p.cash = Math.max(0, p.cash - fee); owner.deposit += fee; log(state, `${owner.name} 的能源中心向 ${p.name} 收取 ${fee} 能源费`); }
   }
 }
 
@@ -489,7 +516,7 @@ export function buyPlot(state, p, id, plot) {
   p.cash -= buyPrice(state, id);
   const old = state.properties[id];
   p.properties.push(id);
-  state.properties[id] = { ownerId: p.id, level: old?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: old?.bigType ?? null };
+  state.properties[id] = { ownerId: p.id, level: old?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: old?.bigType ?? null, closed: old?.closed ?? 0, inflate: old?.inflate ?? 0, price: old?.price ?? plot?.price ?? null };
   log(state, `${p.name} 买下 ${plot?.big ? '大空地' : '小地产'}`);
 }
 
@@ -599,7 +626,10 @@ async function shopFlow(state, p, ui, kind) {
     const a = await ui.ask({ type: kind, player: p, offers: state.shopOffer, bought, limit });
     if (!a || a.action === 'leave') return;
     const item = state.shopOffer[a.index]; if (!item) continue;
-    const price = kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.7 : 1)) : item.price;
+    const energy = state.players.find(q => q.alive && q.team !== p.team && q.properties.some(id => state.properties[id]?.bigType === 'energy'));
+    const energyLv = energy ? Math.max(...energy.properties.map(id => state.properties[id]?.bigType === 'energy' ? state.properties[id].level : 0)) : 0;
+    let price = kind === 'shop' ? Math.round(item.price * (p.talents.includes('shop_discount') ? 0.7 : 1)) : item.price;
+    if (energyLv > 0 && kind !== 'research') price = Math.round(price * (1 + 0.12 * energyLv));
     if (p.cash < price) continue;
     p.cash -= price; addCard(state, p, item.id); state.shopOffer.splice(a.index, 1); bought += 1;
     if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));

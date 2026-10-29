@@ -46,6 +46,32 @@ function choosePlotTarget(prompt, state) {
   return enemy[0]?.pid ?? state.map.plots[0]?.id ?? null;
 }
 
+function chooseDirection(prompt, state) {
+  const p = prompt.player;
+  const opts = prompt.options ?? [];
+  if (!opts.length) return null;
+  const nodes = Object.fromEntries(state.map.nodes.map(n => [n.id, n]));
+  let best = opts[0], bestScore = -Infinity;
+  for (const id of opts) {
+    const n = nodes[id];
+    if (!n) continue;
+    let score = state.rng.float() * 2;
+    if (n.kind === 'hospital' || n.kind === 'jail' || n.kind === 'teleport') score -= 80;
+    if (n.kind === 'money' || n.kind === 'card' || n.kind === 'lottery' || n.kind === 'shop') score += 12;
+    for (const pid of n.adjacentPlots ?? []) {
+      const pr = state.properties[pid];
+      if (!pr || !pr.ownerId) score += 18;
+      else {
+        const owner = state.players.find(q => q.id === pr.ownerId);
+        if (owner?.team === p.team) score += 14 + (pr.level ?? 0) * 2;
+        else score -= 18 + (pr.level ?? 0) * 4 + (pr.bigType === 'hotel' ? 12 : 0);
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = id; }
+  }
+  return best;
+}
+
 export function aiAnswer(prompt, state) {
   const p = prompt.player;
   switch (prompt.type) {
@@ -54,10 +80,15 @@ export function aiAnswer(prompt, state) {
       if (i >= 0) { p.aiUsedCard = true; return { action: 'card', index: i }; }
       return { action: 'roll', dice: 1 };
     }
-    case 'buy': return p.cash >= prompt.price + 30_000;
+    case 'buy': {
+      const plot = prompt.plot;
+      if (plot?.name === '中央大酒店') return p.cash >= prompt.price + 5_000;
+      if (plot?.big) return p.cash >= prompt.price + 15_000;
+      return p.cash >= prompt.price + 30_000;
+    }
     case 'build': return p.cash >= prompt.cost + 30_000;
-    case 'chooseBig': return 'commercial';
-    case 'direction': return prompt.options?.[0] ?? null;
+    case 'chooseBig': return prompt.plot?.name === '中央大酒店' ? 'hotel' : 'commercial';
+    case 'direction': return chooseDirection(prompt, state);
     case 'target': {
       if (prompt.kind === 'player') return choosePlayerTarget(prompt);
       if (prompt.kind === 'plot') return choosePlotTarget(prompt, state);

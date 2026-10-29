@@ -20,6 +20,7 @@ export function rentFor(state, ref) {
   const pr = state.properties[cellId];
   const plot = state.map.plots.find(p => p.id === cellId);
   if (!pr || !plot) return 0;
+  if (!pr.ownerId) return 0;
   if (pr.closed > 0) return 0;
   if (pr.big && (!pr.bigType || pr.bigType === 'park')) return 0;
   if (!pr.big && !(pr.level > 0)) return 0;
@@ -35,7 +36,8 @@ export function rentFor(state, ref) {
 export function buyPrice(state, ref) {
   const cellId = plotIdOf(state, ref);
   const plot = state.map.plots.find(p => p.id === cellId);
-  const base = plot?.big ? (state.config?.bigPlotPrice ?? 20_000) : (state.config?.smallPlotPrice ?? 8_000);
+  const pr = state.properties[cellId];
+  const base = pr?.price ?? plot?.price ?? (plot?.big ? (state.config?.bigPlotPrice ?? 20_000) : (state.config?.smallPlotPrice ?? 8_000));
   return Math.round(base * state.priceIndex);
 }
 

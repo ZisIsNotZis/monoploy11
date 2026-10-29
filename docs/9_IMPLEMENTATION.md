@@ -37,33 +37,60 @@ index.html      单页入口；不承载规则
 |---|---|
 | `index.html` | 单页入口；右侧栏 + 棋盘 + 开局层 |
 | `styles.css` | 全部样式；网格、侧栏、卡片、日志 |
-| `src/main.js` | UI 事件、开局、热座、飘字、目标选择 |
+| `src/main.js` | UI 事件、开局、热座、飘字、目标选择、AI/移动停顿 |
 | `src/engine/game.js` | 状态创建、卡片/神仙/经济/地图效果等规则内核 |
 | `src/engine/flow.js` | 回合引擎：异步大循环、逐格移动、落点顺序、UI 选择 await |
 | `src/engine/board-v2.js` | 图模型辅助：邻接、校验、移动、死路反弹、机关板 |
 | `src/engine/economy.js` | 租金、买价、资产、付款、租金进存款 |
 | `src/engine/rng.js` | 种子 RNG |
 | `src/data/tuning.js` | 全部金额、概率、天数、倍率和上限 |
-| `src/data/maps/grid-manor.js` | 当前 25×17 网格地图；目标地图集见 5_PRODUCT 地图目录 |
+| `src/data/experience.js` | 体验时长唯一来源：逐格、AI、飘字、新闻、气泡/语音 |
+| `src/data/maps/grand-hotel.js` | 默认产品图：27×19，中心 3×3 大酒店、四角 6 入口 2×2 大地产、初始无主建筑 |
+| `src/data/maps/grid-manor.js` | 旧 25×17 测试地图；保留选图与回归 |
 | `src/data/maps/test-manor.js` | 旧环图测试数据，只用于回归测试 |
 | `src/ui/render.js` | 网格棋盘、侧栏、日志、底部情境区、tooltip |
-| `test/*.test.js` | 15 项规则/流程测试 |
+| `src/ui/voice.js` | 本地 mp3 语音、中文语音回退、串行语音队列 |
+| `src/ui/speech.js` | 对话气泡队列、token 定位、空格/点击跳过 |
+| `test/*.test.js` | 规则/流程/体验时长测试 |
+
+## 本次实现边界：大酒店
+
+12 小时里程碑只实现一张新产品图，不实现完整地图引擎 v2。新增能力必须服从这张图，并为以后留出数据口：
+
+- 新地图 `grand-hotel`：27×19，中心 3×3 大酒店，外圈、内环、四条放射路、四角小环路。
+- `plot.cells` 是权威包围盒；渲染按 `min/max` 计算宽高，不再使用 `plot.big ? 2 : 1`。
+- `plot.price` 可覆盖默认地价；初始已建地产的价格写在 `initialProperties` 里。
+- `initialProperties` 在 `createGame` 时物化为 `ownerId: null` 的 `state.properties`，保留 `level/bigType/price`。
+- `rentFor` 对无主地产返回 0；`buyPlot` 继承等级和建筑类型。
+- 地图数据仍是静态边；动态边、区域、定时规则留在 backlog，不在本次接。
+- 兼容旧图 `grid-manor`：没有 `initialProperties` 时保持全空地开局。
+
+验收测试：
+
+- 大酒店 `validateMap` 通过；中央 3×3 有 12 个相邻路面格。
+- 3×3/2×2 的包围盒宽度正确；渲染不重叠。
+- 初始已建地产未买下时租金为 0，买下后等级/类型不变。
+- 默认地图和旧地图都能完成一局。
 
 ## 地图模型（当前）
 
-当前只有 `src/data/maps/grid-manor.js` 一张可玩地图，另有 `test-manor.js` 只用于回归测试。
+当前有两张可玩地图：默认 `grand-hotel` 与旧图 `grid-manor`；`test-manor` 只用于回归。
 
-`GRID_MANOR`：
+`GRAND_HOTEL`：
 
-- `w/h/cell`：25×17，格 44px。
-- `nodes`：所有路面格；`id = "x,y"`；`kind` 为路面类型；`x/y` 为像素坐标；`adjacentPlots` 是四邻接的地产 id。
-- `edges`：路面正交邻接，用于移动与图算法。
-- `plots`：地产；`cells` 为 1 或 4 个格子坐标；`big` 标记大地产；`street` 用于连锁租金。
-- `facility`：医院/监狱侧路入口。
-- 地产格不是 `nodes`，不可走；只通过 `adjacentPlots` 与路面关联。
-- 死路不要求传送门；移动在度数 1 处取唯一出边，原路反弹。
+- `w/h/cell`：27×19，格 44px；外圈、内环、四条放射路、四象限小环路。
+- 中心 `plot_b5` 是 3×3 大地产，四周 12 个路面格与它相邻；四角 `plot_b1..b4` 是 2×2，每个有 6 个邻接路面。
+- `plots` 的 `cells` 可以是 1、4 或 9 格；`big` 标记大地产；`street` 用于连锁租金；`plot.price` 覆盖默认地价；`plot.name` 用于 tooltip 和地图叙事。
+- `initialProperties` 在开局物化为无主已建地产：中央大酒店 Lv.3 大饭店、两块四角 Lv.2 大建筑、外圈/内圈散布 Lv.1–2 小房屋。无主地产租金为 0，买下继承等级和类型。
+- `nodes.adjacentPlots` 是四邻接的地产 id；`centerFront` 标记 12 个中心入口；地产格不是 `nodes`，不可走。
+- `facility`：医院/监狱侧路入口；地图有上下两个传送门死路。
 
-当前实现只能表达静态地图：没有地形表面、没有初始地产、没有动态边、没有地图定时规则；渲染仍假设大地产是 2×2。这些是债务，不是目标模型。
+当前能力：
+
+- 矩形大地产：`cells` 驱动包围盒，渲染按 `min/max` 计算宽高，3×3、2×2 都是一整块。
+- 初始地产：已物化、可买、可继承等级/类型；未买下不产租金。
+- 地图 AI：会评估邻接地产和中心大酒店，会买中心；但还不读地形、区域和动态边。
+- 地图数据仍是静态边；没有地形表面、区域、定时规则、地图校验器对这些字段的检查。
 
 ## 地图引擎 v2（目标，未实现）
 
@@ -148,13 +175,13 @@ index.html      单页入口；不承载规则
 |---|---|---|
 | 静态路面/地产 | 有 | 保留 |
 | 地形表面 | 无 | `surface` 影响移动、租金、落点 |
-| 矩形大地产 | 只有 2×2 | 1×2 到 3×3 的整块矩形 |
-| 初始地产 | 全部为空 | 无主已建小房屋、大建筑、公园、中立地标 |
+| 矩形大地产 | 已有 2×2、3×3，cells 驱动包围盒 | 1×2 到 3×3 的整块矩形 + 校验 |
+| 初始地产 | 大酒店已有无主已建小房屋/大建筑 | 小房屋、大建筑、公园、中立地标 |
 | 动态边 | 无 | 边组开关、单向边、换路 |
 | 地图定时规则 | 无 | 按天/回合触发的开关、喷发、潮汐、换季 |
 | 区域加成 | 无 | 巡游区、名所、乐章区 |
 | 地图校验 | 基础连通 | 初始地产、动态边、地形、地标、矩形 |
-| 地图渲染 | 静态 | 地形底色、初始建筑、关闭边、区域高亮 |
+| 地图渲染 | 包围盒、初始建筑、中心入口高亮 | 地形底色、关闭边、区域高亮 |
 
 ### 渲染
 
@@ -219,32 +246,36 @@ AI 选择目标时要读 `mapRuntime`：
 
 `playTurn` 在 `groundPhase` 之后调用 `postGodPhase`，再调用 `directionPhase`。福神/天使先对相邻地产免费加层，己方大空地打开 `chooseBig`；凶神把本次落点里刚加盖的己方小房屋降一层；土地公最后收走所有非己方相邻地产，保留原有层数和建筑类型。
 
-## 体验层接口（目标）
+## 体验层接口（当前）
 
-体验设计规定“看到什么、等多久”，架构提供统一接口，避免每个动画各写一套计时器。
+体验设计规定“看到什么、等多久”，实现把所有时长收在 `src/data/experience.js`，不散落在 `flow.js`、`render.js` 和 CSS 里。CSS 动画通过 `main.js` 写入的 `--step-dur` / `--float-dur` / `--news-dur` 读取同一组值。
 
 ```js
 ui.render(state)
-ui.ask(prompt) -> Promise<value>
-ui.step(state, player, cell) -> Promise<void>   // 逐格移动，目标 300ms
-ui.say(player, event) -> Promise<void>          // 气泡 + 语音，气泡结束才 resolve
-ui.pause(kind) -> Promise<void>                 // AI 动作间隔，默认 350ms；读信息 500ms
+ui.ask(prompt) -> Promise<value>                 // 先 flushSpeech()，AI 再按 350/500ms 停顿
+ui.step(state, player, cell) -> Promise<void>    // 等 300ms，再等气泡结束
+speech.say(player, event, text?) -> Promise<void> // 气泡 + 语音，气泡结束才 resolve
+speech.flushSpeech() -> Promise<void>            // 队列清空
+voice.speak(player, event, text?) -> Promise<{audio, text}> // 单句语音，串行
 ```
 
 规则：
 
-- 所有体验时长集中在 `src/data/experience.js`（目标文件），不散落在 `flow.js`、`render.js` 和 CSS 里。CSS 动画时长从同一组变量读取。
-- `flow.js` 在需要停顿的地方 `await ui.say` / `await ui.pause`；不在引擎里直接调用 `setTimeout`。
-- `ui.say` 负责随机台词、气泡定位、语音播放和提前关闭；台词文本与日志共用同一份 `VOICE_LINES`。
-- `ui.step` 只负责移动表现，不改引擎的移动步数；移动逻辑先算出下一格，再等 300ms。
-- AI 的延迟在 `ui.pause` 中统一处理；人类玩家跳过 `ui.pause`。
-- `prefers-reduced-motion` 只缩短 CSS 过渡，不改变 `ui.pause` 的语义等待。
+- 逐格移动 300ms；AI 相邻动作 350ms，读信息动作 500ms（`AI_INFO_PROMPTS`）；飘字和新闻 2400ms。
+- 气泡/语音是一条串行队列：同一时间只有一个气泡；台词只抽一次，气泡和 `speak` 共用同一句 `VOICE_LINES` 文本。
+- 气泡跟随说话者 token 的屏幕坐标，fixed 定位挂到 body，不参与棋盘 `transform: scale()`；上方空间不足时翻到下方，尾尖始终指向 token。
+- 气泡最多两行；点击或空格提前关闭；有语音时语音结束再停 0.3s，无语音 1.8s，静音 1.2s。静音状态由 `voice.setMuted()` / `localStorage['monopoly11:muted']` 控制。
+- 本地 mp3 优先；只有浏览器存在中文语音时才回退 `speechSynthesis`，且整句朗读，不逐字读中文。自动播放被拦截或素材缺失时按无语音时长 resolve，流程不会挂住。
+- `speak` 返回 Promise 并进入语音队列；提前关闭时 `stopSpeech()` 让当前 Promise 立即 resolve。
+- `flow.js` 不改暂停点；UI 在 `ui.ask` 和 `ui.step` 继续前 `await flushSpeech()`，所以金钱、卡牌、状态、神仙、监狱、医院台词期间引擎不会继续下一步。
+- 人类玩家不额外等待 AI 停顿，但点完按钮后仍等当前气泡结束。
+- `prefers-reduced-motion` 关闭飘字和气泡的出现动画，不改变语义等待时长；飘字仍在 2.4s 后由 JS 移除，文字仍然可见。
 
-当前债务：`main.js` 的逐格移动是 500ms，AI 回答是 220ms，飘字是 1.2s；气泡尚未实现；`speak` 是 fire-and-forget，不阻塞流程。M5 体验层按上面的接口统一。
+当前债务：新闻/事件仍只有日志，没有 2.4s 的侧栏横幅；买地/建造/收租由 `flow.js` 调用 `ui.say`，其余暂停统一收口在 UI 的 `ask`/`step`；地图机关状态显示未接。
 
 ## 测试覆盖
 
-测试覆盖地图校验、空地开局、买地/升级、街区倍率只算小房屋、彩票号码保留与奖池累计、飞弹进医院、测试卡组复制到所有玩家、强制付款顺序、队友建造、机器工人升级队友建筑、异步整局能结束，以及流程测试中的一局无残留 pending。
+测试覆盖地图校验、空地开局、买地/升级、街区倍率只算小房屋、彩票号码保留与奖池累计、飞弹进医院、测试卡组复制到所有玩家、强制付款顺序、队友建造、机器工人升级队友建筑、异步整局能结束、流程测试中的一局无残留 pending，以及体验时长表、AI 350/500ms 分类、整句台词和无声环境下的 `speak` resolve。
 
 ## 状态、提示与颜色
 
@@ -265,13 +296,13 @@ ui.pause(kind) -> Promise<void>                 // AI 动作间隔，默认 350m
 - 4 名角色 × 3 档的部分技能还没有接入。
 - 10 位神仙的部分效果还没有接入。
 - 地图 AI 只按当前静态地图估值，不读地形、动态边或区域加成。
-- 当前渲染仍假设大地产为 2×2；矩形大地产需要改渲染和结构 SVG 缩放。
-- 当前测试 15 项，缺少地图规则、初始地产、融合、天赋档位和地图模拟测试。
-- 平衡、移动端和发布按路线放到后续里程碑，不在当前范围。
+- 地图仍无地形、区域、动态边和定时规则；这些在 backlog。
+- 当前 `node --test` 22 项，已覆盖体验时长、AI 停顿分类、语音 Promise、3×3/2×2 地图与初始地产；仍缺少完整的融合、天赋档位和 12 张地图模拟测试。
+- 平衡、移动端和发布按路线放到 backlog，不在当前范围。
 
 ## 当前文件事实
 
-- `createGame` 建立 `state.properties = {}`；初始地产物化在目标引擎中实现。
-- `src/engine/flow.js` 的移动循环逐格 `await ui.step`，落点顺序为 `landingPhase → groundPhase → postGodPhase → directionPhase`。
-- `src/ui/render.js` 中地块宽度来自 `(plot.big ? 2 : 1) * S`，这是 2×2 假设，地图 v2 需要改为包围盒。
+- `createGame` 从 `map.initialProperties` 物化无主地产；没有 `initialProperties` 的旧图保持全空地。
+- `src/engine/flow.js` 的移动循环逐格 `await ui.step`；进入岔路时 `chooseStep` 先 `await ui.ask({type:'direction'})` 再走下一格。落点顺序为 `landingPhase → groundPhase → postGodPhase → directionPhase`。
+- `src/ui/render.js` 用 `plot.cells` 的 `min/max` 算包围盒；3×3 与 2×2 都按整块渲染。
 - `src/ui/icons.js` 的 `structureSvg` 现在为 6 种大建筑 × 5 级、1 种小房屋 × 5 级、公园 1 种；矩形大地产需要按宽高缩放，不改变内部比例。

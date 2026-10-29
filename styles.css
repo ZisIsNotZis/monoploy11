@@ -96,10 +96,15 @@ button { font: inherit; }
 
 @media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) 300px; } }
 .player { position: relative; }
-.money-float { position: absolute; right: 4px; top: 10px; font-size: 12px; font-weight: 700; pointer-events: none; animation: floatUp 1.2s ease-out forwards; }
+.money-float { position: absolute; right: 4px; top: 10px; font-size: 12px; font-weight: 700; pointer-events: none; animation: floatUp var(--float-dur, 2400ms) ease-out forwards; }
 .money-float.up { color: #59b36b; }
 .money-float.down { color: #e05a5a; }
-@keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(6px); }
+  7% { opacity: 1; transform: translateY(0); }
+  73% { opacity: 1; transform: translateY(-18px); }
+  100% { opacity: 0; transform: translateY(-26px); }
+}
 #log { flex: 1; max-height: none; }
 #hand.choice { display: block; overflow: auto; max-height: 52vh; min-height: 0; }
 #hand.choice h3 { margin: 2px 0 6px; color: var(--gold); font-size: 13px; }
@@ -204,13 +209,15 @@ button { font: inherit; }
 .shop-card .shop-price { flex: 0 0 auto; text-align: center; color: var(--gold); font-size: 10px; line-height: 1.15; }
 .shop-card:disabled { opacity: .35; }
 
-.money-float.map-float { position: fixed; z-index: 80; font-size: 42px !important; font-weight: 800; line-height: 1; pointer-events: none; text-shadow: 0 2px 8px #000, 0 0 2px #000; animation: floatMapUp 1.2s ease-out forwards; }
+.money-float.map-float { position: fixed; z-index: 80; font-size: 42px !important; font-weight: 800; line-height: 1; pointer-events: none; text-shadow: 0 2px 8px #000, 0 0 2px #000; animation: floatMapUp var(--float-dur, 2400ms) ease-out forwards; }
 @keyframes floatMapUp {
-  from { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
-  to { opacity: 0; transform: translate(-50%, -100%) translateY(-46px); }
+  0% { opacity: 0; transform: translate(-50%, -100%) translateY(8px); }
+  7% { opacity: 1; transform: translate(-50%, -100%) translateY(0); }
+  73% { opacity: 1; transform: translate(-50%, -100%) translateY(-38px); }
+  100% { opacity: 0; transform: translate(-50%, -100%) translateY(-46px); }
 }
 
-.money-float.map-float { right: auto !important; width: auto; white-space: nowrap; }
+.money-float.map-float { right: auto !important; width: auto; white-space: nowrap; transform: translate(-50%, -100%); }
 .cell.no-ground .occs { font-size: 30px; }
 #sideGrip::after { content: ''; position: absolute; left: 3px; top: 50%; width: 2px; height: 34px; margin-top: -17px; border-radius: 1px; background: rgba(216,161,63,.55); }
 
@@ -384,3 +391,46 @@ button { font: inherit; }
 .prop .picon .structure-icon { width: 94%; height: 94%; display: block; margin: auto; }
 .bigprop .picon .structure-icon { width: 88%; height: 88%; }
 .structure-icon path, .structure-icon rect, .structure-icon circle, .structure-icon ellipse { stroke: #e4d3b0; }
+
+/* 大酒店：中心 3×3 地标与无主已建地产 */
+.prop.grand { border-color: #c9a24a; border-width: 2px; box-shadow: inset 0 0 0 1px rgba(201,162,74,.35), 0 0 18px rgba(201,162,74,.12); }
+.prop.grand .picon { filter: drop-shadow(0 0 8px rgba(216,161,63,.35)); }
+.prop.unowned { border-style: dashed; }
+.prop.unowned::after { content: '无主'; position: absolute; left: 3px; top: 2px; font-size: 9px; color: #c9a24a; background: rgba(10,12,16,.72); padding: 0 3px; border-radius: 2px; }
+.cell.center-front { box-shadow: inset 0 0 0 1px rgba(201,162,74,.22); }
+.cell.center-front.has-ground { box-shadow: inset 0 0 0 1px rgba(201,162,74,.28); }
+
+
+/* 对话气泡：地图 token 上方的漫画气泡，fixed 定位不参与棋盘缩放 */
+.speech-bubble {
+  position: fixed; z-index: 95; max-width: min(300px, 62vw);
+  background: #14171d; color: #f2efe7; border: 1px solid rgba(216, 161, 63, .55);
+  border-radius: 8px; padding: 8px 11px 7px; cursor: pointer; user-select: none;
+  font-size: 13px; line-height: 1.45; text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+  animation: speechIn 160ms ease-out;
+}
+.speech-bubble .speech-text {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.speech-bubble .speech-skip { display: block; margin-top: 3px; color: #8b93a1; font-size: 10px; line-height: 1.2; }
+.speech-bubble .speech-tail {
+  position: absolute; left: var(--tail-x, 50%); bottom: -9px; width: 0; height: 0;
+  border-left: 7px solid transparent; border-right: 7px solid transparent;
+  border-top: 9px solid #14171d; transform: translateX(-50%);
+  filter: drop-shadow(0 1px 0 rgba(216, 161, 63, .55));
+}
+.speech-bubble.below .speech-tail {
+  top: -9px; bottom: auto; border-top: 0; border-bottom: 9px solid #14171d;
+  filter: drop-shadow(0 -1px 0 rgba(216, 161, 63, .55));
+}
+@keyframes speechIn {
+  from { opacity: 0; transform: translateY(4px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .money-float, .money-float.map-float { animation: none; }
+  .speech-bubble { animation: none; }
+}

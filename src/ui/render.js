@@ -1,7 +1,7 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
 import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=115';
-import { assetsOf } from '../engine/economy.js';
+import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
 import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=115';
@@ -139,13 +139,15 @@ function renderBoard(el, state, currentP, actions) {
   const plots = (map.plots ?? []).map(plot => {
     const pr = state.properties[plot.id];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
-    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
+    const baseName = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
+    const name = plot.name ?? baseName;
     const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : (pr?.level > 0 ? '房' : '地');
     const glyphSvg = structureSvg(plot, pr);
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
-    const w = (plot.big ? 2 : 1) * S;
-    const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
+    const w = (Math.max(...xs) - Math.min(...xs) + 1) * S;
+    const h = (Math.max(...ys) - Math.min(...ys) + 1) * S;
+    const title = `${name}${pr?.bigType ? `（${BIG_NAME[pr.bigType]}）` : ''}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}${pr ? `｜${(pr.price ?? buyPrice(state, plot.id)).toLocaleString()}` : ''}`;
     const pickPlot = state.mapPick?.plot;
     const filter = state.mapPick?.filter;
     const filterPlayer = state.players.find(q => q.id === state.mapPick?.playerId);
@@ -160,8 +162,8 @@ function renderBoard(el, state, currentP, actions) {
       pr?.inflate > 0 ? `<b class="mark inflate">涨${pr.inflate}</b>` : '',
     ].join('');
     const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
-    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
-      style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
+    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${plot.name === '中央大酒店' ? 'grand' : ''} ${pr && !owner ? 'unowned' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
+      style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${h - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
       <div class="picon">${glyphSvg}</div>${level}${marks}
     </div>`;
   }).join('');
@@ -183,7 +185,7 @@ function renderBoard(el, state, currentP, actions) {
     const da = cur ? Math.atan2(n.y - cur.y, n.x - cur.x) * 180 / Math.PI : 0;
     const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
     const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
-    return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
+    return `<div class="cell ${extra} ${flow}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
       ${place ? `<div class="occs" title="${occTitle}">${obstacleSvg(place.kind, place.name)}</div>` : ''}
@@ -260,7 +262,8 @@ function renderChoice(el, state, p, actions) {
     }
   } else  if (pending.type === 'buy') {
     const plot = state.map.plots.find(x => x.id === pending.cellId);
-    const label = plot?.big ? '大空地' : '小地产';
+    const base = plot?.big ? (pending.bigType ? BIG_NAME[pending.bigType] : '大空地') : '小地产';
+    const label = pending.level > 0 ? `${base} Lv.${pending.level}（无主已建）` : base;
     html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}</p>
       <button data-act="buy">买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {
