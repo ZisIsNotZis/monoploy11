@@ -364,3 +364,15 @@ button { font: inherit; }
 .tok { width: 26px; height: 26px; }
 .tok .ptr { top: -14px; margin-left: -8px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 13px solid var(--c, #fff); }
 .tok-avatar { width: 26px; height: 26px; }
+/* 玩家行：头像占满行高，文字和三个状态都在头像右侧，不额外占行 */
+.player { padding: 2px 0 2px 7px; }
+.pline { display: grid; grid-template-columns: 72px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 9px; row-gap: 1px; align-items: center; }
+.pline > .avatar { grid-column: 1; grid-row: 1 / 4; width: 72px; height: 72px; align-self: stretch; }
+.pline > b { grid-column: 2; grid-row: 1; align-self: end; }
+.pline > .team { grid-column: 2; grid-row: 1; justify-self: end; align-self: end; }
+.pline > .pmeta { grid-column: 2; grid-row: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pline > .pslots { grid-column: 2; grid-row: 3; display: flex; gap: 4px; align-items: center; align-self: start; }
+/* 地图 token：26px 的 70% 左右，中心落在格子右下角 */
+.cell .tokens { right: 0; bottom: 0; transform: translate(50%, 50%); z-index: 45; }
+.tok, .tok-avatar { width: 18px; height: 18px; }
+.tok .ptr { top: -10px; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid var(--c, #fff); }
