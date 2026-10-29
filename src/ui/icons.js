@@ -1,29 +1,159 @@
-// 轻量内联 SVG：不依赖外部图片，公开仓库可直接分发。
-const roads = {
-  bank: '<path d="M4 9h16M6 9v8M10 9v8M14 9v8M18 9v8M4 19h16M12 3l9 6H3z"/>',
-  shop: '<path d="M5 8h14l-1 12H6zM8 8V6a4 4 0 0 1 8 0v2M9 13h6"/>',
-  news: '<path d="M5 5h14v14H5zM8 8h8M8 11h8M8 14h5"/>',
-  card: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/>',
-  lottery: '<path d="M4 8h16v8H4zM8 8v8M16 8v8"/><circle cx="12" cy="12" r="2"/>',
-  magic: '<path d="M12 3l2.2 5.3L20 10l-4.5 3.5L17 20l-5-3-5 3 1.5-6.5L4 10l5.8-1.7z"/>',
-  tax: '<circle cx="12" cy="12" r="8"/><path d="M9 15l6-6M9 9h.01M15 15h.01"/>',
-  event: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>',
-  hospital: '<path d="M9 4h6v5h5v6h-5v5H9v-5H4V9h5z"/>',
-  jail: '<path d="M6 4v16M10 4v16M14 4v16M18 4v16M4 7h16M4 17h16"/>',
-  teleport: '<path d="M7 7h7a4 4 0 0 1 0 8H9M10 3L6 7l4 4M17 17h-7a4 4 0 0 1 0-8h5M14 21l4-4-4-4"/>',
-  start: '<path d="M6 21V4M6 5h11l-2 4 2 4H6"/>',
-  stock: '<path d="M4 20V10M9 20V6M14 20v-7M19 20V4"/>',
-};
-const props = {
-  '房': '<path d="M4 11l8-7 8 7v9H4zM9 20v-6h6v6"/>',
-  '地': '<path d="M4 6h16v12H4zM8 10h8M8 14h5"/>',
-  '大': '<path d="M3 6h18v12H3zM7 10h10M7 14h6"/>',
+// 内联 SVG：道路、地产、建筑、卡面、人物头像和放置物都按名字绘制。
+const wrap = (body, vb = '0 0 64 64') => `<svg class="icon" viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+
+/* ---------------- 路面 ---------------- */
+const ROAD = {
+  bank: '<path d="M10 24h44M14 24v26M22 24v26M30 24v26M38 24v26M46 24v26M10 50h44M32 8l24 16H8z"/>',
+  shop: '<path d="M12 22h40l-3 30H15zM20 22v-5a12 12 0 0 1 24 0v5M22 34h20M26 42h12"/>',
+  news: '<path d="M12 10h40v44H12zM20 20h24M20 28h24M20 36h16M20 44h10"/><path d="M36 44h8v8h-8z"/>',
+  card: '<rect x="10" y="14" width="44" height="36" rx="4"/><path d="M18 24h28M18 32h18M18 40h12"/><path d="M44 38l4 4 6-8"/>',
+  lottery: '<path d="M8 24h48v16H8z"/><path d="M18 24v16M46 24v16"/><circle cx="32" cy="32" r="5"/><path d="M12 20l-4-4M52 20l4-4"/>',
+  magic: '<path d="M32 6l6 14 15 2-11 10 3 15-13-8-13 8 3-15L11 22l15-2z"/><circle cx="32" cy="34" r="3"/>',
+  tax: '<circle cx="32" cy="32" r="21"/><path d="M22 40l20-16M22 24h.1M42 40h.1M24 40h16M24 24h16"/>',
+  event: '<circle cx="32" cy="32" r="22"/><path d="M32 16v20M32 44h.1"/><path d="M10 12l8 6M54 12l-8 6"/>',
+  hospital: '<path d="M24 8h16v16h16v16H40v16H24V40H8V24h16z"/>',
+  jail: '<rect x="10" y="10" width="44" height="44" rx="3"/><path d="M20 12v40M30 12v40M40 12v40M50 12v40M12 20h40M12 32h40M12 44h40"/>',
+  teleport: '<path d="M12 20h24a12 12 0 0 1 0 24H24M18 12l-8 8 8 8M52 44H28a12 12 0 0 1 0-24h12M46 52l8-8-8-8"/>',
+  start: '<path d="M16 56V8M16 12h32l-5 10 5 10H16"/><path d="M10 56h12"/>',
+  stock: '<path d="M10 52V10M10 52h44"/><path d="M16 42l10-10 8 5 12-18"/><path d="M39 19h9v9"/>',
+  platform: '<rect x="8" y="18" width="48" height="28" rx="4"/><path d="M16 26h8M16 34h16M40 26h8M40 34h8"/><path d="M20 54h24M24 46v8M40 46v8"/>',
+  empty: '',
 };
 export function svgIcon(kind) {
-  if (roads[kind]) return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${roads[kind]}</svg>`;
-  if (props[kind]) return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${props[kind]}</svg>`;
-  return null;
+  const k = kind === 'hospitalGate' ? 'hospital' : kind === 'jailGate' ? 'jail' : kind;
+  return ROAD[k] ? wrap(ROAD[k]) : null;
 }
-export function tokenSvg() {
-  return '<svg class="tok-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor"/><path d="M12 1l5 6H7z" fill="currentColor"/></svg>';
+
+/* ---------------- 小房屋 / 大建筑 ---------------- */
+function house(level) {
+  const lv = Math.max(1, Math.min(5, level || 1));
+  const h = 14 + lv * 4;
+  const y = 56 - h;
+  let windows = '';
+  for (let i = 0; i < lv; i++) windows += `<rect x="${24 + (i % 2) * 10}" y="${y + 8 + Math.floor(i / 2) * 8}" width="5" height="5"/>`;
+  return wrap(`<path d="M10 56h44"/><path d="M16 ${y}h32v${56 - y}H16z"/><path d="M12 ${y}h40L32 ${y - 10}z"/><rect x="27" y="45" width="10" height="11"/>${windows}${lv >= 4 ? '<path d="M24 20h16M32 14v20"/>' : ''}`);
+}
+function big(type, level) {
+  const lv = Math.max(1, Math.min(5, level || 1));
+  if (type === 'park') return wrap('<path d="M8 56h48"/><path d="M32 56V34"/><circle cx="32" cy="24" r="14"/><path d="M22 30c4-8 16-8 20 0"/><path d="M16 56h32"/><path d="M18 48h10M36 48h10"/>');
+  const base = '<path d="M8 56h48"/>';
+  if (type === 'commercial') return wrap(`${base}<path d="M10 22h44v34H10z"/><path d="M10 22l6-10h32l6 10"/><path d="M18 30h28M18 40h28M18 50h28"/>${lv >= 3 ? '<circle cx="32" cy="10" r="4"/>' : ''}${lv >= 4 ? '<path d="M14 18v-4M50 18v-4"/>' : ''}`);
+  if (type === 'hotel') return wrap(`${base}<path d="M16 56V18h32v38"/><path d="M16 30h32M16 42h32"/><path d="M24 18v38M40 18v38"/><path d="M20 12h24"/>${lv >= 3 ? '<path d="M22 6h20"/>' : ''}${lv >= 5 ? '<circle cx="32" cy="36" r="4"/>' : ''}`);
+  if (type === 'bookstore') return wrap(`${base}<path d="M12 22h40v34H12z"/><path d="M12 22l8-10h24l8 10"/><path d="M20 32h24v14H20zM24 32v14M36 32v14"/>${lv >= 3 ? '<path d="M16 26h32"/>' : ''}${lv >= 4 ? '<path d="M22 38h20"/>' : ''}`);
+  if (type === 'energy') return wrap(`${base}<path d="M12 56V26h14v30M38 56V20h14v36"/><path d="M19 18v8M45 12v8"/><path d="M20 38h6M38 32h14"/><path d="M32 26l-6 12h7l-2 10 8-14h-7z"/>`);
+  if (type === 'realestate') return wrap(`${base}<path d="M10 56V18h44v38"/><path d="M16 26h8v8h-8zM26 26h8v8h-8zM36 26h8v8h-8zM16 38h8v8h-8zM26 38h8v8h-8zM36 38h8v8h-8z"/><path d="M26 56V46h12v10"/>${lv >= 4 ? '<path d="M32 8v10"/>' : ''}`);
+  if (type === 'research') return wrap(`${base}<path d="M12 56V30h40v26"/><path d="M20 30V18h24v12"/><path d="M32 8v10"/><circle cx="32" cy="12" r="3"/><path d="M20 40h24M20 48h24"/>${lv >= 3 ? '<path d="M16 24h32"/>' : ''}${lv >= 4 ? '<circle cx="32" cy="44" r="4"/>' : ''}`);
+  return wrap(`${base}<path d="M12 56h40"/><path d="M16 56V24l16-10 16 10v32"/><path d="M24 56V38h16v18"/>`);
+}
+export function structureSvg(plot, pr) {
+  if (!plot) return '';
+  if (plot.big) {
+    if (!pr?.bigType) return wrap('<path d="M8 56h48"/><path d="M10 46h44M16 46v10M32 46v10M48 46v10"/><path d="M18 30l14-12 14 12"/><path d="M24 30v16M40 30v16"/>');
+    return big(pr.bigType, pr.level);
+  }
+  if (!pr || !pr.level) return wrap('<path d="M8 56h48"/><path d="M12 50h40M18 56v-6M32 56v-6M46 56v-6"/><path d="M20 24l12-10 12 10"/><path d="M24 24v16M40 24v16"/>');
+  return house(pr.level);
+}
+
+/* ---------------- 卡面 ---------------- */
+const CARD_ART = {
+  buyland: '<path d="M10 52h44M14 52V26l18-14 18 14v26"/><circle cx="32" cy="36" r="7"/><path d="M29 36h6M32 33v6"/>',
+  exchange: '<path d="M8 24h20l-5-6M56 40H36l5 6"/><path d="M14 46h16v-8H14zM34 24h16v-8H34z"/>',
+  rebuild: '<path d="M14 50l22-22 8 8-22 22z"/><path d="M34 20l8-8 10 10-8 8"/><path d="M12 56h12"/>',
+  close: '<rect x="12" y="16" width="40" height="36"/><path d="M12 28h40M20 16v36M32 16v36M44 16v36"/><path d="M16 50l32-36"/>',
+  truck: '<path d="M8 42h30V26H8zM38 42h18V32h-8l-4-6h-6"/><circle cx="18" cy="48" r="5"/><circle cx="46" cy="48" r="5"/><path d="M8 32h30"/>',
+  monster: '<path d="M14 46c-4-14 6-30 20-30 12 0 20 14 16 30-8-4-12 6-20 2-8 4-12-6-16-2z"/><path d="M23 24l7 6-6 5M41 24l-7 6 6 5"/><path d="M22 42c4 4 16 4 20 0"/>',
+  worker: '<path d="M12 30a20 20 0 0 1 40 0z"/><path d="M10 30h44M32 10v20"/><path d="M18 42h28v12H18z"/><path d="M24 42V32M40 42V32"/>',
+  inflate: '<path d="M32 56V18M22 28l10-10 10 10"/><circle cx="18" cy="48" r="5"/><circle cx="46" cy="48" r="5"/><path d="M18 48h.1M46 48h.1"/>',
+  remotedice: '<rect x="10" y="18" width="28" height="28" rx="4"/><circle cx="18" cy="26" r="2"/><circle cx="30" cy="38" r="2"/><path d="M46 18h8v8M54 18L38 34"/><path d="M42 46l8-8M46 54l8-8"/>',
+  turtle: '<ellipse cx="30" cy="36" rx="18" ry="12"/><path d="M12 36h36M22 26v20M32 24v24M42 26v20"/><circle cx="51" cy="29" r="5"/><path d="M46 24l-4-6M8 44l-4 6M22 48l-3 6M38 48l3 6"/>',
+  turn: '<path d="M18 50V26a12 12 0 0 1 24 0v12"/><path d="M32 28l10 10 10-10"/><path d="M10 50h26"/>',
+  stay: '<rect x="16" y="14" width="32" height="40" rx="4"/><path d="M24 24v20M40 24v20"/>',
+  sleep: '<path d="M40 12a20 20 0 1 0 10 34 16 16 0 0 1-10-34z"/><path d="M14 22h12l-12 16h12M40 34h8l-8 10h8"/>',
+  hibernate: '<path d="M32 8v48M12 18l40 28M52 18L12 46M24 12v8M40 12v8M24 44v8M40 44v8M8 26h8M8 38h8M48 26h8M48 38h8"/>',
+  roadblock: '<path d="M12 48h40M16 48V30h32v18"/><path d="M12 30h40v-6H12z"/><path d="M20 24v-8M32 24v-8M44 24v-8"/><path d="M16 38h32"/>',
+  superdice: '<rect x="8" y="12" width="20" height="20" rx="3"/><rect x="34" y="30" width="22" height="22" rx="3"/><circle cx="14" cy="18" r="1.5"/><circle cx="28" cy="26" r="1.5"/><circle cx="40" cy="36" r="1.5"/><circle cx="50" cy="46" r="1.5"/>',
+  jelly: '<path d="M10 44c0-10 8-12 8-22 0 10 8 12 8 22M26 44c0-10 8-12 8-22 0 10 8 12 8 22M42 44c0-10 6-12 6-22 0 10 6 12 6 22M8 50h48"/>',
+  randomdoor: '<path d="M18 54V14h28v40M18 14l14-8 14 8"/><path d="M30 34h8M34 30v8"/><circle cx="40" cy="34" r="1.5"/><path d="M8 54h48"/>',
+  portal: '<circle cx="32" cy="32" r="18"/><circle cx="32" cy="32" r="8"/><path d="M12 20l6 6M52 20l-6 6M12 44l6-6M52 44l-6-6"/>',
+  motorcycle: '<circle cx="14" cy="42" r="8"/><circle cx="50" cy="42" r="8"/><path d="M14 42l10-14h12l6 14M24 28h14M38 28l10 14M22 22h10"/>',
+  car: '<path d="M8 40l6-14h36l6 14v10H8z"/><path d="M18 26l4-8h20l4 8M8 40h48"/><circle cx="18" cy="48" r="4"/><circle cx="46" cy="48" r="4"/>',
+  robotdoll: '<rect x="18" y="18" width="28" height="24" rx="6"/><circle cx="26" cy="30" r="2"/><circle cx="38" cy="30" r="2"/><path d="M26 38h12M32 18V8M24 8h16M14 28v10M50 28v10M22 42v10M42 42v10"/>',
+  start: '<path d="M18 54h28M22 54V30h20v24"/><path d="M32 30V16M26 20l6-8 6 8"/><circle cx="32" cy="8" r="4"/>',
+  mine: '<circle cx="32" cy="34" r="16"/><path d="M32 18v-8M32 50v8M16 34h-8M48 34h8M22 24l-6-6M42 24l6-6M22 44l-6 6M42 44l6 6"/><circle cx="32" cy="34" r="4"/>',
+  timebomb: '<circle cx="32" cy="38" r="16"/><path d="M32 22v-8M28 10h8M42 22l6-6M40 14l4 4"/><path d="M26 32h12M26 40h12"/>',
+  missile: '<path d="M32 58V16M24 26l8-10 8 10M22 34l-8 8 10 4M42 34l8 8-10 4M26 50l6 8 6-8"/>',
+  quantum: '<circle cx="32" cy="32" r="6"/><ellipse cx="32" cy="32" rx="24" ry="9"/><ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(60 32 32)"/><ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(-60 32 32)"/>',
+  dynamite: '<path d="M20 22h20l6 28H14z"/><path d="M24 22v-8M34 22v-8M28 14c0-6 8-6 8 0"/><path d="M20 32h20M18 42h22"/>',
+  banana: '<path d="M14 18c2 18 14 30 34 28-2 8-12 12-22 8C14 50 8 32 14 18z"/><path d="M14 18l-6-6M16 20l4-8"/>',
+  trap: '<path d="M12 46h40M16 46l8-20 8 20 8-20 8 20"/><path d="M8 52h48"/><circle cx="24" cy="24" r="2"/><circle cx="32" cy="32" r="2"/><circle cx="40" cy="24" r="2"/>',
+  free: '<path d="M32 8l20 8v14c0 14-9 22-20 26-11-4-20-12-20-26V16z"/><path d="M20 30l8 8 16-16"/>',
+  audit: '<circle cx="26" cy="26" r="14"/><path d="M36 36l16 16M20 26h12M26 20v12"/>',
+  equalpoor: '<path d="M32 12v40M18 20h28M14 20l-6 12h12zM50 20l-6 12h12z"/><path d="M14 44h12M38 44h12"/>',
+  equalrich: '<path d="M32 10v44M18 18h28M12 18l-6 12h12zM52 18l-6 12h12z"/><circle cx="32" cy="44" r="7"/><path d="M29 44h6M32 41v6"/>',
+  pick: '<path d="M12 30V16h8v10M20 30V12h8v16M28 30V14h8v16M36 30V18h8v16"/><path d="M12 30c0 12 8 22 20 22s20-8 20-22"/>',
+  scheme: '<rect x="10" y="10" width="44" height="44"/><path d="M20 12v40M30 12v40M40 12v40M50 12v40M12 22h40M12 34h40M12 46h40"/><circle cx="32" cy="34" r="4"/>',
+  magic: '<path d="M12 16h20v16H12zM32 32h20v16H32z"/><path d="M16 32l-4 8M48 32l4-8"/><path d="M18 22h8M38 40h8"/>',
+  invitegod: '<path d="M32 8v10M20 18h24v10c0 10-8 18-12 18s-12-8-12-18z"/><path d="M26 52h12M32 46v6"/><path d="M14 14l4 4M50 14l4 4"/>',
+  sendgod: '<path d="M8 34c14-18 28-18 40-6M48 28l10-8-2 14"/><path d="M16 44c10-8 22-8 32 0M8 52l8-4 6 8"/>',
+  samefate: '<circle cx="24" cy="32" r="12"/><circle cx="40" cy="32" r="12"/><path d="M18 32h28M28 24l-6 8 6 8M36 24l6 8-6 8"/>',
+  transfer: '<circle cx="18" cy="22" r="7"/><path d="M8 52v-6c0-6 4-10 10-10h8"/><path d="M30 32h24M46 24l8 8-8 8"/><circle cx="50" cy="18" r="5"/>',
+  wuxie: '<path d="M32 8l20 8v14c0 14-9 22-20 26-11-4-20-12-20-26V16z"/><path d="M16 48L48 16"/>',
+  rushmissile: '<path d="M18 58V24M10 34l8-10 8 10M46 58V24M38 34l8-10 8 10M32 46V12M24 22l8-10 8 10"/>',
+  glory: '<path d="M10 22l8 18h28l8-18-12 8-10-18-10 18z"/><path d="M22 46h20M24 54h16"/>',
+  predicament: '<path d="M10 54h44M18 54V26l14-10 14 10v28"/><path d="M22 26l8 8M38 26l-8 8M24 44l8 8M40 44l-8 8"/>',
+  green: '<path d="M38 10l-6 24h14l-4 20M20 50l8-12M14 42l10 2M24 56l6-6"/>',
+  disaster: '<path d="M32 8c-10 0-18 8-18 18 0 8 4 12 8 16v8h20v-8c4-4 8-8 8-16 0-10-8-18-18-18z"/><circle cx="25" cy="28" r="3"/><circle cx="39" cy="28" r="3"/><path d="M26 40h12"/>',
+  godfavor: '<circle cx="32" cy="32" r="20"/><path d="M32 12v8M32 44v8M12 32h8M44 32h8M18 18l6 6M40 40l6 6M46 18l-6 6M24 40l-6 6"/><circle cx="32" cy="32" r="6"/>',
+};
+export function cardSvg(id) {
+  return wrap(CARD_ART[id] ?? '<rect x="10" y="14" width="44" height="36" rx="4"/>');
+}
+
+/* ---------------- 放置物 / 神仙 ---------------- */
+const OCC = {
+  dog: '<path d="M14 40c0-12 8-20 18-20 10 0 18 8 18 20v14H14z"/><path d="M18 28l-8-8 10-4M46 28l8-8-10-4"/><circle cx="26" cy="36" r="2"/><circle cx="38" cy="36" r="2"/><path d="M28 44h8M32 44v4"/>',
+  beggar: '<circle cx="32" cy="18" r="8"/><path d="M16 56c0-12 8-20 16-20s16 8 16 20"/><path d="M18 40h20a8 8 0 0 1 0 16H18z"/><path d="M22 46h12"/>',
+  merchant: '<path d="M12 32c0-14 9-22 20-22s20 8 20 22-9 20-20 20-20-6-20-20z"/><path d="M18 26c6 4 22 4 28 0M22 36c6 6 14 6 20 0"/><path d="M14 14l6 8M50 14l-6 8"/>',
+  mine: '<circle cx="32" cy="32" r="14"/><path d="M32 18v-8M32 46v8M18 32h-8M46 32h8M22 22l-6-6M42 22l6-6M22 42l-6 6M42 42l6 6"/><circle cx="32" cy="32" r="4"/>',
+  dynamite: '<path d="M22 20h20l4 32H18z"/><path d="M26 20v-6M38 20v-6M28 14c0-6 8-6 8 0"/><path d="M20 34h24M18 44h28"/>',
+  timebomb: '<circle cx="32" cy="38" r="16"/><path d="M32 22v-8M28 10h8M42 22l6-6M40 14l4 4"/><path d="M24 34h16M24 42h16"/>',
+  banana: '<path d="M14 18c2 18 14 30 34 28-2 8-12 12-22 8C14 50 8 32 14 18z"/><path d="M14 18l-6-6M16 20l4-8"/>',
+  jelly: '<path d="M10 44c0-10 8-12 8-22 0 10 8 12 8 22M26 44c0-10 8-12 8-22 0 10 8 12 8 22M42 44c0-10 6-12 6-22 0 10 6 12 6 22M8 50h48"/>',
+  trap: '<path d="M12 46h40M16 46l8-20 8 20 8-20 8 20"/><path d="M8 52h48"/><circle cx="24" cy="24" r="2"/><circle cx="32" cy="32" r="2"/><circle cx="40" cy="24" r="2"/>',
+  roadblock: '<path d="M12 48h40M16 48V30h32v18"/><path d="M12 30h40v-6H12z"/><path d="M20 24v-8M32 24v-8M44 24v-8M16 38h32"/>',
+};
+const GOD = {
+  财神: '<circle cx="32" cy="32" r="22"/><path d="M16 40h32l-4 10H20z"/><path d="M22 32h20M24 24h16M32 16v16"/>',
+  穷神: '<circle cx="32" cy="32" r="22"/><path d="M20 24h24l-4 20H24z"/><path d="M18 20l-6-6M46 20l6-6M24 48v8M40 48v8"/>',
+  福神: '<circle cx="32" cy="30" r="20"/><path d="M20 24h24M18 32h28M22 40h20M32 10v6M14 12l4 6M50 12l-4 6"/>',
+  衰神: '<circle cx="32" cy="32" r="22"/><path d="M16 26c8-8 24-8 32 0M18 38c8-6 20-6 28 0M22 24l-4 4M42 24l4 4"/>',
+  天使: '<circle cx="32" cy="24" r="10"/><path d="M12 46c8-14 20-14 20 0 0-14 12-14 20 0M18 18c-6-6-12-4-10 4 2 6 8 8 12 4M46 18c6-6 12-4 10 4-2 6-8 8-12 4"/>',
+  恶魔: '<circle cx="32" cy="32" r="18"/><path d="M14 20l-4-10 12 4M50 20l4-10-12 4M22 28l4 4M42 28l-4 4M24 42c4 4 12 4 16 0"/>',
+  土地公: '<circle cx="32" cy="22" r="10"/><path d="M16 56c0-16 8-24 16-24s16 8 16 24"/><path d="M32 32v16M24 40h16M14 16h6M44 16h6"/>',
+  糊涂神: '<circle cx="32" cy="32" r="22"/><path d="M20 24c8-8 16 8 24 0M20 40c8 8 16-8 24 0"/><circle cx="32" cy="32" r="5"/>',
+  武神: '<circle cx="32" cy="32" r="22"/><path d="M32 10v44M20 20l24 24M44 20L20 44"/><circle cx="32" cy="32" r="6"/>',
+  凶神: '<circle cx="32" cy="32" r="22"/><path d="M22 24l8 4M42 24l-8 4M24 42c6-6 10-6 16 0M28 32h8"/>',
+};
+export function obstacleSvg(kind, name) {
+  if (kind === 'god') return wrap(GOD[name] ?? GOD['福神']);
+  return wrap(OCC[kind] ?? '<circle cx="32" cy="32" r="18"/>');
+}
+
+/* ---------------- 人物头像 ---------------- */
+const HAIR = [
+  '<path d="M14 28c0-12 8-20 18-20s18 8 18 20c-4-6-10-8-18-8s-14 2-18 8z"/>',
+  '<path d="M16 28c0-12 7-20 16-20 10 0 16 8 16 20-6-2-8-8-8-8s-6 8-24 8z"/>',
+  '<path d="M13 30c0-14 9-22 19-22 12 0 19 8 19 22-6-8-12-10-19-10s-13 2-19 10z"/><path d="M12 28l-4-8 8 2M52 28l4-8-8 2"/>',
+  '<path d="M16 26c2-10 8-16 16-16s14 6 16 16c-6-2-10-6-16-6s-10 4-16 6z"/><circle cx="32" cy="12" r="5"/>',
+];
+export function avatarSvg(charId, color, name) {
+  const hash = [...charId].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const skin = ['#f3c9a4', '#dfae83', '#f7d7bd', '#c98f64'][hash % 4];
+  const hair = HAIR[hash % HAIR.length];
+  const acc = charId === 'doctor' ? '<path d="M22 44c0 8 20 8 20 0"/><circle cx="42" cy="48" r="3"/>' :
+    charId === 'octopus' ? '<path d="M16 48c-4 8 4 12 8 4M28 50c-4 8 4 12 8 4M40 50c-4 8 4 12 8 4"/>' :
+    charId === 'bear' ? '<circle cx="18" cy="16" r="7"/><circle cx="46" cy="16" r="7"/>' :
+    charId === 'yuanyuan' ? '<path d="M42 14l8-6 2 8-8 4"/>' : '';
+  return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${color}" opacity=".22"/><circle cx="32" cy="26" r="14" fill="${skin}"/>${hair}<path d="M12 58c2-12 10-18 20-18s18 6 20 18" fill="${color}"/><circle cx="26" cy="27" r="1.5" fill="#222"/><circle cx="38" cy="27" r="1.5" fill="#222"/><path d="M27 34c3 2 7 2 10 0" stroke="#222" stroke-width="1.5" fill="none"/><text x="32" y="58" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${name.slice(0,1)}</text>${acc}<title>${name}</title></svg>`;
 }

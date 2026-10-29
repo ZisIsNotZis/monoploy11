@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=94';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=95';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg } from './icons.js';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -141,7 +141,7 @@ function renderBoard(el, state, currentP, actions) {
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
     const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : (pr?.level > 0 ? '房' : '地');
-    const glyphSvg = svgIcon(glyph) ?? glyph;
+    const glyphSvg = structureSvg(plot, pr);
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
     const w = (plot.big ? 2 : 1) * S;
@@ -186,7 +186,7 @@ function renderBoard(el, state, currentP, actions) {
     return `<div class="cell ${extra} ${flow}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
-      ${place ? `<div class="occs" title="${occTitle}">${place.kind === 'god' ? (GOD_ICON[place.name] ?? '神') : (OCC_ICON[place.kind] ?? '?')}</div>` : ''}
+      ${place ? `<div class="occs" title="${occTitle}">${obstacleSvg(place.kind, place.name)}</div>` : ''}
       ${dirTarget ? `<i class="dir-mark" style="--a:${da}deg"></i>` : ''}
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
@@ -218,7 +218,7 @@ function renderPlayers(el, state, currentP) {
     const skillTitle = `${p.name}${skills ? '\n' + skills : ''}`;
     return `<div class="${cls}" style="border-left-color:${p.color}" title="${skillTitle}">
       <div class="pline">
-        <span class="avatar" style="background:${p.color}">${p.name[0]}</span>
+        <span class="avatar">${avatarSvg(p.charId, p.color, p.name)}</span>
         <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>
         <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
         <span class="pslots">
@@ -300,7 +300,7 @@ function renderChoice(el, state, p, actions) {
       const off = state.shopBought >= state.shopLimit ? 'disabled' : '';
       const name = CARD_DEFS[item.id]?.name ?? item.id;
       return `<button class="shop-card" data-${key}="${i}" ${off} title="${name}：${CARD_DESC[item.id] ?? ''}">
-        <span class="shop-art">${name.slice(0, 1)}</span><span class="shop-price">${price}</span></button>`;
+        <span class="shop-art">${cardSvg(item.id)}</span><span class="shop-price">${price}</span></button>`;
     }).join('');
     html = box(title, `<div class="shop-grid">${offers}</div><button data-act="skip">离开</button>`);
   } else if (pending.type === 'response') {
@@ -356,7 +356,7 @@ function renderHand(root, state, p, actions) {
     const rot = overlap ? (i - (n - 1) / 2) * 1.6 : 0;
     const passive = PASSIVE.has(id);
     return `<button class="card${passive ? ' disabled' : ''}" data-card="${i}" ${passive ? 'disabled' : ''} style="--i:${i};z-index:${i};margin-left:${i ? Math.round(step - 74) : 0}px;transform:rotate(${rot}deg)" title="${passive ? '被动卡，在触发时询问是否使用' : tip}">
-      <div class="art">${(def?.name ?? id).slice(0, 1)}</div>
+      <div class="art">${cardSvg(id)}</div>
     </button>`;
   }).join('');
   root.cards.querySelectorAll('button[data-card]').forEach(b => b.onclick = () => actions.card(+b.dataset.card));
