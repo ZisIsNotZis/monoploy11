@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=141';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=142';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=141';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=142';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -244,9 +244,14 @@ function renderPlayers(el, state, currentP) {
 function renderChoice(el, state, p, actions) {
   if (state.phase === 'over') {
     const rows = [...state.players].sort((a, b) => assetsOf(state, b) - assetsOf(state, a))
-      .map((x, i) => `<tr><td>${i + 1}</td><td>${x.name}</td><td>${x.team}</td><td>${assetsOf(state, x).toLocaleString()}</td><td>${x.alive ? '' : '破产'}</td></tr>`).join('');
+      .map((x, i) => `<tr><td>${i + 1}</td><td>${x.name}</td><td>${x.team}</td><td>${assetsOf(state, x).toLocaleString()}</td><td>${x.properties.length}</td><td>${x.alive ? '' : '破产'}</td></tr>`).join('');
+    const center = state.map.plots.find(x => x.name === '中央大酒店');
+    const centerPr = center ? state.properties[center.id] : null;
+    const centerOwner = centerPr?.ownerId ? state.players.find(x => x.id === centerPr.ownerId) : null;
+    const reason = state.day > (state.config.dayLimit ?? 50) ? `第 ${state.config.dayLimit ?? 50} 天资产结算` : '对手全部破产';
     el.innerHTML = `<h3>比赛结束：${state.winnerTeam ?? '—'} 胜</h3>
-      <table class="rank"><thead><tr><th>#</th><th>角色</th><th>队伍</th><th>资产</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+      <p class="hint">${reason} · 总租金 ${Math.round(state.stats.rents).toLocaleString()} · 破产 ${state.stats.bankruptcies} 人 · 中心大酒店：${centerOwner?.name ?? '无主'}</p>
+      <table class="rank"><thead><tr><th>#</th><th>角色</th><th>队伍</th><th>资产</th><th>地产</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     return;
   }
   if (state.mapPick) {
