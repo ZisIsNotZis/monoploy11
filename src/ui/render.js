@@ -300,6 +300,10 @@ function renderChoice(el, state, p, actions) {
         <span class="shop-art">${name.slice(0, 1)}</span><span class="shop-price">${price}</span></button>`;
     }).join('');
     html = box(title, `<div class="shop-grid">${offers}</div><button data-act="skip">离开</button>`);
+  } else if (pending.type === 'response') {
+    const label = pending.label ?? pending.cardId;
+    const text = pending.response === 'samefate' ? '要使用同命卡，把同一效果反弹给使用者吗？' : pending.response === 'transfer' ? '要使用转移卡，把这次效果转给别人吗？' : '要使用无懈卡，取消这张卡吗？';
+    html = box('响应', `<p class="hint">${label}</p><p>${text}</p><button data-act="yes">使用</button><button data-act="no">不用</button>`);
   } else if (pending.type === 'magic') {
     html = box('魔法屋', `<div class="offers">${(pending.options ?? []).map(o => `<button class="offer" data-magic="${o.id}" ${o.disabled ? 'disabled' : ''}><b>${o.name}</b><span>${o.desc}</span></button>`).join('')}</div>`);
   } else if (pending.type === 'news') {

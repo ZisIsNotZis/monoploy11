@@ -112,6 +112,7 @@ function applyPromptToState(p) {
     state.pending = { type: p.type };
     return;
   }
+  if (p.type === 'response') { state.pending = { type: 'response', cardId: p.cardId, response: p.response, label: p.label }; return; }
   if (p.type === 'magic') { state.pending = { type: 'magic', options: p.options ?? [] }; return; }
 }
 
@@ -150,6 +151,8 @@ const actions = {
     if (name === 'leave') return answer({ action: 'leave' });
     if (name === 'news') return answer(true);
     if (name === 'bank-confirm') return answer({ action: 'bank', keep: numberInput() });
+    if (name === 'yes') return answer(true);
+    if (name === 'no') return answer(false);
     if (name === 'cancel-pick') return answer(null);
   },
   openBank() {},

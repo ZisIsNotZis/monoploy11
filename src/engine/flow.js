@@ -11,6 +11,9 @@ import {
 const GROUND_CARDS = new Set(['buyland', 'exchange', 'rebuild', 'worker', 'truck']);
 const STREET_CARDS = new Set(['close', 'inflate']);
 const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
+const RESPONSE_CARDS = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','magic','sendgod','equalpoor']);
+const SAME_CARDS = new Set(['sleep','hibernate','scheme']);
+const TRANSFER_CARDS = new Set(['scheme','missile','equalpoor']);
 
 export function startSession(config) {
   const state = createGame(config);
@@ -133,7 +136,8 @@ async function actionPhase(state, p, ui) {
     if (a.action === 'card') {
       const id = p.cards[a.index];
       if (!id || PASSIVE.has(id)) continue;
-      if (id === 'remotedice') { if (await remoteDiceFlow(state, p, ui, a.index)) return null; continue; }
+      if (id === 'remotedice') { if (await remoteDiceFlow(state, p, ui, a.index, (1 + Math.max(0, p.vehicle ?? 0)) * 6)) return null; continue; }
+      if (id === 'superdice') { if (await remoteDiceFlow(state, p, ui, a.index, 12)) return null; continue; }
       let target = null;
       const def = CARD_DEFS[id];
       if (def.target !== 'self' && def.target !== 'all') {
@@ -164,6 +168,41 @@ async function actionPhase(state, p, ui) {
         log(state, `${p.name} 使用 转向卡：${q.name} 被强制转向`);
         continue;
       }
+      const q = state.players.find(x => x.id === target);
+      if (q && RESPONSE_CARDS.has(id)) {
+        if (SAME_CARDS.has(id) && q.cards.includes('samefate')) {
+          const use = await ui.ask({ type: 'response', player: q, cardId: id, response: 'samefate', label: CARD_DEFS[id]?.name ?? id });
+          if (use) {
+            q.cards.splice(q.cards.indexOf('samefate'), 1);
+            p.cards.splice(a.index, 1);
+            applyCard(state, p, id, p.id);
+            log(state, `${q.name} 用同命卡把 ${CARD_DEFS[id]?.name ?? id} 反弹给 ${p.name}`);
+            continue;
+          }
+        }
+        if (TRANSFER_CARDS.has(id) && q.cards.includes('transfer')) {
+          const use = await ui.ask({ type: 'response', player: q, cardId: id, response: 'transfer', label: CARD_DEFS[id]?.name ?? id });
+          if (use) {
+            const others = state.players.filter(x => x.alive && x.id !== q.id);
+            const other = await ui.ask({ type: 'target', player: q, cardId: 'transfer', label: '转移目标', kind: 'player', players: others });
+            if (other) {
+              q.cards.splice(q.cards.indexOf('transfer'), 1);
+              useCard(state, a.index, other);
+              log(state, `${q.name} 用转移卡把 ${CARD_DEFS[id]?.name ?? id} 转给 ${state.players.find(x => x.id === other)?.name}`);
+              continue;
+            }
+          }
+        }
+        if (q.cards.includes('wuxie')) {
+          const use = await ui.ask({ type: 'response', player: q, cardId: id, response: 'wuxie', label: CARD_DEFS[id]?.name ?? id });
+          if (use) {
+            q.cards.splice(q.cards.indexOf('wuxie'), 1);
+            p.cards.splice(a.index, 1);
+            log(state, `${q.name} 用无懈卡取消了 ${CARD_DEFS[id]?.name ?? id}`);
+            continue;
+          }
+        }
+      }
       useCard(state, a.index, target);
       continue;
     }
@@ -184,6 +223,15 @@ async function movePhase(state, p, steps, ui) {
     p.facing = next;
     path.push(next);
     state.lastRoll.path = path;
+    if (p.bombSteps > 0) {
+      p.bombSteps -= 1;
+      if (p.bombSteps <= 0) {
+        p.god = null; p.godDays = 0;
+        if (!pay(state, p, null, TUNING.bombDamage, '定时炸弹')) state.stats.bankruptcies += 1;
+        log(state, `${p.name} 身上的定时炸弹爆炸`);
+        if (!p.alive) return true;
+      }
+    }
     if (next === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
@@ -252,7 +300,7 @@ async function triggerObstacle(state, p, cellId, occ, ui) {
     if (!pay(state, p, null, hurt, occ.kind)) state.stats.bankruptcies += 1;
     if (p.alive) { p.hospital = TUNING.hospitalTurns; p.position = state.map.facility?.hospital ?? p.position; log(state, `${p.name} 被炸伤住院 ${p.hospital} 天`); }
   }
-  else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 30; }
+  else if (occ.kind === 'timebomb') { p.god = '定时炸弹'; p.godDays = 0; p.bombSteps = 30; }
   else if (occ.kind === 'jelly') { p.bounceSteps = 2; log(state, `${p.name} 碰到果冻墙，被弹回 2 格`); }
   else if (occ.kind === 'banana') {
     const adj = buildAdj(state.map);
@@ -565,8 +613,7 @@ async function magicFlow(state, p, ui) {
   }
 }
 
-async function remoteDiceFlow(state, p, ui, index) {
-  const max = (1 + Math.max(0, p.vehicle ?? 0)) * 6;
+async function remoteDiceFlow(state, p, ui, index, max = (1 + Math.max(0, p.vehicle ?? 0)) * 6) {
   const target = await ui.ask({ type: 'target', player: p, cardId: 'remotedice', kind: 'cell', max });
   if (!target) return false;
   const path = pathWithin(state.map, p.position, target, max);

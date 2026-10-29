@@ -160,6 +160,7 @@ export function applyMonthly(state, p) {
 
 export function tickGod(state, p) {
   if (!p.god) return;
+  if (p.god === '定时炸弹') return;
   p.godDays -= 1;
   if (p.godDays <= 0) {
     if (p.god === '定时炸弹') {
@@ -432,7 +433,7 @@ export function applyCard(state, p, id, target) {
     }
     case 'start': {
       if (!q || q.god !== '定时炸弹') return false;
-      q.god = null; q.godDays = 0;
+      q.god = null; q.godDays = 0; q.bombSteps = 0;
       damage(state, q, TUNING.bombDamage, '定时炸弹'); return true;
     }
     case 'missile': if (!q) return false; q.hospital = TUNING.hospitalTurns; q.position = state.map.facility?.hospital ?? q.position; log(state, `${q.name} 被飞弹炸进医院 ${q.hospital} 回合`); return true;
@@ -466,7 +467,7 @@ export function applyCard(state, p, id, target) {
       const gods = ['财神', '福神', '土地公', '武神', '天使', '糊涂神'];
       attachGod(state, p, state.rng.pick(gods)); return true;
     }
-    case 'sendgod': if (!q || !q.god) return false; q.god = null; q.godDays = 0; return true;
+    case 'sendgod': if (!q || !q.god) return false; q.god = null; q.godDays = 0; q.bombSteps = 0; return true;
     case 'samefate': if (!q || !q.god) return false; p.god = q.god; p.godDays = q.godDays; return true;
     case 'transfer': p.transfer = true; return true;
     case 'wuxie': return true;
