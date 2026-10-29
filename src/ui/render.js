@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=104';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=105';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -197,7 +197,7 @@ function renderBoard(el, state, currentP, actions) {
   }).join('');
 
   const availW = Number(el.clientWidth) || W, availH = Number(el.clientHeight) || H;
-  const scale = Math.max(0.3, Math.min(1.25, (availW - 24) / W, (availH - 24) / H));
+  const scale = Math.max(0.3, Math.min(3.2, (availW - 24) / W, (availH - 24) / H));
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';

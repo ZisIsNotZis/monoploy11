@@ -306,3 +306,8 @@ button { font: inherit; }
 .player-card-fields .char { grid-column: 1 / -1; }
 .player-card-fields .team { grid-column: 1 / -1; }
 #setupRows + .setup-row { margin-bottom: 30px; }
+/* 配置卡：队伍与角色左对齐，角色框不占满整卡 */
+.player-card-fields .char { width: 78%; justify-self: start; }
+.player-card-fields .team { width: 55%; margin-left: 0; justify-self: start; text-align: left; }
+.player-card-fields .ctrl { width: 72%; justify-self: start; }
+.player-card-fields .team option { text-align: left; }
