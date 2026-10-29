@@ -81,7 +81,7 @@ button { font: inherit; }
 .handhint { align-self: flex-end; color: var(--muted); font-size: 10px; padding-left: 6px; }
 
 /* 棋盘 */
-#board { position: absolute; inset: 0; overflow: hidden; }
+#board { position: absolute; inset: 38px 0 0 0; overflow: hidden; }
 .board-inner { position: relative; }
 .cell {
   position: absolute; width: 62px; height: 38px; border: 1px solid var(--line);
@@ -93,7 +93,7 @@ button { font: inherit; }
 .cell .place { position: absolute; left: 2px; bottom: 1px; color: #e05a5a; font-size: 9px; }
 .cell .tokens { position: absolute; right: 1px; bottom: 0; display: flex; gap: 1px; align-items: flex-end; }
 .tok { width: 13px; height: 13px; border-radius: 50%; color: #111; font-size: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,.35); }
-.tok.cur { outline: 2px solid #fff; outline-offset: 1px; z-index: 2; }
+.tok.cur { outline: 2px solid #fff; outline-offset: 1px; z-index: 2; transform: scale(1.18); box-shadow: 0 0 6px rgba(255,255,255,.35); }
 .cell.off { opacity: .45; border-style: dashed; }
 
 /* 开局弹层 */
