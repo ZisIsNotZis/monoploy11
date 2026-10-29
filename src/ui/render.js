@@ -57,43 +57,47 @@ export function render(root, state, actions) {
 }
 
 function layout(map, W, H) {
-  const margin = 34, gap = 6;
+  const mx = 100, my = 60, gap = 6, cw = 62, ch = 38;
+  const left = mx, right = W - mx - cw, top = my, bottom = H - my - ch;
   const coords = {};
   const sides = [
-    { nodes: [], span: W - margin * 2 - 70, horizontal: true, side: 0 },
-    { nodes: [], span: H - margin * 2 - 70, horizontal: false, side: 1 },
-    { nodes: [], span: W - margin * 2 - 70, horizontal: true, side: 2 },
-    { nodes: [], span: H - margin * 2 - 70, horizontal: false, side: 3 },
+    { side: 0, nodes: [], span: right - left, cross: cw, horizontal: true },
+    { side: 1, nodes: [], span: bottom - top, cross: ch, horizontal: false },
+    { side: 2, nodes: [], span: right - left, cross: cw, horizontal: true },
+    { side: 3, nodes: [], span: bottom - top, cross: ch, horizontal: false },
   ];
   for (const n of map.nodes) if (n.ring !== undefined) sides[Math.floor(n.ring / 12)].nodes.push(n);
   for (const s of sides) s.nodes.sort((a, b) => a.ring - b.ring);
   for (const s of sides) {
-    const total = s.nodes.length;
-    const unit = (s.span - gap * (s.nodes.length - 1)) / total;
-    let cursor = margin;
-    for (const n of s.nodes) {
-      const len = unit;
-      if (s.side === 0) coords[n.id] = { x: cursor, y: margin, w: len, h: 38 };
-      if (s.side === 1) coords[n.id] = { x: W - margin - 62, y: cursor, w: 62, h: len };
-      if (s.side === 2) coords[n.id] = { x: W - margin - (cursor - margin) - len, y: H - margin - 38, w: len, h: 38 };
-      if (s.side === 3) coords[n.id] = { x: margin, y: H - margin - (cursor - margin) - len, w: 62, h: len };
-      cursor += len + gap;
+    const n = s.nodes.length;
+    const unit = s.span / (n + 0.5);
+    let cursor = 0;
+    for (const node of s.nodes) {
+      if (s.side === 0) coords[node.id] = { x: left + cursor, y: top, w: unit, h: ch };
+      if (s.side === 1) coords[node.id] = { x: right, y: top + cursor, w: cw, h: unit };
+      if (s.side === 2) coords[node.id] = { x: right - cursor - unit, y: bottom, w: unit, h: ch };
+      if (s.side === 3) coords[node.id] = { x: left, y: bottom - cursor - unit, w: cw, h: unit };
+      cursor += unit;
     }
   }
   for (const c of Object.values(coords)) { c.cx = c.x + c.w / 2; c.cy = c.y + c.h / 2; }
-  const g = (id) => coords[id] ?? { x: margin, y: margin, w: 62, h: 38, cx: margin + 31, cy: margin + 19 };
+  const g = (id) => coords[id] ?? { x: left, y: top, w: cw, h: ch, cx: left + cw / 2, cy: top + ch / 2 };
   const h = g('r30'), j = g('r31'), d = g('r43');
-  coords.hospital = { x: h.cx - 120, y: h.y - 76, w: 62, h: 38 };
-  coords.jail = { x: j.cx + 50, y: j.y - 90, w: 62, h: 38 };
-  coords.t1 = { x: d.x + 120, y: d.cy - 19, w: 62, h: 38 };
-  coords.t2 = { x: d.x + 220, y: d.cy - 19, w: 62, h: 38 };
+  coords.hospital = { x: h.cx - 31, y: h.y - 70, w: cw, h: ch };
+  coords.jail = { x: j.cx + 50, y: j.y - 84, w: cw, h: ch };
+  coords.t1 = { x: d.x + 130, y: d.cy - 19, w: cw, h: ch };
+  coords.t2 = { x: d.x + 230, y: d.cy - 19, w: cw, h: ch };
   const a = g('r5'), b = g('r41');
-  coords.p1 = { x: (a.cx + b.cx) / 2 - 31, y: (a.cy + b.cy) / 2 - 19, w: 62, h: 38 };
+  coords.p1 = { x: (a.cx + b.cx) / 2 - 31, y: (a.cy + b.cy) / 2 - 19, w: cw, h: ch };
   for (const c of Object.values(coords)) { c.cx = c.x + c.w / 2; c.cy = c.y + c.h / 2; }
   return coords;
 }
 
-function cellTitle(n, pr, owner) {
+function cellTitle(n, pr, owner, state) {
+  if (n.plotId) {
+    const plot = state.map.plots.find(p => p.id === n.plotId);
+    return `路：旁边是 ${plot?.label ?? ''}${pr ? `｜${owner?.name ?? '无主'} Lv.${pr.level}` : ''}`;
+  }
   let s = `${n.label}：${CELL_HELP[n.kind] ?? ''}`;
   if (n.kind === 'big') s = `${pr?.bigType ? BIG_NAME[pr.bigType] : '大空地'}：${pr?.bigType ? BIG_HELP[pr.bigType] : '第二次投资选择建筑'}`;
   if (pr) s += `｜${owner?.name ?? '无主'} Lv.${pr.level}`;
@@ -118,7 +122,7 @@ function renderBoard(el, state, currentP) {
   const angle = pos && to ? Math.atan2(to.cy - pos.cy, to.cx - pos.cx) * 180 / Math.PI : null;
   const cells = state.map.nodes.map(n => {
     const c = coords[n.id];
-    const key = n.propertyKey ?? n.id;
+    const key = n.plotId ?? n.id;
     const pr = state.properties[key];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const here = state.players.filter(q => q.alive && q.position === n.id);
@@ -126,16 +130,34 @@ function renderBoard(el, state, currentP) {
     const big = pr?.bigType ? BIG_NAME[pr.bigType] : '';
     const border = owner ? owner.color : '#333842';
     const off = n.kind === 'platform' && !platformOn;
-    const title = cellTitle(n, pr, owner);
+    const title = cellTitle(n, pr, owner, state);
     return `<div class="cell ${off ? 'off' : ''}" data-cell="${n.id}" style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;border-color:${border}" title="${title}">
-      <div class="tag">${n.kind === 'big' ? (big || '大空地') : n.label}</div>
+      <div class="tag">${n.plotId ? '路' : n.label}</div>
       <div class="lvl">${pr ? 'Lv' + pr.level : ''}</div>
       ${place ? `<div class="place">${place.kind === 'mine' ? '雷' : place.kind === 'dynamite' ? '炸' : place.kind === 'timebomb' ? '弹' : '障'}</div>` : ''}
       <div class="tokens">${here.map(q => `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
       ${n.id === currentP?.position && angle != null ? `<span class="face" style="transform:rotate(${angle}deg)">➤</span>` : ''}
     </div>`;
   }).join('');
-  el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}`;
+  const plots = (state.map.plots ?? []).map(plot => {
+    const cs = plot.cells.map(id => coords[id]).filter(Boolean);
+    if (!cs.length) return '';
+    const minX = Math.min(...cs.map(c => c.x));
+    const minY = Math.min(...cs.map(c => c.y));
+    const maxX = Math.max(...cs.map(c => c.x + c.w));
+    const maxY = Math.max(...cs.map(c => c.y + c.h));
+    const pr = state.properties[plot.id];
+    const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+    const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
+    const side = Math.floor((state.map.nodes.find(n => n.id === plot.cells[0])?.ring ?? 0) / 12);
+    let x = minX, y = minY - 22, w = Math.max(34, maxX - minX), h = 18;
+    if (side === 1) { x = maxX + 4; y = minY; w = 90; h = Math.max(18, maxY - minY); }
+    if (side === 2) { y = maxY + 4; }
+    if (side === 3) { x = minX - 96; y = minY; w = 90; h = Math.max(18, maxY - minY); }
+    const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
+    return `<div class="plot ${plot.big ? 'bigplot' : ''}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-color:${owner?.color ?? '#3a404b'}" title="${title}">${name}${pr ? ' Lv' + pr.level : ''}</div>`;
+  }).join('');
+  el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}${plots}`;
 }
 
 function renderPlayers(el, state, currentP) {

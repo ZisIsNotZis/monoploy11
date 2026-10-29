@@ -36,7 +36,7 @@ test('street chain rent reaches million scale at 5 max properties', () => {
   const s = createGame({ seed: 5 });
   const owner = s.players[0];
   // A1..A5
-  for (const id of ['r1', 'r2', 'r3', 'r4', 'r5']) {
+  for (const id of ['plot_r1', 'plot_r2', 'plot_r3', 'plot_r4', 'plot_r5']) {
     s.properties[id] = { ownerId: owner.id, level: 5, street: 'A', big: false };
     owner.properties.push(id);
   }
@@ -137,7 +137,7 @@ test('all 48 card definitions can be used without throwing', () => {
     const def = CARD_DEFS[id];
     let target = null;
     if (def.target === 'player') target = s.players.find(q => q.id !== p.id).id;
-    if (def.target === 'cell') target = s.map.nodes.find(n => n.kind === 'property').id;
+    if (def.target === 'cell') target = s.map.nodes.find(n => n.plotId)?.id;
     if (def.target === 'street') target = 'A';
     assert.doesNotThrow(() => useCard(s, 0, target), `card ${id}`);
   }
@@ -179,13 +179,13 @@ test('rent goes to the owner bank deposit, not cash', () => {
 test('big land starts empty and the second investment chooses a building', () => {
   const s = createGame({ seed: 23 });
   const p = current(s);
-  s.properties.r10 = { ownerId: p.id, level: 0, big: true, bigType: null, street: null };
-  p.properties.push('r10');
+  s.properties.plot_r10 = { ownerId: p.id, level: 0, big: true, bigType: null, street: null };
+  p.properties.push('plot_r10');
   assert.equal(rentFor(s, 'r10'), 0);
-  s.pending = { type: 'chooseBig', cellId: 'r10' };
+  s.pending = { type: 'chooseBig', cellId: 'plot_r10' };
   doChooseBig(s, 'commercial');
-  assert.equal(s.properties.r10.bigType, 'commercial');
-  assert.equal(s.properties.r10.level, 1);
+  assert.equal(s.properties.plot_r10.bigType, 'commercial');
+  assert.equal(s.properties.plot_r10.level, 1);
   assert.ok(rentFor(s, 'r10') > 0);
 });
 
@@ -229,8 +229,8 @@ test('a big property is two walkable cells sharing one property key', () => {
 test('rent on either half of a big property uses the same owner', () => {
   const s = createGame({ seed: 26 });
   const p = current(s);
-  s.properties.r10 = { ownerId: p.id, level: 2, big: true, bigType: 'commercial', street: null };
-  p.properties.push('r10');
+  s.properties.plot_r10 = { ownerId: p.id, level: 2, big: true, bigType: 'commercial', street: null };
+  p.properties.push('plot_r10');
   assert.equal(rentFor(s, 'br10'), rentFor(s, 'r10'));
   assert.ok(rentFor(s, 'br10') > 0);
 });

@@ -8,11 +8,15 @@ export function ownsStreet(state, ownerId, street) {
     .length;
 }
 
-function propNode(state, key) { return state.map.nodes.find(n => n.id === key || n.propertyKey === key); }
+export function plotIdOf(state, ref) {
+  const node = state.map.nodes.find(n => n.id === ref);
+  return node?.plotId ?? ref;
+}
 
-export function rentFor(state, cellId) {
-  const cell = propNode(state, cellId);
-  const pr = state.properties[cellId] ?? state.properties[cell?.propertyKey];
+export function rentFor(state, ref) {
+  const cellId = plotIdOf(state, ref);
+  const pr = state.properties[cellId];
+  const cell = state.map.nodes.find(n => n.plotId === cellId);
   if (!pr || !cell) return 0;
   if (pr.closed > 0) return 0;
   if (pr.big && (!pr.bigType || pr.bigType === 'park')) return 0;
@@ -24,9 +28,10 @@ export function rentFor(state, cellId) {
   return Math.round(base * chain * big * inflate * state.priceIndex);
 }
 
-export function buyPrice(state, cellId) {
-  const cell = propNode(state, cellId);
-  if (cell.kind === 'big') return 20_000;
+export function buyPrice(state, ref) {
+  const cellId = plotIdOf(state, ref);
+  const plot = state.map.plots.find(p => p.id === cellId);
+  if (plot?.big) return 20_000;
   return 8_000;
 }
 

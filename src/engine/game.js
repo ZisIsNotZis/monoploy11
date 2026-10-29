@@ -51,9 +51,9 @@ export function createGame(config = {}) {
     p.cash = 200_000; p.deposit = 100_000;
     for (const id of ['r1', 'r2', 'r13', 'r14', 'r25', 'r32']) {
       const n = map.nodes.find(x => x.id === id);
-      if (!n || !['property', 'big'].includes(n.kind)) continue;
-      p.properties.push(id);
-      state.properties[id] = { ownerId: p.id, level: 2, street: n.street ?? null, big: n.kind === 'big', bigType: n.bigType ?? null };
+      if (!n?.plotId) continue;
+      p.properties.push(n.plotId);
+      state.properties[n.plotId] = { ownerId: p.id, level: 2, street: n.street ?? null, big: !!map.plots.find(x => x.id === n.plotId)?.big, bigType: null };
     }
   }
   for (let i = 0; i < TUNING.startingCards; i++) {
@@ -430,6 +430,67 @@ function godOnProperty(state, p, pr) {
   }
 }
 
+function resolvePlot(state, p, cell) {
+  const key = cell.plotId;
+  const plot = state.map.plots.find(x => x.id === key);
+  const label = plot?.big ? ((state.properties[key]?.bigType ? BIG_NAMES[state.properties[key].bigType] : '大空地')) : (plot?.label ?? key);
+  const pr = state.properties[key];
+  if (!pr || !pr.ownerId) {
+    if (p.god === '土地公') {
+      p.properties.push(key);
+      state.properties[key] = { ownerId: p.id, level: plot?.big ? 0 : 1, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
+      log(state, `土地公附身，${p.name} 直接占领 ${label}`);
+      return endTurn(state);
+    }
+    const price = buyPrice(state, key);
+    state.pending = { type: 'buy', cellId: key, price, label };
+    log(state, `${label} 无主，售价 ${price}`);
+    return state;
+  }
+  godOnProperty(state, p, pr);
+  if (pr.ownerId === p.id) {
+    if (p.god === '衰神') { log(state, '衰神附身，不能加盖'); return endTurn(state); }
+    if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: key, label }; return state; }
+    if (pr.level < TUNING.maxLevel) {
+      state.pending = { type: 'build', cellId: key, cost: buildCost(pr.level), label };
+      log(state, `${label} 是己方地产（Lv.${pr.level}），可加盖`);
+      return state;
+    }
+    return endTurn(state);
+  }
+  const owner = state.players.find(q => q.id === pr.ownerId);
+  if (owner?.team === p.team) { log(state, `${label} 是队友 ${owner.name} 的地产，免租`); return endTurn(state); }
+  if (pr.bigType === 'park') { log(state, '公园不收费'); return endTurn(state); }
+  if (pr.bigType === 'energy') {
+    const fee = 5_000;
+    log(state, `${p.name} 使用能源中心，支付 ${fee} 给 ${owner.name}`);
+    pay(state, p, owner, fee, '能源');
+    return endTurn(state);
+  }
+  if (plot?.big && pr.bigType === 'research' && pr.ownerId === p.id) {
+    state.shopOffer = ['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor'].map(id => ({ id, price: 5_000 }));
+    state.shopBought = 0; state.shopLimit = 1;
+    state.pending = { type: 'research', cellId: key };
+    log(state, '研究所：选择要研发的进阶卡');
+    return state;
+  }
+  let rent = rentFor(state, key);
+  if (pr.bigType === 'commercial') rent = Math.round(rent * (1 + state.rng.float() * 2));
+  if (pr.bigType === 'hotel') { rent = Math.round(rent * 0.6); p.skipTurns += 1; log(state, `${p.name} 被大饭店留下 1 回合`); }
+  if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
+  if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
+  if (p.properties.some(id => state.properties[id]?.bigType === 'realestate')) rent = Math.round(rent * 0.7);
+  if (p.god === '财神') { log(state, '财神附身，免租'); return endTurn(state); }
+  if (p.god === '穷神') rent = Math.round(rent * 2);
+  if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' || owner.bossId === 'yuanyuan' ? 1.5 : 1));
+  log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
+  state.stats.rents += rent;
+  if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
+  return endTurn(state);
+}
+
+const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
+
 function resolveLanding(state, p) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return endTurn(state);
@@ -439,67 +500,9 @@ function resolveLanding(state, p) {
     return endTurn(state);
   }
 
+  if (cell.plotId) return resolvePlot(state, p, cell);
+
   switch (cell.kind) {
-    case 'property':
-    case 'big': {
-      const key = cell.propertyKey ?? cell.id;
-      const pr = state.properties[key];
-      if ((!pr || !pr.ownerId) && p.god === '土地公') {
-        p.properties.push(cell.id);
-        state.properties[cell.id] = { ownerId: p.id, level: cell.kind === 'big' ? 0 : 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: null };
-        log(state, `土地公附身，${p.name} 直接占领 ${cell.label}`);
-        return endTurn(state);
-      }
-      if (!pr || !pr.ownerId) {
-        const price = buyPrice(state, key);
-        state.pending = { type: 'buy', cellId: key, price };
-        log(state, `${cell.label} 无主，售价 ${price}，是否购买？`);
-        return state;
-      }
-      godOnProperty(state, p, pr);
-      if (pr.ownerId === p.id) {
-        if (p.god === '衰神') { log(state, '衰神附身，不能加盖'); return endTurn(state); }
-        if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: key }; log(state, '大地产空地：选择要建造的大型建筑'); return state; }
-        if (pr.level < TUNING.maxLevel) {
-          state.pending = { type: 'build', cellId: key, cost: buildCost(pr.level) };
-          log(state, `${cell.label} 是己方地产（Lv.${pr.level}），可加盖`);
-          return state;
-        }
-        return endTurn(state);
-      }
-      const owner = state.players.find(q => q.id === pr.ownerId);
-      if (owner?.team === p.team) {
-        log(state, `${cell.label} 是队友 ${owner.name} 的地产，免租`);
-        return endTurn(state);
-      }
-      if (cell.bigType === 'research' && pr.ownerId === p.id) {
-        state.shopOffer = ['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor'].map(id => ({ id, price: 5_000 }));
-        state.shopBought = 0; state.shopLimit = 1;
-        state.pending = { type: 'research', cellId: cell.id };
-        log(state, '研究所：选择要研发的进阶卡');
-        return state;
-      }
-      if (cell.bigType === 'park') { log(state, '公园不收费'); return endTurn(state); }
-      if (cell.bigType === 'energy') {
-        const fee = 5_000;
-        log(state, `${p.name} 使用能源中心，支付 ${fee} 给 ${owner.name}`);
-        pay(state, p, owner, fee, '能源');
-        return endTurn(state);
-      }
-      let rent = rentFor(state, key);
-      if (cell.bigType === 'commercial') rent = Math.round(rent * (1 + state.rng.float() * 2));
-      if (cell.bigType === 'hotel') { rent = Math.round(rent * 0.6); p.skipTurns += 1; log(state, `${p.name} 被大饭店留下 1 回合`); }
-      if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
-      if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
-      if (p.properties.some(id => state.properties[id]?.bigType === 'realestate')) rent = Math.round(rent * 0.7);
-      if (p.god === '财神') { log(state, '财神附身，免租'); return endTurn(state); }
-      if (p.god === '穷神') rent = Math.round(rent * 2);
-      if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' ? 1.5 : owner.bossId === 'yuanyuan' ? 1.5 : 1));
-      log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
-      state.stats.rents += rent;
-      if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
-      return endTurn(state);
-    }
     case 'tax': {
       const amount = Math.round(p.cash * TUNING.taxRate);
       log(state, `${p.name} 纳税 ${amount}`);
@@ -580,13 +583,13 @@ export function buyProperty(state) {
   const p = current(state);
   const { cellId, price } = state.pending;
   if (p.cash < price) return state;
-  const cell = state.map.nodes.find(n => n.id === cellId || n.propertyKey === cellId);
+  const plot = state.map.plots.find(p => p.id === cellId);
   p.cash -= price;
   p.properties.push(cellId);
   state.properties[cellId] = {
-    ownerId: p.id, level: cell.kind === 'big' ? 0 : 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: null,
+    ownerId: p.id, level: plot?.big ? 0 : 1, street: plot?.street ?? null, big: !!plot?.big, bigType: null,
   };
-  log(state, `${p.name} 以 ${price} 买下 ${cell.label}`);
+  log(state, `${p.name} 以 ${price} 买下 ${plot?.label ?? cellId}`);
   state.pending = null;
   return endTurn(state);
 }
@@ -600,7 +603,7 @@ export function buildProperty(state) {
   if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId }; return state; }
   p.cash -= cost;
   pr.level += 1;
-  log(state, `${p.name} 将 ${label(state, cellId)} 升到 Lv.${pr.level}（花费 ${cost}）`);
+  log(state, `${p.name} 将 ${state.map.plots.find(x => x.id === cellId)?.label ?? cellId} 升到 Lv.${pr.level}（花费 ${cost}）`);
   state.pending = null;
   return endTurn(state);
 }
@@ -614,7 +617,7 @@ export function doChooseBig(state, bigType) {
   if (!allowed.includes(bigType)) return state;
   pr.bigType = bigType;
   pr.level = 1;
-  log(state, `${p.name} 在 ${state.map.nodes.find(n => n.id === state.pending.cellId || n.propertyKey === state.pending.cellId)?.label ?? '大地产'} 建起 ${bigType}`);
+  log(state, `${p.name} 在 ${state.map.plots.find(x => x.id === state.pending.cellId)?.label ?? '大地产'} 建起 ${BIG_NAMES[bigType] ?? bigType}`);
   state.pending = null;
   return endTurn(state);
 }
@@ -665,15 +668,16 @@ function applyCard(state, p, id, target) {
   switch (id) {
     case 'buyland': {
       if (!node || !['property', 'big'].includes(node.kind)) return false;
-      const key = node.propertyKey ?? node.id;
+      const key = node.plotId ?? node.propertyKey ?? node.id;
       const pr = state.properties[key];
       if (pr?.ownerId === p.id) return false;
       const price = buyPrice(state, key);
       if (p.cash < price) return false;
       p.cash -= price;
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== key); }
+      const plot = state.map.plots.find(x => x.id === key);
       p.properties.push(key);
-      state.properties[key] = { ownerId: p.id, level: node.kind === 'big' ? (pr?.level ?? 0) : (pr?.level ?? 1), street: node.street ?? null, big: node.kind === 'big', bigType: pr?.bigType ?? null };
+      state.properties[key] = { ownerId: p.id, level: plot?.big ? (pr?.level ?? 0) : (pr?.level ?? 1), street: node.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null };
       return true;
     }
     case 'exchange': {
@@ -691,7 +695,7 @@ function applyCard(state, p, id, target) {
     }
     case 'rebuild': {
       if (!node) return false;
-      const key = node.propertyKey ?? node.id;
+      const key = node.plotId ?? node.propertyKey ?? node.id;
       const pr = state.properties[key];
       if (!pr || !pr.big || pr.ownerId === p.id) return false;
       pr.bigType = 'park';

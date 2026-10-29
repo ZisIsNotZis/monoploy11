@@ -127,3 +127,10 @@ button { font: inherit; }
 #choice button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; margin: 2px; cursor: pointer; }
 .cell { position: absolute; }
 .cell .face { position: absolute; right: -13px; bottom: 4px; color: #fff; font-size: 24px; text-shadow: 0 0 4px #000; pointer-events: none; z-index: 5; }
+.plot {
+  position: absolute; z-index: 2; border: 1px solid #3a404b; border-style: dashed;
+  border-radius: 3px; background: rgba(20,23,28,.82); color: #9aa3b2;
+  font-size: 9px; line-height: 16px; padding: 0 3px; overflow: hidden; white-space: nowrap;
+  text-overflow: ellipsis; pointer-events: auto;
+}
+.plot.bigplot { border-style: solid; background: rgba(30,34,41,.9); }

@@ -84,6 +84,7 @@ addEdge('p1', 'r41', 'platform');
 const bigs = nodes.filter(n => n.kind === 'big');
 for (const big of bigs) {
   big.propertyKey = big.id;
+  big.bigGroup = big.id;
   const twin = {
     ...big,
     id: `b${big.id}`,
@@ -101,6 +102,21 @@ for (const big of bigs) {
   }
 }
 
+// 路归路、地产归地产：地产作为独立地块挂在路边，大地产挂两格路，两格路共享同一块地产。
+const plots = {};
+for (const n of nodes) {
+  if (n.kind === 'property') n.plotId = `plot_${n.id}`;
+  if (n.kind === 'big') n.plotId = `plot_${n.bigGroup ?? n.id}`;
+  if (!n.plotId) continue;
+  const plot = plots[n.plotId] ??= {
+    id: n.plotId, cells: [], big: n.kind === 'big',
+    street: n.street, label: n.label,
+  };
+  plot.cells.push(n.id);
+  n.kind = 'empty';
+  n.ground = 'empty';
+}
+
 export const TEST_MANOR = {
   id: 'test-manor',
   name: '测试庄园（全系统）',
@@ -109,6 +125,7 @@ export const TEST_MANOR = {
   startId: 'r0',
   nodes,
   edges,
+  plots: Object.values(plots),
   platform: { nodeId: 'p1', everyDays: 4, onPhase: [0, 1] },
   facility: { hospital: 'r30', jail: 'r31' },
 };
