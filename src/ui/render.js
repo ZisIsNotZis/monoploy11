@@ -1,5 +1,5 @@
 import { TUNING } from '../data/tuning.js';
-import { CARD_DEFS, current } from '../engine/game.js?v=69';
+import { CARD_DEFS, current } from '../engine/game.js?v=70';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -39,7 +39,7 @@ export function render(root, state, actions) {
   root.system.querySelector('[data-stock]').onclick = () => actions.openStock();
 
   renderPlayers(root.players, state, p);
-  renderBoard(root.board, state, p);
+  renderBoard(root.board, state, p, actions);
   renderLog(root.log, state);
   const choosing = !!state.pending || !!state.mapPick || state.phase === 'over';
   root.hand.classList.toggle('choice', choosing);
@@ -106,7 +106,7 @@ function cellTitle(n, pr, owner, state) {
   return s;
 }
 
-function renderBoard(el, state, currentP) {
+function renderBoard(el, state, currentP, actions) {
   const map = state.map;
   const S = map.cell ?? 48;
   const W = (map.w ?? 19) * S, H = (map.h ?? 13) * S;

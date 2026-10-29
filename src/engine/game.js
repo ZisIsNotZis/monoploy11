@@ -1041,7 +1041,8 @@ export function doLottery(state, number) {
   state.lottery.tickets.push({ playerId: p.id, number });
   state.lottery.sold.push(number);
   log(state, `${p.name} 买下乐透 ${number}（${TUNING.lotteryTicket}）`);
-  return state;
+  state.pending = null;
+  return endTurn(state);
 }
 
 export function doMagic(state, effect) {

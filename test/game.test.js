@@ -276,16 +276,19 @@ test('news resolves without a click, then adjacent plots are offered', () => {
   assert.equal(s.pending?.type, 'buy', 'the adjacent unowned plot should be offered after news');
 });
 
-test('lotto allows buying several different numbers in one visit', () => {
+test('lotto sells one unique number per visit', () => {
   const s = createGame({ seed: 22 });
   const p = current(s);
-  s.pending = { type: 'lottery' };
   p.cash = 100_000;
+  s.pending = { type: 'lottery' };
   doLottery(s, 3);
-  doLottery(s, 4);
-  assert.equal(s.pending.type, 'lottery');
-  assert.deepEqual(s.lottery.tickets.map(t => t.number), [3, 4]);
-  assert.equal(s.lottery.tickets.length, 2);
+  assert.equal(s.pending, null, 'buying one ticket ends the visit');
+  assert.deepEqual(s.lottery.tickets.map(t => t.number), [3]);
+  assert.deepEqual(s.lottery.sold, [3]);
+  s.pending = { type: 'lottery' };
+  doLottery(s, 3);
+  assert.deepEqual(s.lottery.tickets.map(t => t.number), [3], 'a sold number cannot be bought again');
+  assert.deepEqual(s.lottery.sold, [3]);
 });
 
 test('leaving an interactive road event continues to adjacent plots', () => {
