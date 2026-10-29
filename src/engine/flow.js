@@ -113,17 +113,21 @@ async function playTurn(state, p, ui) {
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
   log(state, stay ? `${p.name} 停留，本回合移动 0 步` : `${p.name} 掷出 ${n} 点`);
-  const stopped = await movePhase(state, p, n, ui);
-  if (state.over || !p.alive) return;
-  if (!stopped) await landingPhase(state, p, ui);
-  if (state.over || !p.alive) return;
-  if (p.forcedMoveDone) { p.forcedMoveDone = 0; return; }
-  await groundPhase(state, p, ui);
-  if (state.over || !p.alive) return;
-  await postGodPhase(state, p, ui);
-  if (state.over || !p.alive) return;
-  await directionPhase(state, p, ui);
-  ui.render(state);
+  let steps = n;
+  while (true) {
+    const stopped = await movePhase(state, p, steps, ui);
+    if (state.over || !p.alive) return;
+    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; continue; }
+    if (!stopped) await landingPhase(state, p, ui);
+    if (state.over || !p.alive) return;
+    if (p.forceRestart != null) { steps = p.forceRestart; p.forceRestart = null; continue; }
+    await groundPhase(state, p, ui);
+    if (state.over || !p.alive) return;
+    await postGodPhase(state, p, ui);
+    if (state.over || !p.alive) return;
+    await directionPhase(state, p, ui);
+    break;
+  }
 }
 
 async function actionPhase(state, p, ui) {
@@ -288,19 +292,14 @@ function forceOneStep(state, p) {
   return next;
 }
 
-async function bananaChain(state, p, ui) {
-  let cellId = p.position;
-  for (let guard = 0; guard < 20; guard++) {
-    const occ = state.placements[cellId];
-    if (occ?.kind !== 'banana') break;
-    delete state.placements[cellId];
-    log(state, `${p.name} 踩到香蕉皮，强制向前移动 1 格`);
-    const next = forceOneStep(state, p);
-    if (!next) break;
-    if (ui.step) await ui.step(state, p, next);
-    cellId = next;
-  }
-  p.forcedMoveDone = 1;
+async function bananaChain(state, p) {
+  const cellId = p.position;
+  const occ = state.placements[cellId];
+  if (occ?.kind !== 'banana') return;
+  delete state.placements[cellId];
+  log(state, `${p.name} 踩到香蕉皮，强制向前移动 1 格`);
+  p.forceRestart = 1;
+  p.forceRandom = true;
 }
 
 function nextForward(state, pos, cameFrom) {
@@ -322,6 +321,7 @@ function nextStep(state, p, cameFrom, first) {
     const forward = choices.find(e => e.to === p.facing) ?? choices[0] ?? exits[0];
     return forward.to;
   }
+  if (p.forceRandom && exits.length >= 3) { p.forceRandom = false; return state.rng.pick(choices).to; }
   if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
   return state.rng.pick(choices).to;
 }
@@ -342,7 +342,7 @@ async function passPhase(state, p, cellId, ui, isLast) {
     const occ = state.placements[cellId];
     if (occ && !['god', 'dog', 'beggar', 'merchant', 'banana'].includes(occ.kind)) {
       await triggerObstacle(state, p, cellId, occ, ui);
-      if (p.bounceSteps) { await bounceBack(state, p, ui); return true; }
+      if (p.bounceSteps) { await bounceBack(state, p, ui); p.stopNow = 1; return false; }
       if (!p.alive || p.jail > 0 || p.hospital > 0 || p.skipTurns > 0) return true;
     }
     const node = state.map.nodes.find(n => n.id === cellId);
@@ -389,7 +389,7 @@ async function landingPhase(state, p, ui) {
   if (!cell) return;
   log(state, `${p.name} 停在 ${cell.label}`);
   const occ = state.placements[cell.id];
-  if (occ?.kind === 'banana') { await bananaChain(state, p, ui); return; }
+  if (occ?.kind === 'banana') { await bananaChain(state, p); return; }
   if (occ) {
     if (occ.kind === 'god' || occ.kind === 'dog' || occ.kind === 'beggar') await triggerObstacle(state, p, cell.id, occ, ui);
     else if (occ.kind === 'merchant') { delete state.placements[cell.id]; await merchantFlow(state, p, ui); }
