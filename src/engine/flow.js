@@ -84,9 +84,13 @@ function finish(state, team) {
 }
 
 async function playTurn(state, p, ui) {
-  const rolled = await actionPhase(state, p, ui);
-  if (rolled === null) return;
-  const n = rolled;
+  const diceCount = await actionPhase(state, p, ui);
+  if (diceCount === null) return;
+  let n;
+  if (p.status === '乌龟') n = 1;
+  else if (p.status === '冰冻') n = 0;
+  else if (p.forcedDice != null) { n = p.forcedDice; p.forcedDice = null; }
+  else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
   log(state, `${p.name} 掷出 ${n} 点`);
@@ -99,6 +103,7 @@ async function playTurn(state, p, ui) {
   await postGodPhase(state, p, ui);
   if (state.over || !p.alive) return;
   await directionPhase(state, p, ui);
+  ui.render(state);
 }
 
 async function actionPhase(state, p, ui) {
@@ -264,7 +269,7 @@ async function groundPhase(state, p, ui) {
   }
 }
 
-function buyPlot(state, p, id, plot) {
+export function buyPlot(state, p, id, plot) {
   if (p.cash < buyPrice(state, id)) return;
   p.cash -= buyPrice(state, id);
   const old = state.properties[id];
@@ -273,7 +278,7 @@ function buyPlot(state, p, id, plot) {
   log(state, `${p.name} 买下 ${plot?.big ? '大空地' : '小地产'}`);
 }
 
-function buildPlot(state, p, id) {
+export function buildPlot(state, p, id) {
   const pr = state.properties[id]; const plot = state.map.plots.find(x => x.id === id);
   const cost = buildCost(pr.level);
   if (!pr || p.cash < cost || pr.level >= TUNING.maxLevel) return;

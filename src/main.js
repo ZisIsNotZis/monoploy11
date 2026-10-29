@@ -1,8 +1,8 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=80';
+import { render } from './ui/render.js?v=81';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
-import { reachableWithin, pathWithin } from './engine/board-v2.js';
+import { reachableWithin } from './engine/board-v2.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -12,8 +12,34 @@ const root = {
 
 let state = null;
 let active = null; // { prompt, resolve }
+let lastMoney = null;
 
-function rerender() { if (state) render(root, state, actions); }
+function rerender() {
+  if (!state) return;
+  render(root, state, actions);
+  if (!lastMoney) {
+    lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
+    return;
+  }
+  for (const p of state.players) {
+    const old = lastMoney.get(p.id);
+    const now = p.cash + p.deposit;
+    if (old == null || now === old) continue;
+    const delta = now - old;
+    const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
+    const rect = tok?.getBoundingClientRect();
+    const span = document.createElement('span');
+    span.className = 'money-float map-float ' + (delta > 0 ? 'up' : 'down');
+    span.textContent = (delta > 0 ? '+' : '') + delta.toLocaleString();
+    if (rect) {
+      span.style.left = `${rect.left + rect.width / 2}px`;
+      span.style.top = `${rect.top - 4}px`;
+    }
+    document.body.appendChild(span);
+    setTimeout(() => span.remove(), 1200);
+  }
+  lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
+}
 
 const ui = {
   render: rerender,

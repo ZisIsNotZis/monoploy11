@@ -1,6 +1,5 @@
 // 无头模拟：node src/sim.js --games 100 --seed 1 [--boss doctor --tier 3]
-import { createGame, roll, buyProperty, buildProperty, chooseDirection, current, skipPending,
-  doMagic, doNews, doLottery, doShop, doMerchant, doResearch, doBank, leaveStock, leavePending } from './engine/game.js';
+import { startSession, runGame } from './engine/flow.js';
 import { CHARACTERS } from './data/characters.js';
 
 const args = process.argv.slice(2);
@@ -9,6 +8,24 @@ const games = Number(arg('games', 100));
 const seed0 = Number(arg('seed', 1));
 const boss = arg('boss', null);
 const tier = Number(arg('tier', 3));
+
+const ui = {
+  render() {},
+  async ask(p) {
+    if (p.type === 'action') return { action: 'roll', dice: 1 };
+    if (p.type === 'buy') return true;
+    if (p.type === 'build') return true;
+    if (p.type === 'chooseBig') return 'commercial';
+    if (p.type === 'direction') return p.options[0];
+    if (p.type === 'bank') return { action: 'leave' };
+    if (p.type === 'stock') return { action: 'leave' };
+    if (p.type === 'lottery') return { action: 'leave' };
+    if (p.type === 'shop' || p.type === 'merchant') return { action: 'leave' };
+    if (p.type === 'magic') return { effect: 'money' };
+    if (p.type === 'target') return null;
+    return null;
+  },
+};
 
 let wins = {}, turns = 0, bankrupt = 0;
 for (let g = 0; g < games; g++) {
@@ -20,27 +37,9 @@ for (let g = 0; g < games; g++) {
     for (let i = 0; i < n - 1; i++) participants.push({ name: CHARACTERS[i].name, charId: CHARACTERS[i].id, team: 'ch' });
     participants.push({ name: boss, charId: CHARACTERS[0].id, team: 'boss', isBoss: true, bossId: boss, bossTier: tier });
   }
-  const s = createGame({ seed: seed0 + g, participants });
-  let guard = 0;
-  while (s.phase !== 'over' && guard++ < 1000) {
-    const p = current(s);
-    if (s.pending?.type === 'buy') { if (p.cash > s.pending.price * 3) buyProperty(s); else skipPending(s); }
-    else if (s.pending?.type === 'build') { if (p.cash > s.pending.cost * 3) buildProperty(s); else skipPending(s); }
-    else if (s.pending?.type === 'direction') chooseDirection(s, s.pending.options[0]);
-    else if (s.pending?.type === 'magic') doMagic(s, s.rng.pick(['money', 'lose', 'card', 'jail']));
-    else if (s.pending?.type === 'news') doNews(s);
-    else if (s.pending?.type === 'lottery') doLottery(s);
-    else if (s.pending?.type === 'shop') doShop(s, 0);
-    else if (s.pending?.type === 'merchant') doMerchant(s, 0);
-    else if (s.pending?.type === 'research') doResearch(s, 0);
-    else if (s.pending?.type === 'bank') doBank(s, 'deposit', 1000);
-    else if (s.pending?.type === 'stock') leaveStock(s);
-    else if (s.pending) leavePending(s);
-    else if (s.phase === 'action') roll(s, 1);
-    else break;
-    if (s.pending) leavePending(s);
-  }
-  if (s.phase !== 'over') { console.log('STUCK', g, s.phase, s.pending); process.exit(1); }
+  const s = startSession({ seed: seed0 + g, participants });
+  await runGame(s, ui);
+  if (!s.over) { console.log('STUCK', g, s.phase, s.day); process.exit(1); }
   wins[s.winnerTeam ?? 'none'] = (wins[s.winnerTeam ?? 'none'] ?? 0) + 1;
   turns += s.day;
   bankrupt += s.players.filter(p => !p.alive).length;

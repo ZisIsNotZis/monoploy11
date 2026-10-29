@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { GRID_MANOR } from '../src/data/maps/grid-manor.js';
+import { validateMap } from '../src/engine/board-v2.js';
+import { createGame, current } from '../src/engine/game.js';
+import { buyPlot, buildPlot } from '../src/engine/flow.js';
+import { rentFor } from '../src/engine/economy.js';
+
+test('grid map validates', () => assert.deepEqual(validateMap(GRID_MANOR), []));
+
+test('all ground starts empty and buying creates empty land', () => {
+  const s = createGame({ seed: 61 });
+  assert.equal(Object.keys(s.properties).length, 0);
+  const p = current(s);
+  const plot = s.map.plots.find(x => !x.big);
+  buyPlot(s, p, plot.id, plot);
+  assert.equal(s.properties[plot.id].level, 0);
+  assert.equal(rentFor(s, plot.id), 0);
+  buildPlot(s, p, plot.id);
+  assert.equal(s.properties[plot.id].level, 1);
+  assert.ok(rentFor(s, plot.id) > 0);
+});
+
+test('big plots do not add to small-house street multiplier', () => {
+  const s = createGame({ seed: 62 });
+  const owner = current(s);
+  const street = s.map.plots.filter(x => x.street === 'A');
+  const small = street.filter(x => !x.big);
+  const big = street.find(x => x.big);
+  for (const plot of small) { s.properties[plot.id] = { ownerId: owner.id, level: 1, street: 'A', big: false }; owner.properties.push(plot.id); }
+  const before = rentFor(s, small[0].id);
+  s.properties[big.id] = { ownerId: owner.id, level: 1, street: 'A', big: true, bigType: 'commercial' };
+  owner.properties.push(big.id);
+  assert.equal(rentFor(s, small[0].id), before);
+});
