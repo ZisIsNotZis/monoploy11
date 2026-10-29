@@ -63,7 +63,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 1. `startTurn`：天数+1、物价、月息、股票、乐透开奖、随机刷新路面东西、处理监禁/住院/跳过。
 2. 回合开始弃牌到 8。
 3. 行动阶段：用卡、股票、银行（若可用）。
-4. `roll`：按载具取 1–3 骰；`walk` 沿 `edges` 移动；经过生效（银行/乐透/送卡/地面道具）；定时炸弹可主动送给追上的人。
+4. `roll`：按载具取 1–3 骰；`walk` 生成路径后由 `continueWalk` 逐格推进；每格立即处理经过事件、地面道具、加卡、扣钱；中途死亡立即停止；经过银行/乐透时暂停在该格，关闭面板后继续剩余移动；定时炸弹可主动送给追上的人。
 5. `resolveLanding` 顺序：
    - `handleOccupant`：脚下东西（神仙/狗/乞丐/神秘人/道具）。
    - 路面类型：card/bank/lottery/shop/magic/news/tax/event/hospital/jail/teleport。

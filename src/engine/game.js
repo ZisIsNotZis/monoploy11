@@ -55,7 +55,7 @@ export function createGame(config = {}) {
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
-    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null, postGodCell: null, landingBuilt: [],
+    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null, postGodCell: null, landingBuilt: [], moving: null,
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
@@ -361,15 +361,11 @@ export function roll(state, diceCount = 1) {
     res.bounceFrom = original[jellyIndex];
     log(state, `${p.name} 撞上果冻墙，被弹回 2 格到 ${label(state, back)}`);
   }
-  for (const id of res.path) {
-    if (id === state.map.startId) {
-      p.cash += TUNING.salary;
-      log(state, `${p.name} 经过起点 +${TUNING.salary}`);
-    }
-    applyPass(state, p, id);
-    if (!p.alive) break;
-  }
-  // 定时炸弹：只有主动追上别人才能送出去
+  state.moving = { playerId: p.id, res, index: 0, original: state.lastRoll.path };
+  return continueWalk(state);
+}
+
+function finishWalk(state, p, res) {
   if (p.alive && p.god === '定时炸弹') {
     for (const id of res.path) {
       const other = state.players.find(q => q.alive && q.id !== p.id && q.position === id);
@@ -400,6 +396,37 @@ export function roll(state, diceCount = 1) {
   }
   if (!state.pending || state.pending.fromPass) state.passPrompt = null;
   return result;
+}
+
+function continueWalk(state) {
+  const mv = state.moving;
+  if (!mv) return state;
+  const p = state.players.find(q => q.id === mv.playerId);
+  if (!p || !p.alive) { state.moving = null; return endTurn(state); }
+  const path = mv.res.path;
+  while (mv.index < path.length - 1) {
+    const id = path[mv.index];
+    const prev = mv.index > 0 ? path[mv.index - 1] : p.position;
+    mv.index += 1;
+    p.lastNode = prev;
+    p.position = id;
+    p.facing = path[mv.index] ?? p.facing;
+    if (id === state.map.startId) {
+      p.cash += TUNING.salary;
+      log(state, `${p.name} 经过起点 +${TUNING.salary}`);
+    }
+    applyPass(state, p, id);
+    if (!p.alive) { state.moving = null; return endTurn(state); }
+    if (state.passPrompt) {
+      state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true, afterWalk: true } : { type: 'lottery', fromPass: true, afterWalk: true };
+      state.passPrompt = null;
+      state.phase = 'resolve';
+      log(state, `${p.name} 经过${state.pending.type === 'bank' ? '银行' : '乐透'}，可以${state.pending.type === 'bank' ? '存取款' : '买一注'}`);
+      return state;
+    }
+  }
+  state.moving = null;
+  return finishWalk(state, p, mv.res);
 }
 
 function exitsOf(state, id, lastNode = null) {
@@ -695,6 +722,8 @@ function resolveLanding(state, p) {
       return finishLanding(state, p, cell);
     }
     case 'card':
+      addCard(state, p, randomCard(state.rng));
+      log(state, `${p.name} 停在卡片格，获得 1 张卡`);
       return finishLanding(state, p, cell);
     case 'god': {
       const gods = ['财神', '穷神', '福神', '衰神', '天使', '恶魔', '土地公', '糊涂神', '武神', '凶神'];
@@ -1155,6 +1184,7 @@ export function doLottery(state, number) {
   state.lottery.sold.push(number);
   log(state, `${p.name} 买下乐透 ${number}（${TUNING.lotteryTicket}）`);
   state.pending = null;
+  if (state.moving) return continueWalk(state);
   return endTurn(state);
 }
 
@@ -1257,6 +1287,8 @@ export function finishByLimit(state) { return finishByAssets(state); }
 export function leavePending(state) {
   if (!state.pending) return state;
   const free = state.pending.free;
+  const resume = state.pending.afterWalk && state.moving;
   state.pending = null;
+  if (resume) return continueWalk(state);
   return free ? state : endTurn(state);
 }

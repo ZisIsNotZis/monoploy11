@@ -451,4 +451,18 @@ test('passing a bank opens the bank panel after the landing is resolved', () => 
   roll(s, 1);
   assert.equal(s.pending?.type, 'bank');
   assert.equal(s.pending?.fromPass, true);
+  leavePending(s);
+  assert.equal(p.position, '2,14');
+  assert.equal(s.moving, null);
+});
+
+test('a lethal obstacle stops the walk at that step', () => {
+  const s = createGame({ seed: 42 });
+  const p = current(s);
+  p.cash = 0; p.deposit = 0;
+  s.placements['2,11'] = { kind: 'dynamite' };
+  p.position = '2,9'; p.facing = '2,10'; p.lastNode = '2,8'; p.forcedDice = 5;
+  roll(s, 1);
+  assert.equal(p.position, '2,11');
+  assert.equal(p.alive, false);
 });
