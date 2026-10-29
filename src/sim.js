@@ -1,6 +1,7 @@
 // 无头模拟：node src/sim.js --games 100 --seed 1 [--boss doctor --tier 3]
 import { startSession, runGame } from './engine/flow.js';
 import { CHARACTERS } from './data/characters.js';
+import { aiAnswer } from './engine/ai.js';
 
 const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : d; };
@@ -9,9 +10,11 @@ const seed0 = Number(arg('seed', 1));
 const boss = arg('boss', null);
 const tier = Number(arg('tier', 3));
 
+let currentState = null;
 const ui = {
   render() {},
   async ask(p) {
+    if (currentState) return aiAnswer(p, currentState);
     if (p.type === 'action') return { action: 'roll', dice: 1 };
     if (p.type === 'buy') return true;
     if (p.type === 'build') return true;
@@ -38,6 +41,7 @@ for (let g = 0; g < games; g++) {
     participants.push({ name: boss, charId: CHARACTERS[0].id, team: 'boss', isBoss: true, bossId: boss, bossTier: tier });
   }
   const s = startSession({ seed: seed0 + g, participants });
+  currentState = s;
   await runGame(s, ui);
   if (!s.over) { console.log('STUCK', g, s.phase, s.day); process.exit(1); }
   wins[s.winnerTeam ?? 'none'] = (wins[s.winnerTeam ?? 'none'] ?? 0) + 1;

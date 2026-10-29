@@ -1,5 +1,5 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=91';
+import { render } from './ui/render.js?v=92';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';

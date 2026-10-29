@@ -37,6 +37,7 @@ export async function runGame(state, ui) {
 function beginTurn(state, p) {
   if (!p || !p.alive) return true;
   state.phase = 'action';
+  p.aiUsedCard = false;
   if (p.statusDays > 0 && (p.status === '梦游' || p.status === '冬眠')) {
     log(state, `${p.name} 正在${p.status}，跳过本回合`);
     return true;
