@@ -68,7 +68,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
    - `handleOccupant`：脚下东西（神仙/狗/乞丐/神秘人/道具）。
    - 路面类型：card/bank/lottery/shop/magic/news/tax/event/hospital/jail/teleport。
    - `adjacentPlots`：`resolveAdjacentPlots`，有主收租、队友免租、无主逐块入队、自己的地产加盖/大建筑选择。
-   - `pendingDirection`：如果停在交叉点，记录方向选项，等以上结算结束后由 `endTurn` 弹出方向选择。
+   - `pendingDirection`：如果停在交叉点，记录方向选项，等以上结算结束后由 `advanceTurn` 弹出方向选择。
 6. `advanceTurn` 只做正常流程收口：有待处理选择时直接返回等待；还有 `moving` 时先继续走完；还有 `landingCell` 就处理相邻地产，还有 `postGodCell` 就处理事后神；最后才处理方向或换人。代码里已经删掉 `endTurn` 这个中途结束回合的入口。
 
 ## 经济
@@ -90,7 +90,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
 
 ## 事后神实现
 
-`resolveLanding` 同时记下 `landingCell` 和 `postGodCell`，`endTurn` 先处理 `landingCell` 的相邻地产，再处理 `postGodCell`，最后才进入方向或换人。`state.landingBuilt` 记录本次落点里玩家自己加盖/建起的地产，供凶神判断“刚升级的房子”。`applyPostGods` 的顺序是：福神/天使先给相邻地产加盖，己方大空地打开 `chooseBig`；凶神再把本次刚建起的小房屋降一层；土地公最后收走所有非己方相邻地产，并保留原有的层数和建筑类型。空地由土地公收走时创建 `level=0` 的地产记录。
+`resolveLanding` 同时记下 `landingCell` 和 `postGodCell`，`advanceTurn` 先处理 `landingCell` 的相邻地产，再处理 `postGodCell`，最后才进入方向或换人。`state.landingBuilt` 记录本次落点里玩家自己加盖/建起的地产，供凶神判断“刚升级的房子”。`applyPostGods` 的顺序是：福神/天使先给相邻地产加盖，己方大空地打开 `chooseBig`；凶神再把本次刚建起的小房屋降一层；土地公最后收走所有非己方相邻地产，并保留原有的层数和建筑类型。空地由土地公收走时创建 `level=0` 的地产记录。
 
 ## 测试覆盖
 
