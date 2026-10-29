@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=142';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=143';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=142';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=143';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -151,7 +151,8 @@ function renderBoard(el, state, currentP, actions) {
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
     const w = (Math.max(...xs) - Math.min(...xs) + 1) * S;
     const h = (Math.max(...ys) - Math.min(...ys) + 1) * S;
-    const title = `${name}${pr?.bigType ? `（${BIG_NAME[pr.bigType]}）` : ''}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}${pr ? `｜${(pr.price ?? buyPrice(state, plot.id)).toLocaleString()}` : ''}`;
+    const frontage = state.map.nodes.filter(n => n.adjacentPlots?.includes(plot.id)).length;
+    const title = `${name}${pr?.bigType ? `（${BIG_NAME[pr.bigType]}）` : ''}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}${pr ? `｜${(pr.price ?? buyPrice(state, plot.id)).toLocaleString()}` : ''}${frontage ? `｜${frontage} 个入口` : ''}`;
     const pickPlot = state.mapPick?.plot;
     const filter = state.mapPick?.filter;
     const filterPlayer = state.players.find(q => q.id === state.mapPick?.playerId);
