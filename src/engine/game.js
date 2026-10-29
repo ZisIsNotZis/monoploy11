@@ -162,7 +162,7 @@ export function current(state) {
 export function startTurn(state) {
   if (state.phase === 'over') return state;
   const p = current(state);
-  if (!p || !p.alive) return endTurn(state);
+  if (!p || !p.alive) return advanceTurn(state);
 
   state.day += 1;
   if (state.day > 1 && (state.day - 1) % TUNING.priceIndexEveryDays === 0) {
@@ -189,7 +189,7 @@ export function startTurn(state) {
       }
       if (was === '梦游' || was === '冬眠') {
         log(state, `${p.name} 正在${was}，跳过本回合`);
-        return endTurn(state);
+        return advanceTurn(state);
       }
     }
   }
@@ -207,17 +207,17 @@ export function startTurn(state) {
   if (p.skipTurns > 0) {
     p.skipTurns -= 1;
     log(state, `${p.name} 跳过本回合（剩余 ${p.skipTurns}）`);
-    return endTurn(state);
+    return advanceTurn(state);
   }
   if (p.jail > 0) {
     p.jail -= 1;
     if (p.jail === 0) releaseFrom(state, p, 'jail');
-    return endTurn(state);
+    return advanceTurn(state);
   }
   if (p.hospital > 0) {
     p.hospital -= 1;
     if (p.hospital === 0) releaseFrom(state, p, 'hospital');
-    return endTurn(state);
+    return advanceTurn(state);
   }
 
   // 回合开始弃到上限
@@ -265,8 +265,9 @@ function releaseFrom(state, p, kind) {
   }
 }
 
-export function endTurn(state) {
+export function advanceTurn(state) {
   if (state.phase === 'over') return state;
+  if (state.pending) return state;
   if (state.moving) return continueWalk(state);
   if (state.day >= state.config.dayLimit) {
     return finishByAssets(state);
@@ -388,7 +389,7 @@ function finishWalk(state, p, res) {
     p.facing = res.pendingDirection ? null : nextForward(state.map, p.position, p.lastNode);
   }
   p.position = res.landed;
-  if (!p.alive) return endTurn(state);
+  if (!p.alive) return advanceTurn(state);
   state.phase = 'resolve';
   p.pendingDirection = res.pendingDirection ? exitsOf(state, p.position, p.lastNode) : null;
   const result = resolveLanding(state, p);
@@ -403,7 +404,7 @@ function continueWalk(state) {
   const mv = state.moving;
   if (!mv) return state;
   const p = state.players.find(q => q.id === mv.playerId);
-  if (!p || !p.alive) { state.moving = null; return endTurn(state); }
+  if (!p || !p.alive) { state.moving = null; return advanceTurn(state); }
   const path = mv.res.path;
   while (mv.index < path.length - 1) {
     const id = path[mv.index];
@@ -417,7 +418,7 @@ function continueWalk(state) {
       log(state, `${p.name} 经过起点 +${TUNING.salary}`);
     }
     applyPass(state, p, id);
-    if (!p.alive) { state.moving = null; return endTurn(state); }
+    if (!p.alive) { state.moving = null; return advanceTurn(state); }
     if (state.passPrompt) {
       state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true, afterWalk: true } : { type: 'lottery', fromPass: true, afterWalk: true };
       state.passPrompt = null;
@@ -448,7 +449,7 @@ export function chooseDirection(state, toId) {
   p.pendingDirection = null;
   state.pending = null;
   log(state, `${p.name} 选择朝 ${label(state, toId)} 方向`);
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 function label(state, id) {
@@ -587,7 +588,7 @@ function resolveAdjacentPlots(state, p, cell) {
     log(state, `${labelForPlot(state, id)} 无主，售价 ${price}`);
     return state;
   }
-  return state.pending ? state : endTurn(state);
+  return state.pending ? state : advanceTurn(state);
 }
 
 function labelForPlot(state, id) {
@@ -700,14 +701,14 @@ function applyPostGods(state, p, cell) {
 
 function finishLanding(state, p, cell) {
   state.landingCell = null;
-  if (!p.alive) return endTurn(state);
+  if (!p.alive) return advanceTurn(state);
   if (cell.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 function resolveLanding(state, p) {
   const cell = state.map.nodes.find(n => n.id === p.position);
-  if (!cell) return endTurn(state);
+  if (!cell) return advanceTurn(state);
   state.landingCell = cell.id;
   state.postGodCell = cell.id;
   state.landingBuilt = [];
@@ -815,7 +816,7 @@ function resolveLanding(state, p) {
         state.passPrompt = null;
         return state;
       }
-      return endTurn(state);
+      return advanceTurn(state);
   }
 }
 
@@ -841,7 +842,7 @@ export function buyProperty(state) {
     return state;
   }
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function buildProperty(state) {
@@ -849,7 +850,7 @@ export function buildProperty(state) {
   const p = current(state);
   const { cellId, cost } = state.pending;
   const pr = state.properties[cellId];
-  if (!pr || p.cash < cost || pr.level >= TUNING.maxLevel) return endTurn(state);
+  if (!pr || p.cash < cost || pr.level >= TUNING.maxLevel) return advanceTurn(state);
   if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId }; return state; }
   p.cash -= cost;
   pr.level += 1;
@@ -857,14 +858,14 @@ export function buildProperty(state) {
   state.landingBuilt.push(cellId);
   log(state, `${p.name} 将 ${labelForPlot(state, cellId)} 升到 Lv.${pr.level}（花费 ${cost}）`);
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function doChooseBig(state, bigType) {
   if (state.pending?.type !== 'chooseBig') return state;
   const p = current(state);
   const pr = state.properties[state.pending.cellId];
-  if (!pr || pr.ownerId !== p.id) return endTurn(state);
+  if (!pr || pr.ownerId !== p.id) return advanceTurn(state);
   const allowed = ['commercial', 'hotel', 'bookstore', 'energy', 'realestate', 'research'];
   if (!allowed.includes(bigType)) return state;
   pr.bigType = bigType;
@@ -873,7 +874,7 @@ export function doChooseBig(state, bigType) {
   state.landingBuilt.push(state.pending.cellId);
   log(state, `${p.name} 建起 ${BIG_NAMES[bigType] ?? bigType}`);
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function skipPending(state) {
@@ -889,7 +890,7 @@ export function skipPending(state) {
     return state;
   }
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function setDirection(state, toId) { return chooseDirection(state, toId); }
@@ -1169,7 +1170,7 @@ export function leaveStock(state) {
   if (state.pending?.type !== 'stock') return state;
   const free = state.pending.free;
   state.pending = null;
-  return free ? state : endTurn(state);
+  return free ? state : advanceTurn(state);
 }
 
 export function doLottery(state, number) {
@@ -1185,7 +1186,7 @@ export function doLottery(state, number) {
   log(state, `${p.name} 买下乐透 ${number}（${TUNING.lotteryTicket}）`);
   state.pending = null;
   if (state.moving) return continueWalk(state);
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function doMagic(state, effect) {
@@ -1200,7 +1201,7 @@ export function doMagic(state, effect) {
     default: break;
   }
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 function runNewsEvent(state, p) {
@@ -1215,7 +1216,7 @@ export function doNews(state) {
   if (state.pending?.type !== 'news') return state;
   runNewsEvent(state, current(state));
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function doMerchant(state, index) {
@@ -1231,7 +1232,7 @@ export function doMerchant(state, index) {
   state.shopOffer.splice(index, 1);
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
   log(state, `${p.name} 从神秘人处花 ${item.price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
-  if (state.shopBought >= state.shopLimit) return endTurn(state);
+  if (state.shopBought >= state.shopLimit) { state.pending = null; return advanceTurn(state); }
   return state;
 }
 
@@ -1265,14 +1266,14 @@ export function doShop(state, index) {
   if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
   log(state, `${p.name} 花 ${price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
-  if (state.shopBought >= state.shopLimit) return endTurn(state);
+  if (state.shopBought >= state.shopLimit) { state.pending = null; return advanceTurn(state); }
   return state;
 }
 
 export function skipShop(state) {
   if (state.pending?.type !== 'shop') return state;
   state.pending = null;
-  return endTurn(state);
+  return advanceTurn(state);
 }
 
 export function tickStocks(state) {
@@ -1290,5 +1291,5 @@ export function leavePending(state) {
   const resume = state.pending.afterWalk && state.moving;
   state.pending = null;
   if (resume) return continueWalk(state);
-  return free ? state : endTurn(state);
+  return free ? state : advanceTurn(state);
 }
