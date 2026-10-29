@@ -267,6 +267,7 @@ function releaseFrom(state, p, kind) {
 
 export function endTurn(state) {
   if (state.phase === 'over') return state;
+  if (state.moving) return continueWalk(state);
   if (state.day >= state.config.dayLimit) {
     return finishByAssets(state);
   }
@@ -1129,9 +1130,8 @@ export function doBank(state, action, amount) {
   if (action === 'deposit' && p.cash >= amount) { p.cash -= amount; p.deposit += amount; }
   if (action === 'withdraw' && p.deposit >= amount) { p.deposit -= amount; p.cash += amount; }
   log(state, `${p.name} ${action === 'deposit' ? '存入' : '取出'} ${amount}`);
-  const free = state.pending.free;
-  state.pending = null;
-  return free ? state : endTurn(state);
+  // 存取只是银行面板内的一次操作，不结束移动，也不结束回合；离开银行时才继续。
+  return state;
 }
 
 export function doStock(state, stockId, qty, side) {

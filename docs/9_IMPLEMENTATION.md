@@ -69,7 +69,7 @@ node src/sim.js --games 50 --seed 3 --boss doctor --tier 3
    - 路面类型：card/bank/lottery/shop/magic/news/tax/event/hospital/jail/teleport。
    - `adjacentPlots`：`resolveAdjacentPlots`，有主收租、队友免租、无主逐块入队、自己的地产加盖/大建筑选择。
    - `pendingDirection`：如果停在交叉点，记录方向选项，等以上结算结束后由 `endTurn` 弹出方向选择。
-6. `endTurn`：如果本周期的落点还有 `landingCell`，先把相邻地产处理完；然后处理 `postGodCell` 的事后神；若当前玩家有 `pendingDirection`，再弹方向；否则换人。
+6. `endTurn`：如果还有 `moving`，先继续走完，绝不在半路换人；如果本周期的落点还有 `landingCell`，先把相邻地产处理完；然后处理 `postGodCell` 的事后神；若当前玩家有 `pendingDirection`，再弹方向；否则换人。
 
 ## 经济
 

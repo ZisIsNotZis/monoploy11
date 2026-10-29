@@ -466,3 +466,19 @@ test('a lethal obstacle stops the walk at that step', () => {
   assert.equal(p.position, '2,11');
   assert.equal(p.alive, false);
 });
+
+test('bank withdraw does not end the current walk', () => {
+  const s = createGame({ seed: 43 });
+  const p = current(s);
+  p.position = '2,9'; p.facing = '2,10'; p.lastNode = '2,8'; p.forcedDice = 5;
+  p.deposit = 20_000;
+  roll(s, 1);
+  assert.equal(s.pending?.type, 'bank');
+  const before = p.position;
+  doBank(s, 'withdraw', 10_000);
+  assert.equal(p.cash, 110_000);
+  assert.equal(s.pending?.type, 'bank');
+  assert.ok(s.moving, 'walk should still be in progress');
+  leavePending(s);
+  assert.equal(p.position, '2,14');
+});
