@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=82';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=83';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -139,15 +139,20 @@ function renderBoard(el, state, currentP, actions) {
     const pr = state.properties[plot.id];
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
-    const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : '地';
+    const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : (pr?.level > 0 ? '房' : '地');
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
     const w = (plot.big ? 2 : 1) * S;
     const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
     const pickPlot = state.mapPick?.plot;
-    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickPlot ? 'pick-target' : ''}" data-plot="${plot.id}"${pickPlot ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
+    const marks = [
+      pr?.closed > 0 ? `<b class="mark stop">停${pr.closed}</b>` : '',
+      pr?.inflate > 0 ? `<b class="mark inflate">涨${pr.inflate}</b>` : '',
+    ].join('');
+    const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
+    return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickPlot ? 'pick-target' : ''} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
-      <div class="picon">${glyph}</div>
+      <div class="picon">${glyph}</div>${level}${marks}
     </div>`;
   }).join('');
 
@@ -226,7 +231,7 @@ function renderChoice(el, state, p, actions) {
   }
   if (state.mapPick) {
     const name = CARD_DEFS[state.mapPick.cardId]?.name ?? '卡片';
-    const hint = state.mapPick?.plot ? '直接点地图上的地产，按它所在的街区选目标' : '直接点地图上高亮的路面';
+    const hint = state.mapPick?.plot ? '直接点地图上的地产选择目标' : '直接点地图上高亮的路面';
     el.innerHTML = `<h3>${name}</h3><p class="hint">${hint}</p><button data-act="cancel-pick">取消</button>`;
     el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
     return;

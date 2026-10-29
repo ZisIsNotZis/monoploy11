@@ -8,6 +8,8 @@ import {
   applyMonthly, tickGod, tickTimers, spawnOccupants, releaseFrom, runNewsEvent,
 } from './game.js';
 
+const GROUND_CARDS = new Set(['buyland', 'exchange', 'rebuild', 'worker', 'truck']);
+const STREET_CARDS = new Set(['close', 'inflate']);
 const range5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'hibernate', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start']);
 
 export function startSession(config) {
@@ -122,11 +124,12 @@ async function actionPhase(state, p, ui) {
       let target = null;
       const def = CARD_DEFS[id];
       if (def.target !== 'self' && def.target !== 'all') {
+        const kind = GROUND_CARDS.has(id) || id === 'monster' ? 'plot' : (STREET_CARDS.has(id) ? 'street' : def.target);
         let opts = null;
-        if (def.target === 'player') {
+        if (kind === 'player') {
           opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && (!TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, 5)));
         }
-        target = await ui.ask({ type: 'target', player: p, cardId: id, kind: def.target, players: opts, max: def.target === 'cell' ? (id === 'robotdoll' ? 10 : 5) : null });
+        target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? (id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
       }
       useCard(state, a.index, target);
@@ -150,6 +153,7 @@ async function movePhase(state, p, steps, ui) {
     path.push(next);
     state.lastRoll.path = path;
     if (next === state.map.startId) { p.cash += TUNING.salary; log(state, `${p.name} 经过起点 +${TUNING.salary}`); }
+    if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
     if (!p.alive) return true;
   }

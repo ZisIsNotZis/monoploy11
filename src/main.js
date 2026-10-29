@@ -1,5 +1,5 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=82';
+import { render } from './ui/render.js?v=83';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
@@ -63,6 +63,10 @@ function rerender() {
 
 const ui = {
   render: rerender,
+  async step() {
+    rerender();
+    await new Promise(r => setTimeout(r, 500));
+  },
   ask(prompt) {
     return new Promise(resolve => {
       active = { prompt, resolve };
@@ -90,8 +94,8 @@ function applyPromptToState(p) {
     if (p.kind === 'cell') {
       const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
       state.mapPick = { max: p.max, cells, cardId: p.cardId };
-    } else if (p.kind === 'street') {
-      state.mapPick = { plot: true };
+    } else if (p.kind === 'street' || p.kind === 'plot') {
+      state.mapPick = { plot: true, value: p.kind };
     }
     state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, players: p.players };
     return;
@@ -118,7 +122,7 @@ const actions = {
   stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
   direction(id) { answer(id); },
   pickCell(id) { answer(id); },
-  pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (plot) answer(plot.street); },
+  pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (plot) answer(state.mapPick?.value === 'street' ? plot.street : id); },
   chooseBig(type) { answer(type); },
   magic(effect) { answer({ effect }); },
   lottery(number) { answer({ action: 'buy', number }); },

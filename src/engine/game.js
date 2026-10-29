@@ -191,7 +191,8 @@ export function drawLottery(state) {
     state.lottery.jackpot = TUNING.lotteryJackpotBase;
   } else {
     state.lottery.jackpot += 200_000;
-    log(state, `乐透开奖 ${winning}：无人中奖，奖池累计 ${state.lottery.jackpot}`);
+    log(state, `乐透开奖 ${winning}：无人中奖，奖池累计 ${state.lottery.jackpot}；已买号码继续保留`);
+    return;
   }
   state.lottery.tickets = [];
   state.lottery.sold = [];
@@ -298,6 +299,12 @@ function targetPlayer(state, p, id) {
   return state.players.find(q => q.id === id && q.alive) ?? null;
 }
 
+function targetPlotId(state, id) {
+  if (state.map.plots.some(p => p.id === id)) return id;
+  const node = state.map.nodes.find(n => n.id === id);
+  return node?.plotId ?? node?.adjacentPlots?.[0] ?? id;
+}
+
 function targetNode(state, id) {
   return state.map.nodes.find(n => n.id === id) ?? null;
 }
@@ -307,35 +314,35 @@ export function applyCard(state, p, id, target) {
   const q = targetPlayer(state, p, target);
   switch (id) {
     case 'buyland': {
-      if (!node) return false;
-      const key = node.plotId ?? node.adjacentPlots?.find(id => !state.properties[id]?.ownerId) ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const key = targetPlotId(state, target);
+      const plot = state.map.plots.find(x => x.id === key);
+      if (!plot) return false;
       const pr = state.properties[key];
       if (pr?.ownerId === p.id) return false;
       const price = buyPrice(state, key);
       if (p.cash < price) return false;
       p.cash -= price;
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== key); }
-      const plot = state.map.plots.find(x => x.id === key);
       p.properties.push(key);
       state.properties[key] = { ownerId: p.id, level: pr?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null };
       return true;
     }
     case 'exchange': {
-      if (!node) return false;
-      const a = state.properties[p.position], b = state.properties[node.id];
+      const here = targetPlotId(state, p.position);
+      const there = targetPlotId(state, node?.id ?? target);
+      const a = state.properties[here], b = state.properties[there];
       const pa = state.players.find(x => x.id === a?.ownerId);
       const pb = state.players.find(x => x.id === b?.ownerId);
-      if (a && pa) pa.properties = pa.properties.filter(x => x !== p.position);
-      if (b && pb) pb.properties = pb.properties.filter(x => x !== node.id);
-      if (a) state.properties[node.id] = a; else delete state.properties[node.id];
-      if (b) { state.properties[p.position] = b; } else { delete state.properties[p.position]; }
-      if (a && pa) pa.properties.push(node.id);
-      if (b && pb) pb.properties.push(p.position);
+      if (a && pa) pa.properties = pa.properties.filter(x => x !== here);
+      if (b && pb) pb.properties = pb.properties.filter(x => x !== there);
+      if (a) state.properties[there] = a; else delete state.properties[there];
+      if (b) { state.properties[here] = b; } else { delete state.properties[here]; }
+      if (a && pa) pa.properties.push(there);
+      if (b && pb) pb.properties.push(here);
       return true;
     }
     case 'rebuild': {
-      if (!node) return false;
-      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const key = targetPlotId(state, target);
       const pr = state.properties[key];
       if (!pr || !pr.big || pr.ownerId === p.id) return false;
       pr.bigType = 'park';
@@ -349,12 +356,12 @@ export function applyCard(state, p, id, target) {
       return true;
     }
     case 'truck': {
-      const pr = state.properties[node?.id]; if (!pr) return false;
+      const key = targetPlotId(state, target);
+      const pr = state.properties[key]; if (!pr) return false;
       pr.level = Math.max(1, pr.level - 1); return true;
     }
     case 'monster': {
-      if (!node) return false;
-      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const key = targetPlotId(state, target);
       const plot = state.map.plots.find(x => x.id === key);
       const street = plot?.street;
       if (!street) return false;
@@ -367,10 +374,11 @@ export function applyCard(state, p, id, target) {
       return true;
     }
     case 'worker': {
-      if (!node) return false;
-      const path = pathWithin(state.map, p.position, node.id, 5);
-      if (!path) return false;
-      const key = node.plotId ?? node.adjacentPlots?.[0] ?? node.propertyKey ?? node.id;
+      const key = targetPlotId(state, target);
+      const plot = state.map.plots.find(x => x.id === key);
+      if (!plot) return false;
+      const road = state.map.nodes.find(n => n.adjacentPlots?.includes(key));
+      if (!road || !pathWithin(state.map, p.position, road.id, 5)) return false;
       const pr = state.properties[key]; if (!pr || pr.ownerId !== p.id) return false;
       pr.level = Math.min(TUNING.maxLevel, pr.level + 1); return true;
     }
@@ -415,7 +423,7 @@ export function applyCard(state, p, id, target) {
       q.god = null; q.godDays = 0;
       damage(state, q, TUNING.bombDamage, '定时炸弹'); return true;
     }
-    case 'missile': if (!q) return false; damage(state, q, TUNING.bombDamage, '飞弹'); return true;
+    case 'missile': if (!q) return false; q.hospital = TUNING.hospitalTurns; q.position = state.map.facility?.hospital ?? q.position; log(state, `${q.name} 被飞弹炸进医院 ${q.hospital} 回合`); return true;
     case 'quantum': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage * 1.5, '量子飞弹'); return true;
     case 'rushmissile': for (const x of state.players.filter(x => x.alive && x.id !== p.id)) damage(state, x, TUNING.bombDamage, '急速弹'); return true;
     case 'free': p.freeCard = true; return true;

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GRID_MANOR } from '../src/data/maps/grid-manor.js';
 import { validateMap } from '../src/engine/board-v2.js';
-import { createGame, current } from '../src/engine/game.js';
+import { createGame, current, drawLottery, useCard } from '../src/engine/game.js';
 import { buyPlot, buildPlot } from '../src/engine/flow.js';
 import { rentFor } from '../src/engine/economy.js';
 
@@ -32,4 +32,27 @@ test('big plots do not add to small-house street multiplier', () => {
   s.properties[big.id] = { ownerId: owner.id, level: 1, street: 'A', big: true, bigType: 'commercial' };
   owner.properties.push(big.id);
   assert.equal(rentFor(s, small[0].id), before);
+});
+
+test('lottery keeps tickets and sold numbers until someone wins', () => {
+  const s = createGame({ seed: 63 });
+  s.day = 10;
+  s.rng.int = () => 0; // winning number 1
+  s.lottery.tickets.push({ playerId: current(s).id, number: 2 });
+  s.lottery.sold.push(2);
+  drawLottery(s);
+  assert.equal(s.lottery.tickets.length, 1);
+  assert.deepEqual(s.lottery.sold, [2]);
+});
+
+test('missile sends the target to hospital', () => {
+  const s = createGame({ seed: 64 });
+  const p = current(s);
+  const q = s.players.find(x => x.id !== p.id);
+  q.position = p.position;
+  p.cards = ['missile'];
+  s.phase = 'action';
+  useCard(s, 0, q.id);
+  assert.equal(q.hospital, 2);
+  assert.ok(!p.cards.includes('missile'));
 });
