@@ -1,6 +1,6 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=92';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=93';
 import { assetsOf } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
@@ -140,6 +140,7 @@ function renderBoard(el, state, currentP, actions) {
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
     const glyph = plot.big ? (pr?.bigType ? ({ commercial:'商', hotel:'饭', bookstore:'书', energy:'能', realestate:'地', research:'研', park:'公' }[pr.bigType] ?? '大') : '大') : (pr?.level > 0 ? '房' : '地');
+    const glyphSvg = svgIcon(glyph) ?? glyph;
     const xs = plot.cells.map(c => c.x), ys = plot.cells.map(c => c.y);
     const x = Math.min(...xs) * S, y = Math.min(...ys) * S;
     const w = (plot.big ? 2 : 1) * S;
@@ -160,14 +161,14 @@ function renderBoard(el, state, currentP, actions) {
     const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
     return `<div class="prop ${plot.big ? 'bigprop' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${w - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
-      <div class="picon">${glyph}</div>${level}${marks}
+      <div class="picon">${glyphSvg}</div>${level}${marks}
     </div>`;
   }).join('');
 
   const roads = map.nodes.map(n => {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
-    const ground = GROUND_ICON[n.kind] ?? (n.kind === 'empty' ? '' : '?');
+    const ground = n.kind === 'empty' ? '' : (svgIcon(n.kind) ?? GROUND_ICON[n.kind] ?? '?');
     const title = n.kind === 'empty' ? '' : `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}`;
     const roadStop = STOP_ROAD.has(n.kind);
     const roadPass = PASS_ROAD.has(n.kind);
@@ -189,7 +190,7 @@ function renderBoard(el, state, currentP, actions) {
       <div class="tokens">${here.map(q => {
         const d = q.facing ?? q.lastNode; const t = d ? nodes[d] : null;
         const a = t ? Math.atan2(t.y - n.y, t.x - n.x) * 180 / Math.PI : 0;
-        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="--c:${q.color};background:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}"><span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span><i class="ptr"></i></span>`;
+        return `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" data-player="${q.id}" style="--c:${q.color};color:${q.color};transform:rotate(${a + 90}deg)" title="${q.name}">${tokenSvg()}<span class="ini" style="transform:rotate(${-(a + 90)}deg)">${q.name[0]}</span></span>`;
       }).join('')}</div>
     </div>`;
   }).join('');

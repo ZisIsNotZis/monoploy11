@@ -1,10 +1,11 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=92';
+import { render } from './ui/render.js?v=93';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
+import { speak } from './ui/voice.js';
 
 const $ = s => document.querySelector(s);
 const root = {
@@ -45,17 +46,18 @@ function rerender() {
     if (old != null && now !== old) {
       const delta = now - old;
       spawnFloat(p, (delta > 0 ? '+' : '') + delta.toLocaleString(), delta > 0 ? 'up' : 'down');
+      speak(p, delta > 0 ? 'gain' : 'lose');
     }
     const prev = lastSnap.get(p.id);
     if (prev) {
       const gained = p.cards.filter((id, i) => !prev.cards.includes(id));
       const lost = prev.cards.filter((id, i) => !p.cards.includes(id));
-      if (gained.length) spawnFloat(p, '+' + (CARD_DEFS[gained[0]]?.name ?? '卡'), 'card');
+      if (gained.length) { spawnFloat(p, '+' + (CARD_DEFS[gained[0]]?.name ?? '卡'), 'card'); speak(p, 'card'); }
       if (lost.length) spawnFloat(p, '-' + (CARD_DEFS[lost[0]]?.name ?? '卡'), 'card');
-      if (p.god !== prev.god) spawnFloat(p, p.god ? '+' + p.god : '-' + (prev.god ?? '神'), 'status');
+      if (p.god !== prev.god) { spawnFloat(p, p.god ? '+' + p.god : '-' + (prev.god ?? '神'), 'status'); speak(p, 'god'); }
       if (p.status !== prev.status) spawnFloat(p, p.status ? '+' + p.status : '-' + (prev.status ?? '状态'), 'status');
-      if (p.jail !== prev.jail) spawnFloat(p, p.jail > prev.jail ? '+监狱' : '-监狱', 'status');
-      if (p.hospital !== prev.hospital) spawnFloat(p, p.hospital > prev.hospital ? '+医院' : '-医院', 'status');
+      if (p.jail !== prev.jail) { spawnFloat(p, p.jail > prev.jail ? '+监狱' : '-监狱', 'status'); if (p.jail > prev.jail) speak(p, 'jail'); }
+      if (p.hospital !== prev.hospital) { spawnFloat(p, p.hospital > prev.hospital ? '+医院' : '-医院', 'status'); if (p.hospital > prev.hospital) speak(p, 'hospital'); }
     }
   }
   lastMoney = new Map(state.players.map(p => [p.id, p.cash + p.deposit]));
