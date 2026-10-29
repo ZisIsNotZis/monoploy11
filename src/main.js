@@ -50,6 +50,7 @@ let active = null; // { prompt, resolve }
 let lastMoney = null;
 let lastSnap = null;
 let lastNews = 0;
+const floatStack = new Map();
 
 function spawnFloat(p, text, kind) {
   const tok = document.querySelector(`[data-cell="${p.position}"] [data-player="${p.id}"]`);
@@ -59,7 +60,10 @@ function spawnFloat(p, text, kind) {
   span.textContent = text;
   if (rect) {
     span.style.left = `${rect.left + rect.width / 2}px`;
-    span.style.top = `${rect.top - 4}px`;
+    const n = floatStack.get(p.id) ?? 0;
+    floatStack.set(p.id, n + 1);
+    span.style.top = `${rect.top - 4 - Math.min(2, n) * 20}px`;
+    setTimeout(() => floatStack.set(p.id, Math.max(0, (floatStack.get(p.id) ?? 1) - 1)), EXPERIENCE.floatMs);
   }
   document.body.appendChild(span);
   setTimeout(() => span.remove(), EXPERIENCE.floatMs);

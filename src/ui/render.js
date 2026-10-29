@@ -47,8 +47,12 @@ const CELL_HELP = {
 
 export function render(root, state, actions) {
   const p = current(state);
+  const center = state.map.plots.find(x => x.name === '中央大酒店');
+  const centerPr = center ? state.properties[center.id] : null;
+  const centerOwner = centerPr?.ownerId ? state.players.find(q => q.id === centerPr.ownerId) : null;
   root.system.innerHTML = `<span class="pill">第 ${state.day} 天</span>
     <span class="pill">物价 ${state.priceIndex.toFixed(2)}</span>
+    ${center ? `<span class="pill center-pill" title="${centerOwner ? centerOwner.name : '无主'}｜Lv.${centerPr?.level ?? 0}｜${center.cells.length} 格｜${(centerPr?.price ?? 0).toLocaleString()}">中心 ${centerOwner?.name ?? '无主'} Lv.${centerPr?.level ?? 0}</span>` : ''}
     <span class="grow"></span>
     <button data-stock="1" ${state.phase === 'action' && !state.pending ? '' : 'disabled'}>股票</button>`;
   root.system.querySelector('[data-stock]').onclick = () => actions.openStock();
@@ -226,7 +230,7 @@ function renderPlayers(el, state, currentP) {
       <div class="pline">
         <span class="avatar">${avatarSvg(p.charId, p.color, p.name)}</span>
         <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>
-        <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
+        <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · 地 ${p.properties.length} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
         <span class="pslots">
           <span class="slot bind" title="绑定状态：${p.god ?? '无'}">${p.god ? (GOD_ICON[p.god] ?? '神') + p.godDays : '—'}</span>
           <span class="slot body" title="人物状态：${p.status ?? (p.skipTurns ? '停留 ' + p.skipTurns : '无')}">${p.status ? (STATUS_ICON[p.status] ?? '状') + p.statusDays : (p.skipTurns ? '停' + p.skipTurns : '—')}</span>
