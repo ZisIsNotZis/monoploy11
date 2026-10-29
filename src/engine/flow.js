@@ -213,6 +213,7 @@ async function rollPhase() {}
 
 async function movePhase(state, p, steps, ui) {
   const path = [];
+  p.trail = path;
   let cameFrom = p.lastNode;
   for (let i = 0; i < steps; i++) {
     const next = nextStep(state, p, cameFrom, i === 0);
@@ -236,17 +237,22 @@ async function movePhase(state, p, steps, ui) {
     if (ui.step) await ui.step(state, p, next);
     if (await passPhase(state, p, next, ui, i === steps - 1)) return true;
     if (!p.alive || p.jail > 0 || p.hospital > 0) return true;
-    if (p.bounceSteps) {
-      const back = Math.max(0, path.length - 1 - p.bounceSteps);
-      p.position = path[back];
-      p.lastNode = back > 0 ? path[back - 1] : cameFrom;
-      p.facing = back > 0 ? path[back - 1] : cameFrom;
-      p.bounceSteps = 0;
-      log(state, `${p.name} 被果冻墙沿原路弹回`);
-      return true;
-    }
   }
   return false;
+}
+
+function bounceBack(state, p) {
+  const trail = p.trail ?? [];
+  const idx = Math.max(0, trail.length - 3);
+  const target = trail[idx] ?? p.lastNode ?? p.position;
+  const behind = trail[idx + 1] ?? p.lastNode;
+  p.position = target;
+  p.lastNode = behind ?? p.lastNode;
+  const exits = buildAdj(state.map)[target] ?? [];
+  const reverse = exits.find(e => e.to !== behind) ?? exits[0];
+  p.facing = reverse?.to ?? behind ?? p.facing;
+  p.bounceSteps = 0;
+  log(state, `${p.name} 被果冻墙沿原路弹回，立即停止移动`);
 }
 
 function nextForward(state, pos, cameFrom) {
@@ -288,6 +294,7 @@ async function passPhase(state, p, cellId, ui, isLast) {
     const occ = state.placements[cellId];
     if (occ && !['god', 'dog', 'beggar', 'merchant', 'banana'].includes(occ.kind)) {
       await triggerObstacle(state, p, cellId, occ, ui);
+      if (p.bounceSteps) { bounceBack(state, p); return true; }
       if (!p.alive || p.jail > 0 || p.hospital > 0 || p.skipTurns > 0) return true;
     }
     const node = state.map.nodes.find(n => n.id === cellId);
@@ -346,6 +353,7 @@ async function landingPhase(state, p, ui) {
     else if (occ.kind === 'merchant') { delete state.placements[cell.id]; await merchantFlow(state, p, ui); }
     else if (!['god','dog','beggar','merchant'].includes(occ.kind)) await triggerObstacle(state, p, cell.id, occ, ui);
   }
+  if (p.bounceSteps) { bounceBack(state, p); return; }
   if (!p.alive || p.jail > 0 || p.hospital > 0) return;
   if (p.position !== cell.id) {
     cell = state.map.nodes.find(n => n.id === p.position);
@@ -635,6 +643,7 @@ async function remoteDiceFlow(state, p, ui, index, max = (1 + Math.max(0, p.vehi
   const path = pathWithin(state.map, p.position, target, max);
   if (!path || !path.length) return false;
   p.cards.splice(index, 1);
+  p.trail = path;
   for (let i = 0; i < path.length; i++) {
     const id = path[i];
     p.lastNode = p.position; p.position = id;
