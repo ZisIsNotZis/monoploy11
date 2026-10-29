@@ -37,34 +37,40 @@ button { font: inherit; }
 .slot b { color: var(--text); font-weight: 500; }
 .bad { color: #e05a5a; font-size: 10px; }
 
-#actions { font-size: 11px; color: var(--muted); min-height: 18px; }
+#actions { font-size: 11px; color: var(--muted); min-height: 18px; overflow: auto; flex: 0 1 auto; }
 #actions h3 { margin: 2px 0 4px; font-size: 12px; color: var(--gold); }
 #actions button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; margin: 2px; cursor: pointer; }
+#actions .offers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 4px 0; }
+#actions .offer { display: flex; flex-direction: column; align-items: flex-start; font-size: 10px; padding: 4px 5px; }
+#actions .offer b { font-size: 11px; }
+#actions .offer span { color: var(--muted); }
+#actions .numgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+#actions .numgrid button { padding: 3px 0; font-size: 11px; }
+#actions .numgrid button:disabled { opacity: .3; }
+#actions input { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px; font: inherit; width: 100px; }
 #actions button:hover { border-color: #6a7280; }
 .hint { color: var(--muted); font-size: 10px; }
 
 /* 底边（侧栏内）：卡片从右往左，骰子最右 */
-#hand { margin-top: auto; display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 7px; min-height: 126px; }
+#hand { margin-top: auto; display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 7px; min-height: 92px; }
 #cards { flex: 1; min-width: 0; display: flex; flex-direction: row-reverse; gap: 6px; overflow-x: auto; align-items: flex-end; }
 #dice { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; }
 #dice button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 6px 11px; cursor: pointer; white-space: nowrap; }
 #dice button:disabled { opacity: .35; cursor: not-allowed; }
 .card {
-  flex: 0 0 88px; height: 112px; border: 1px solid var(--line); border-radius: 5px;
+  flex: 0 0 74px; height: 74px; border: 1px solid var(--line); border-radius: 5px;
   background: #20242b; color: var(--text); padding: 3px; cursor: pointer;
-  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  display: flex; align-items: center; justify-content: center;
 }
 .card:hover { border-color: #8a93a3; }
-.card .art { flex: 1; border-radius: 3px; background: repeating-linear-gradient(135deg, #2a303a 0 6px, #242a33 6px 12px); display: flex; align-items: center; justify-content: center; color: #6d7685; font-size: 24px; }
-.card .name { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .art { width: 100%; height: 100%; border-radius: 3px; background: repeating-linear-gradient(135deg, #2a303a 0 6px, #242a33 6px 12px); display: flex; align-items: center; justify-content: center; color: #8a93a3; font-size: 26px; }
 
-#logWrap { border-top: 1px solid var(--line); padding-top: 4px; }
-#logToggle { background: none; border: 0; color: var(--muted); font-size: 10px; cursor: pointer; padding: 0; }
-#log { margin: 4px 0 0; padding-left: 14px; color: var(--muted); font-size: 10px; max-height: 90px; overflow: auto; }
+
+#log { margin: 4px 0 0; padding-left: 14px; color: var(--muted); font-size: 10px; max-height: 120px; overflow: auto; flex: 0 0 auto; }
 
 /* 棋盘 */
 .cell {
-  position: absolute; width: 62px; height: 38px; border: 1px solid var(--line);
+  position: absolute; border: 1px solid var(--line);
   background: var(--panel); border-radius: 4px; font-size: 10px; line-height: 1.15;
   padding: 2px; z-index: 1;
 }
@@ -75,23 +81,6 @@ button { font: inherit; }
 .tok { width: 13px; height: 13px; border-radius: 50%; color: #111; font-size: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,.35); }
 .tok.cur { outline: 2px solid #fff; outline-offset: 1px; z-index: 2; transform: scale(1.18); box-shadow: 0 0 6px rgba(255,255,255,.35); }
 .cell.off { opacity: .45; border-style: dashed; }
-
-/* 弹窗 */
-#modal { position: fixed; inset: 0; z-index: 20; background: rgba(8,10,13,.62); display: flex; align-items: center; justify-content: center; }
-.modal-box {
-  min-width: 300px; max-width: min(560px, 92vw); max-height: 82vh; overflow: auto;
-  background: #1d2026; border: 1px solid #4a515e; border-radius: 6px; padding: 14px 16px;
-  box-shadow: 0 10px 40px rgba(0,0,0,.5);
-}
-.modal-box h3 { margin: 0 0 8px; font-size: 15px; color: var(--gold); }
-.modal-box p { margin: 4px 0 10px; color: var(--muted); font-size: 12px; }
-.modal-box button { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; margin: 2px; cursor: pointer; }
-.modal-box button:hover { border-color: #8a93a3; }
-.modal-box .offers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
-.modal-box .offer { border: 1px solid var(--line); border-radius: 4px; padding: 6px; text-align: left; background: #20242b; }
-.modal-box .offer b { display: block; font-size: 12px; }
-.modal-box .offer span { color: var(--muted); font-size: 11px; }
-.modal-box input { background: #262b34; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px; font: inherit; width: 110px; }
 
 /* 开局 */
 #setup { position: fixed; inset: 0; z-index: 30; background: rgba(12,14,18,.96); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
@@ -106,3 +95,9 @@ button { font: inherit; }
 .big-msg { font-size: 14px; color: var(--gold); padding: 6px 0; }
 
 @media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) 300px; } }
+.player { position: relative; }
+.money-float { position: absolute; right: 4px; top: 10px; font-size: 12px; font-weight: 700; pointer-events: none; animation: floatUp 1.2s ease-out forwards; }
+.money-float.up { color: #59b36b; }
+.money-float.down { color: #e05a5a; }
+@keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
+.cell.path { outline: 2px solid #d8a13f; z-index: 4; }

@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TEST_MANOR } from '../src/data/maps/test-manor.js';
 import { validateMap } from '../src/engine/board.js';
-import { createGame, roll, buyProperty, buildProperty, chooseDirection, current, skipPending, doMagic, doNews, doLottery, doMerchant, doShop, leaveStock, doBank, leavePending, addCard, attachGod, useCard, CARD_DEFS } from '../src/engine/game.js';
+import { createGame, roll, buyProperty, buildProperty, doChooseBig, chooseDirection, current, skipPending, doMagic, doNews, doLottery, doMerchant, doShop, leaveStock, doBank, leavePending, addCard, attachGod, useCard, CARD_DEFS } from '../src/engine/game.js';
+import { pay } from '../src/engine/economy.js';
 import { rentFor } from '../src/engine/economy.js';
 import { TUNING } from '../src/data/tuning.js';
 
@@ -164,4 +165,51 @@ test('an active catcher can hand the timed bomb to another player', () => {
   roll(s, 1);
   assert.equal(q.god, '定时炸弹');
   assert.equal(p.god, null);
+});
+
+test('rent goes to the owner bank deposit, not cash', () => {
+  const s = createGame({ seed: 22 });
+  const [a, b] = s.players;
+  const cash = b.cash, dep = b.deposit;
+  pay(s, a, b, 1000, '租金');
+  assert.equal(b.cash, cash);
+  assert.equal(b.deposit, dep + 1000);
+});
+
+test('big land starts empty and the second investment chooses a building', () => {
+  const s = createGame({ seed: 23 });
+  const p = current(s);
+  s.properties.r10 = { ownerId: p.id, level: 0, big: true, bigType: null, street: null };
+  p.properties.push('r10');
+  assert.equal(rentFor(s, 'r10'), 0);
+  s.pending = { type: 'chooseBig', cellId: 'r10' };
+  doChooseBig(s, 'commercial');
+  assert.equal(s.properties.r10.bigType, 'commercial');
+  assert.equal(s.properties.r10.level, 1);
+  assert.ok(rentFor(s, 'r10') > 0);
+});
+
+test('one lottery number cannot be sold twice in the same draw', () => {
+  const s = createGame({ seed: 24 });
+  const p = current(s);
+  s.pending = { type: 'lottery' };
+  p.cash = 100_000;
+  doLottery(s, 7);
+  doLottery(s, 7);
+  assert.equal(s.lottery.tickets.length, 1);
+  assert.deepEqual(s.lottery.sold, [7]);
+});
+
+test('shop buys immediately and exits after three purchases', () => {
+  const s = createGame({ seed: 25 });
+  const p = current(s);
+  p.cash = 100_000;
+  s.pending = { type: 'shop' };
+  s.shopOffer = Array.from({ length: 9 }, (_, i) => ({ id: 'mine', price: 1000 }));
+  s.shopBought = 0; s.shopLimit = 3;
+  doShop(s, 0); doShop(s, 1);
+  assert.equal(s.pending?.type, 'shop');
+  doShop(s, 2);
+  assert.equal(s.pending, null);
+  assert.equal(s.shopBought, 3);
 });

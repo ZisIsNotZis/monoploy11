@@ -13,6 +13,7 @@ export function rentFor(state, cellId) {
   const pr = state.properties[cellId];
   if (!pr || !cell) return 0;
   if (pr.closed > 0) return 0;
+  if (pr.big && (!pr.bigType || pr.bigType === 'park')) return 0;
   const level = Math.max(1, pr.level);
   const base = TUNING.rentBase[level] ?? TUNING.rentBase[1];
   const chain = pr.big ? 1 : Math.pow(TUNING.streetMultiplier, Math.max(0, ownsStreet(state, pr.ownerId, pr.street) - 1));
@@ -83,7 +84,10 @@ export function pay(state, from, to, amount, reason) {
   }
 
   from.cash -= amount;
-  if (to) to.cash += amount;
+  if (to) {
+    if (reason === '租金') to.deposit += amount;
+    else to.cash += amount;
+  }
 
   // 圆圆：对手损失时抽成（存款的 1% × 物价）
   if (!from.isBoss) {

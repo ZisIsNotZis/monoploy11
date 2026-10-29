@@ -42,7 +42,7 @@ export function createGame(config = {}) {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
     phase: 'action', properties: {}, placements: {}, log: [], pending: null,
-    winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
+    winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
 
@@ -59,7 +59,7 @@ export function createGame(config = {}) {
   for (let i = 0; i < TUNING.startingCards; i++) {
     for (const p of players) p.cards.push(randomCard(rng));
   }
-  log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}，种子 ${seed}`);
+  log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
   startTurn(state);
   return state;
 }
@@ -259,7 +259,9 @@ export function roll(state, diceCount = 1) {
   log(state, `${p.name} 掷出 ${n} 点`);
 
   const chaos = p.god === '糊涂神' && state.rng.float() < 0.3;
+  state.lastRoll = { playerId: p.id, value: n, path: [] };
   const res = walk(state.map, state.day, p.position, p.facing, n, state.rng, { cameFrom: p.lastNode, chaos });
+  state.lastRoll = { playerId: p.id, value: n, path: res.path };
   for (const id of res.path) {
     if (id === state.map.startId) {
       p.cash += TUNING.salary;
@@ -290,7 +292,12 @@ export function roll(state, diceCount = 1) {
     log(state, `${p.name} 正好停在交叉点，请选择方向`);
     return state;
   }
-  return resolveLanding(state, p);
+  const result = resolveLanding(state, p);
+  if (state.phase === 'resolve' && !state.pending && state.passPrompt) {
+    state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
+  }
+  state.passPrompt = null;
+  return result;
 }
 
 function exitsOf(state, id, lastNode = null) {
@@ -340,14 +347,9 @@ function applyPass(state, p, id) {
     addCard(state, p, randomCard(state.rng));
     log(state, `${p.name} 经过卡片格，获得 1 张卡`);
   } else if (cell.kind === 'bank') {
-    const bonus = Math.min(5_000, Math.round(p.deposit * 0.01));
-    if (bonus) { p.deposit += bonus; log(state, `${p.name} 经过银行，存款 +${bonus}`); }
+    state.passPrompt = 'bank';
   } else if (cell.kind === 'lottery') {
-    if (p.cash >= TUNING.lotteryTicket) {
-      p.cash -= TUNING.lotteryTicket;
-      state.lottery.tickets.push(p.id);
-      log(state, `${p.name} 经过乐透，买了一张`);
-    }
+    state.passPrompt = 'lottery';
   }
 }
 
@@ -359,12 +361,18 @@ function drawLottery(state) {
   if (state.day % 10 !== 0) return;
   if (state.lottery.lastDrawDay === state.day) return;
   state.lottery.lastDrawDay = state.day;
-  if (!state.lottery.tickets.length) { state.lottery.jackpot += 20_000; return; }
-  const winnerId = state.rng.pick(state.lottery.tickets);
-  const w = state.players.find(p => p.id === winnerId);
-  if (w) { w.cash += state.lottery.jackpot; log(state, `乐透开奖：${w.name} 中奖 ${state.lottery.jackpot}`); }
+  const winning = 1 + state.rng.int(30);
+  const hit = state.lottery.tickets.find(t => t.number === winning);
+  if (hit) {
+    const w = state.players.find(p => p.id === hit.playerId);
+    if (w) { w.cash += state.lottery.jackpot; log(state, `乐透开奖 ${winning}：${w.name} 中奖 ${state.lottery.jackpot}`); }
+    state.lottery.jackpot = TUNING.lotteryJackpotBase;
+  } else {
+    state.lottery.jackpot += 200_000;
+    log(state, `乐透开奖 ${winning}：无人中奖，奖池累计 ${state.lottery.jackpot}`);
+  }
   state.lottery.tickets = [];
-  state.lottery.jackpot = TUNING.lotteryJackpotBase;
+  state.lottery.sold = [];
 }
 
 function tickTimers(state) {
@@ -437,7 +445,7 @@ function resolveLanding(state, p) {
       const pr = state.properties[cell.id];
       if ((!pr || !pr.ownerId) && p.god === '土地公') {
         p.properties.push(cell.id);
-        state.properties[cell.id] = { ownerId: p.id, level: 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: cell.bigType ?? null };
+        state.properties[cell.id] = { ownerId: p.id, level: cell.kind === 'big' ? 0 : 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: null };
         log(state, `土地公附身，${p.name} 直接占领 ${cell.label}`);
         return endTurn(state);
       }
@@ -450,6 +458,7 @@ function resolveLanding(state, p) {
       godOnProperty(state, p, pr);
       if (pr.ownerId === p.id) {
         if (p.god === '衰神') { log(state, '衰神附身，不能加盖'); return endTurn(state); }
+        if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: cell.id }; log(state, '大地产空地：选择要建造的大型建筑'); return state; }
         if (pr.level < TUNING.maxLevel) {
           state.pending = { type: 'build', cellId: cell.id, cost: buildCost(pr.level) };
           log(state, `${cell.label} 是己方地产（Lv.${pr.level}），可加盖`);
@@ -574,7 +583,7 @@ export function buyProperty(state) {
   p.cash -= price;
   p.properties.push(cellId);
   state.properties[cellId] = {
-    ownerId: p.id, level: 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: cell.bigType ?? null,
+    ownerId: p.id, level: cell.kind === 'big' ? 0 : 1, street: cell.street ?? null, big: cell.kind === 'big', bigType: null,
   };
   log(state, `${p.name} 以 ${price} 买下 ${cell.label}`);
   state.pending = null;
@@ -587,9 +596,24 @@ export function buildProperty(state) {
   const { cellId, cost } = state.pending;
   const pr = state.properties[cellId];
   if (!pr || p.cash < cost || pr.level >= TUNING.maxLevel) return endTurn(state);
+  if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId }; return state; }
   p.cash -= cost;
   pr.level += 1;
   log(state, `${p.name} 将 ${label(state, cellId)} 升到 Lv.${pr.level}（花费 ${cost}）`);
+  state.pending = null;
+  return endTurn(state);
+}
+
+export function doChooseBig(state, bigType) {
+  if (state.pending?.type !== 'chooseBig') return state;
+  const p = current(state);
+  const pr = state.properties[state.pending.cellId];
+  if (!pr || pr.ownerId !== p.id) return endTurn(state);
+  const allowed = ['commercial', 'hotel', 'bookstore', 'energy', 'realestate', 'research'];
+  if (!allowed.includes(bigType)) return state;
+  pr.bigType = bigType;
+  pr.level = 1;
+  log(state, `${p.name} 在 ${label(state, state.pending.cellId)} 建起 ${bigType}`);
   state.pending = null;
   return endTurn(state);
 }
@@ -647,7 +671,7 @@ function applyCard(state, p, id, target) {
       p.cash -= price;
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== node.id); }
       p.properties.push(node.id);
-      state.properties[node.id] = { ownerId: p.id, level: pr?.level ?? 1, street: node.street ?? null, big: node.kind === 'big', bigType: node.bigType ?? null };
+      state.properties[node.id] = { ownerId: p.id, level: node.kind === 'big' ? (pr?.level ?? 0) : (pr?.level ?? 1), street: node.street ?? null, big: node.kind === 'big', bigType: pr?.bigType ?? null };
       return true;
     }
     case 'exchange': {
@@ -666,9 +690,8 @@ function applyCard(state, p, id, target) {
     case 'rebuild': {
       if (!node) return false;
       const pr = state.properties[node.id];
-      if (!pr) return false;
-      pr.big = !pr.big;
-      pr.park = pr.big;
+      if (!pr || !pr.big || pr.ownerId === p.id) return false;
+      pr.bigType = 'park';
       return true;
     }
     case 'close': {
@@ -783,8 +806,9 @@ export function doBank(state, action, amount) {
   if (action === 'deposit' && p.cash >= amount) { p.cash -= amount; p.deposit += amount; }
   if (action === 'withdraw' && p.deposit >= amount) { p.deposit -= amount; p.cash += amount; }
   log(state, `${p.name} ${action === 'deposit' ? '存入' : '取出'} ${amount}`);
+  const free = state.pending.free;
   state.pending = null;
-  return endTurn(state);
+  return free ? state : endTurn(state);
 }
 
 export function doStock(state, stockId, qty, side) {
@@ -812,6 +836,12 @@ export function openStock(state) {
   return state;
 }
 
+export function openBank(state) {
+  if (state.phase !== 'action' || state.pending) return state;
+  state.pending = { type: 'bank', free: true };
+  return state;
+}
+
 export function leaveStock(state) {
   if (state.pending?.type !== 'stock') return state;
   const free = state.pending.free;
@@ -819,16 +849,18 @@ export function leaveStock(state) {
   return free ? state : endTurn(state);
 }
 
-export function doLottery(state) {
+export function doLottery(state, number) {
   if (state.pending?.type !== 'lottery') return state;
   const p = current(state);
-  if (p.cash >= TUNING.lotteryTicket) {
-    p.cash -= TUNING.lotteryTicket;
-    state.lottery.tickets.push(p.id);
-    log(state, `${p.name} 买了一张乐透`);
-  }
-  state.pending = null;
-  return endTurn(state);
+  number = Number(number);
+  if (!Number.isInteger(number) || number < 1 || number > 30) return state;
+  if (state.lottery.sold.includes(number)) return state;
+  if (p.cash < TUNING.lotteryTicket) return state;
+  p.cash -= TUNING.lotteryTicket;
+  state.lottery.tickets.push({ playerId: p.id, number });
+  state.lottery.sold.push(number);
+  log(state, `${p.name} 买下乐透 ${number}（${TUNING.lotteryTicket}）`);
+  return state;
 }
 
 export function doMagic(state, effect) {
@@ -870,6 +902,7 @@ export function doMerchant(state, index) {
   state.shopBought += 1;
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
   log(state, `${p.name} 从神秘人处花 ${item.price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
+  if (state.shopBought >= state.shopLimit) return endTurn(state);
   return state;
 }
 
@@ -901,6 +934,7 @@ export function doShop(state, index) {
   if (p.talents.includes('shop_extra_card')) addCard(state, p, randomCard(state.rng));
   if (p.properties.some(id => state.properties[id]?.bigType === 'bookstore') && state.rng.float() < 0.5) addCard(state, p, randomCard(state.rng));
   log(state, `${p.name} 花 ${price} 买到 ${CARD_DEFS[item.id].name}（${state.shopBought}/${state.shopLimit}）`);
+  if (state.shopBought >= state.shopLimit) return endTurn(state);
   return state;
 }
 
@@ -921,6 +955,7 @@ export function finishByLimit(state) { return finishByAssets(state); }
 
 export function leavePending(state) {
   if (!state.pending) return state;
+  const free = state.pending.free;
   state.pending = null;
-  return endTurn(state);
+  return free ? state : endTurn(state);
 }
