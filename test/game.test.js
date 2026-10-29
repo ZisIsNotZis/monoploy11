@@ -66,6 +66,7 @@ test('a full hotseat game terminates without crashing', () => {
     else if (s.pending) leavePending(s);
     else if (s.phase === 'action') roll(s, 1);
     else break;
+    if (s.pending) leavePending(s);
   }
   assert.equal(s.phase, 'over');
   assert.ok(s.winnerTeam);

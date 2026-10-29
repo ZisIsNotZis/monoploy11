@@ -129,8 +129,16 @@ button { font: inherit; }
 .cell .face { position: absolute; right: -13px; bottom: 4px; color: #fff; font-size: 24px; text-shadow: 0 0 4px #000; pointer-events: none; z-index: 5; }
 .plot {
   position: absolute; z-index: 2; border: 1px solid #3a404b; border-style: dashed;
-  border-radius: 3px; background: rgba(20,23,28,.82); color: #9aa3b2;
-  font-size: 9px; line-height: 16px; padding: 0 3px; overflow: hidden; white-space: nowrap;
-  text-overflow: ellipsis; pointer-events: auto;
+  border-radius: 4px; background: rgba(20,23,28,.92); color: #aab3c2;
+  font-size: 8px; line-height: 1.15; padding: 2px; overflow: hidden; white-space: normal;
+  word-break: break-all; text-align: center; pointer-events: auto;
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
 }
-.plot.bigplot { border-style: solid; background: rgba(30,34,41,.9); }
+.plot.bigplot { border-style: solid; }
+.plot .pname { font-size: 9px; }
+.plot .plv { color: var(--gold); font-size: 8px; }
+
+
+.gicon { font-size: 18px; line-height: 1; text-align: center; margin-top: 3px; color: #d9dde5; }
+.subtag { font-size: 8px; text-align: center; color: #8b93a1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.occs { position: absolute; left: 2px; bottom: 2px; font-size: 9px; color: #ffd166; background: rgba(0,0,0,.45); border-radius: 2px; padding: 0 2px; }

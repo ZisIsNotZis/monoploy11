@@ -143,6 +143,7 @@ export function startTurn(state) {
   applyMonthly(state, p);
   tickStocks(state);
   drawLottery(state);
+  spawnOccupants(state);
   tickTimers(state);
   tickGod(state, p);
 
@@ -328,7 +329,8 @@ function applyPass(state, p, id) {
   const cell = state.map.nodes.find(n => n.id === id);
   if (!cell) return;
   const placed = state.placements[id];
-  if (placed) {
+  const isItem = placed && ['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock'].includes(placed.kind);
+  if (isItem) {
     delete state.placements[id];
     const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[placed.kind];
     if (hurt) {
@@ -430,6 +432,51 @@ function godOnProperty(state, p, pr) {
   }
 }
 
+function handleOccupant(state, p, cell) {
+  const occ = state.placements[cell.id];
+  if (!occ) return false;
+  delete state.placements[cell.id];
+  if (occ.kind === 'god') { attachGod(state, p, occ.name); return false; }
+  if (occ.kind === 'dog') {
+    if (p.vehicle || p.talents.includes('immune_beggar_dog')) log(state, `${p.name} 躲过了野狗`);
+    else { log(state, `${p.name} 被野狗咬，损失 ${TUNING.dogFine}`); pay(state, p, null, TUNING.dogFine, '野狗'); }
+    return false;
+  }
+  if (occ.kind === 'beggar') {
+    if (p.talents.includes('immune_beggar_dog')) log(state, `${p.name} 免疫乞丐`);
+    else { log(state, `${p.name} 给乞丐 ${TUNING.beggarAsk}`); pay(state, p, null, TUNING.beggarAsk, '乞丐'); }
+    return false;
+  }
+  if (occ.kind === 'merchant') {
+    state.shopOffer = makeOffer(state, 6, [1_000]);
+    state.shopBought = 0; state.shopLimit = 2;
+    state.pending = { type: 'merchant' };
+    log(state, `${p.name} 遇到神秘人`);
+    return true;
+  }
+  const hurt = { mine: TUNING.mineDamage, dynamite: TUNING.bombDamage }[occ.kind];
+  if (hurt) { log(state, `${p.name} 踩到 ${occ.kind}，损失 ${hurt}`); damage(state, p, hurt, occ.kind); }
+  else { p.skipTurns += 1; log(state, `${p.name} 踩到 ${occ.kind}，停留 1 回合`); }
+  return false;
+}
+
+function spawnOccupants(state) {
+  if (state.day < 3) return;
+  if (state.rng.float() > 0.55) return;
+  const cells = state.map.nodes.filter(n => !state.placements[n.id] && n.kind !== 'teleport' && n.kind !== 'platform' && n.kind !== 'hospital' && n.kind !== 'jail');
+  if (!cells.length) return;
+  const cell = state.rng.pick(cells);
+  const roll = state.rng.float();
+  let occ;
+  if (roll < 0.28) occ = { kind: 'god', name: state.rng.pick(['财神', '穷神', '福神', '衰神', '天使', '恶魔', '土地公', '糊涂神', '武神', '凶神']) };
+  else if (roll < 0.46) occ = { kind: 'dog' };
+  else if (roll < 0.60) occ = { kind: 'beggar' };
+  else if (roll < 0.72) occ = { kind: 'merchant' };
+  else occ = { kind: state.rng.pick(['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock']) };
+  state.placements[cell.id] = occ;
+  log(state, `路面上随机出现了 ${occ.kind}${occ.name ? '：' + occ.name : ''}`);
+}
+
 function resolvePlot(state, p, cell) {
   const key = cell.plotId;
   const plot = state.map.plots.find(x => x.id === key);
@@ -500,7 +547,7 @@ function resolveLanding(state, p) {
     return endTurn(state);
   }
 
-  if (cell.plotId) return resolvePlot(state, p, cell);
+  if (handleOccupant(state, p, cell)) return state;
 
   switch (cell.kind) {
     case 'tax': {
@@ -574,7 +621,12 @@ function resolveLanding(state, p) {
     case 'magic':
     case 'news':
     default:
-      return endTurn(state);
+      if (state.passPrompt) {
+        state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
+        state.passPrompt = null;
+        return state;
+      }
+      return cell.plotId ? resolvePlot(state, p, cell) : endTurn(state);
   }
 }
 

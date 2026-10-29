@@ -13,6 +13,8 @@ const KIND_TAG = {
 };
 const BIG_TAG = { commercial: '商', hotel: '饭', bookstore: '书', energy: '能', realestate: '地', research: '研', park: '公' };
 const BIG_NAME = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
+const GROUND_ICON = { start:'起', bank:'银', shop:'店', news:'新', card:'卡', tax:'税', event:'事', stock:'股', lottery:'彩', magic:'魔', hospital:'医', jail:'监', teleport:'传', platform:'机', empty:'·' };
+const OCC_ICON = { god:'神', dog:'狗', beggar:'乞', merchant:'秘', mine:'雷', dynamite:'炸', timebomb:'弹', banana:'绊', jelly:'冻', trap:'陷', roadblock:'障' };
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
   start: '经过或停留领取工资', property: '小地产：买地、加盖、收租',
@@ -57,7 +59,7 @@ export function render(root, state, actions) {
 }
 
 function layout(map, W, H) {
-  const mx = 100, my = 60, gap = 6, cw = 62, ch = 38;
+  const mx = 100, my = 60, gap = 4, cw = 48, ch = 48;
   const left = mx, right = W - mx - cw, top = my, bottom = H - my - ch;
   const coords = {};
   const sides = [
@@ -70,7 +72,7 @@ function layout(map, W, H) {
   for (const s of sides) s.nodes.sort((a, b) => a.ring - b.ring);
   for (const s of sides) {
     const n = s.nodes.length;
-    const unit = s.span / (n + 0.5);
+    const unit = s.span / (n + 1);
     let cursor = 0;
     for (const node of s.nodes) {
       if (s.side === 0) coords[node.id] = { x: left + cursor, y: top, w: unit, h: ch };
@@ -83,12 +85,12 @@ function layout(map, W, H) {
   for (const c of Object.values(coords)) { c.cx = c.x + c.w / 2; c.cy = c.y + c.h / 2; }
   const g = (id) => coords[id] ?? { x: left, y: top, w: cw, h: ch, cx: left + cw / 2, cy: top + ch / 2 };
   const h = g('r30'), j = g('r31'), d = g('r43');
-  coords.hospital = { x: h.cx - 31, y: h.y - 70, w: cw, h: ch };
-  coords.jail = { x: j.cx + 50, y: j.y - 84, w: cw, h: ch };
-  coords.t1 = { x: d.x + 130, y: d.cy - 19, w: cw, h: ch };
-  coords.t2 = { x: d.x + 230, y: d.cy - 19, w: cw, h: ch };
+  coords.hospital = { x: h.cx - 24, y: h.y - 74, w: cw, h: ch };
+  coords.jail = { x: j.cx + 40, y: j.y - 84, w: cw, h: ch };
+  coords.t1 = { x: d.x + 120, y: d.cy - 24, w: cw, h: ch };
+  coords.t2 = { x: d.x + 210, y: d.cy - 24, w: cw, h: ch };
   const a = g('r5'), b = g('r41');
-  coords.p1 = { x: (a.cx + b.cx) / 2 - 31, y: (a.cy + b.cy) / 2 - 19, w: cw, h: ch };
+  coords.p1 = { x: (a.cx + b.cx) / 2 - 24, y: (a.cy + b.cy) / 2 - 24, w: cw, h: ch };
   for (const c of Object.values(coords)) { c.cx = c.x + c.w / 2; c.cy = c.y + c.h / 2; }
   return coords;
 }
@@ -127,14 +129,14 @@ function renderBoard(el, state, currentP) {
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
-    const big = pr?.bigType ? BIG_NAME[pr.bigType] : '';
-    const border = owner ? owner.color : '#333842';
+    const border = '#333842';
     const off = n.kind === 'platform' && !platformOn;
     const title = cellTitle(n, pr, owner, state);
+    const ground = n.plotId ? '路' : (GROUND_ICON[n.kind] ?? '·');
     return `<div class="cell ${off ? 'off' : ''}" data-cell="${n.id}" style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;border-color:${border}" title="${title}">
-      <div class="tag">${n.plotId ? '路' : n.label}</div>
-      <div class="lvl">${pr ? 'Lv' + pr.level : ''}</div>
-      ${place ? `<div class="place">${place.kind === 'mine' ? '雷' : place.kind === 'dynamite' ? '炸' : place.kind === 'timebomb' ? '弹' : '障'}</div>` : ''}
+      <div class="gicon">${ground}</div>
+      ${n.plotId ? '' : `<div class="subtag">${n.label}</div>`}
+      ${place ? `<div class="occs" title="${place.name ?? place.kind}">${OCC_ICON[place.kind] ?? '?'}</div>` : ''}
       <div class="tokens">${here.map(q => `<span class="tok ${q.id === currentP?.id ? 'cur' : ''}" style="background:${q.color}" title="${q.name}">${q.name[0]}</span>`).join('')}</div>
       ${n.id === currentP?.position && angle != null ? `<span class="face" style="transform:rotate(${angle}deg)">➤</span>` : ''}
     </div>`;
@@ -150,12 +152,16 @@ function renderBoard(el, state, currentP) {
     const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
     const name = plot.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : plot.label;
     const side = Math.floor((state.map.nodes.find(n => n.id === plot.cells[0])?.ring ?? 0) / 12);
-    let x = minX, y = minY - 22, w = Math.max(34, maxX - minX), h = 18;
-    if (side === 1) { x = maxX + 4; y = minY; w = 90; h = Math.max(18, maxY - minY); }
+    const size = plot.big ? 50 : 40;
+    let x = minX + (maxX - minX - size) / 2;
+    let y = minY - size - 4;
+    if (side === 1) { x = maxX + 4; y = minY + (maxY - minY - size) / 2; }
     if (side === 2) { y = maxY + 4; }
-    if (side === 3) { x = minX - 96; y = minY; w = 90; h = Math.max(18, maxY - minY); }
+    if (side === 3) { x = minX - size - 4; y = minY + (maxY - minY - size) / 2; }
     const title = `${name}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}`;
-    return `<div class="plot ${plot.big ? 'bigplot' : ''}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-color:${owner?.color ?? '#3a404b'}" title="${title}">${name}${pr ? ' Lv' + pr.level : ''}</div>`;
+    return `<div class="plot ${plot.big ? 'bigplot' : ''}" style="left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-color:${owner?.color ?? '#3a404b'}" title="${title}">
+      <div class="pname">${name}</div><div class="plv">${pr ? 'Lv' + pr.level : ''}</div>
+    </div>`;
   }).join('');
   el.innerHTML = `<svg width="${W}" height="${H}" style="position:absolute;inset:0">${lines}</svg>${cells}${plots}`;
 }

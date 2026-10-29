@@ -107,14 +107,14 @@ const plots = {};
 for (const n of nodes) {
   if (n.kind === 'property') n.plotId = `plot_${n.id}`;
   if (n.kind === 'big') n.plotId = `plot_${n.bigGroup ?? n.id}`;
+  if (['god', 'dog', 'beggar', 'merchant'].includes(n.kind)) n.kind = 'empty';
   if (!n.plotId) continue;
   const plot = plots[n.plotId] ??= {
     id: n.plotId, cells: [], big: n.kind === 'big',
     street: n.street, label: n.label,
   };
   plot.cells.push(n.id);
-  n.kind = 'empty';
-  n.ground = 'empty';
+  n.kind = 'empty'; n.ground = 'empty';
 }
 
 export const TEST_MANOR = {
