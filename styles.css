@@ -280,3 +280,16 @@ button { font: inherit; }
 .setup-player { grid-template-columns: 90px 1fr 44px 130px; }
 .char-preview { width: 34px; height: 34px; display: block; border-radius: 50%; overflow: hidden; }
 .char-preview .avatar-svg { width: 100%; height: 100%; display: block; }
+/* 角色选择：可视化列表，头像由当前队伍色着色 */
+.setup-head, .setup-player { grid-template-columns: 90px 1fr 130px; }
+.char-picker { position: relative; min-width: 0; }
+.char-current { display: flex; align-items: center; gap: 10px; width: 100%; background: #151a21; border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 4px 8px; cursor: pointer; }
+.picker-avatar { width: 64px; height: 64px; display: inline-block; flex: 0 0 64px; border-radius: 50%; overflow: hidden; }
+.picker-avatar .avatar-svg { width: 100%; height: 100%; display: block; }
+.picker-name { font-size: 14px; }
+.char-menu { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; width: 380px; max-height: 340px; overflow: auto; background: #11161d; border: 1px solid var(--line); border-radius: 6px; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.char-option { display: flex; align-items: center; gap: 7px; text-align: left; background: #18202a; border: 1px solid transparent; border-radius: 5px; color: var(--text); padding: 3px 5px; cursor: pointer; font-size: 12px; }
+.char-option:hover, .char-option.sel { border-color: var(--gold); background: #202a36; }
+.char-option .picker-avatar { width: 40px; height: 40px; flex-basis: 40px; }
+.avatar { width: 48px; height: 48px; }
+.char-menu[hidden] { display: none; }

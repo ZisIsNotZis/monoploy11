@@ -1,9 +1,9 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=98';
+import { render } from './ui/render.js?v=99';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
-import { CARD_DEFS } from './engine/game.js';
+import { CARD_DEFS, teamColor } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
 import { speak } from './ui/voice.js';
 import { avatarSvg } from './ui/icons.js';
@@ -167,12 +167,24 @@ const actions = {
 
 function numberInput() { return Number($('#amount')?.value ?? 0); }
 
-function characterOptions(selected) {
-  const normal = CHARACTERS.map(c => `<option value="char:${c.id}" ${selected === `char:${c.id}` ? 'selected' : ''}>${c.name}</option>`).join('');
-  const special = BOSSES.flatMap(b => [1,2,3].map(t => `<option value="boss:${b.id}:${t}">${b.name} · ${['简单','普通','困难'][t-1]}</option>`)).join('');
-  return `<optgroup label="角色">${normal}</optgroup><optgroup label="技能档位">${special}</optgroup>`;
+const CHOICES = [
+  ...CHARACTERS.map(c => ({ value: `char:${c.id}`, id: c.id, name: c.name })),
+  ...BOSSES.flatMap(b => [1,2,3].map(t => ({ value: `boss:${b.id}:${t}`, id: b.id, name: `${b.name}·${['简单','普通','困难'][t-1]}`, boss: true }))),
+];
+function choiceMeta(value) {
+  if (value.startsWith('boss:')) {
+    const [, id, tier] = value.split(':');
+    const b = BOSSES.find(x => x.id === id);
+    return { id, name: `${b?.name ?? id}·${['简单','普通','困难'][Number(tier)-1]}`, boss: true };
+  }
+  const id = value.slice(5);
+  const c = CHARACTERS.find(x => x.id === id);
+  return { id, name: c?.name ?? id, boss: false };
 }
-
+function pickerMarkup(value, color) {
+  const meta = choiceMeta(value);
+  return `<span class="picker-avatar">${avatarSvg(meta.id, color, meta.name)}</span><span class="picker-name">${meta.name}</span>`;
+}
 function renderSetupRows() {
   const count = Number($('#count').value);
   const box = $('#setupRows');
@@ -181,27 +193,42 @@ function renderSetupRows() {
     const teams = Array.from({ length: count }, (_, j) => `<option value="t${j+1}" ${i === j ? 'selected' : ''}>队伍 ${j+1}</option>`).join('');
     return `<div class="setup-player">
       <select class="ctrl" data-i="${i}"><option value="human">人类</option><option value="ai">AI</option></select>
-      <select class="char" data-i="${i}">${characterOptions(`char:${char.id}`)}</select>
-      <span class="char-preview" data-i="${i}"></span>
+      <div class="char-picker" data-value="char:${char.id}">
+        <button type="button" class="char-current"></button>
+        <div class="char-menu" hidden></div>
+      </div>
       <select class="team" data-i="${i}">${teams}</select>
     </div>`;
   }).join('');
-  box.querySelectorAll('.char').forEach(sel => sel.onchange = () => updatePreview(sel.closest('.setup-player')));
-  box.querySelectorAll('.setup-player').forEach(updatePreview);
+  box.querySelectorAll('.setup-player').forEach(row => {
+    row.querySelector('.team').onchange = refreshSetupColors;
+    row.querySelector('.char-current').onclick = () => {
+      const menu = row.querySelector('.char-menu');
+      menu.hidden = !menu.hidden;
+    };
+  });
+  refreshSetupColors();
 }
-
-function updatePreview(row) {
-  const value = row.querySelector('.char').value;
-  const out = row.querySelector('.char-preview');
-  if (value.startsWith('boss:')) {
-    const [, id, tier] = value.split(':');
-    const b = BOSSES.find(x => x.id === id);
-    out.innerHTML = avatarSvg(id, b?.color ?? '#999', `${b?.name ?? id}·${['简单','普通','困难'][Number(tier)-1]}`);
-  } else {
-    const id = value.slice(5);
-    const c = CHARACTERS.find(x => x.id === id);
-    out.innerHTML = avatarSvg(id, c?.color ?? '#999', c?.name ?? id);
-  }
+function refreshSetupColors() {
+  const rows = [...document.querySelectorAll('.setup-player')];
+  const teams = [...new Set(rows.map(r => r.querySelector('.team').value))];
+  rows.forEach((row, i) => {
+    const team = row.querySelector('.team').value;
+    const members = rows.filter(r => r.querySelector('.team').value === team);
+    const color = teamColor(teams.indexOf(team), members.indexOf(row), members.length);
+    row.dataset.color = color;
+    const picker = row.querySelector('.char-picker');
+    const value = picker.dataset.value;
+    const btn = picker.querySelector('.char-current');
+    btn.innerHTML = pickerMarkup(value, color);
+    const menu = picker.querySelector('.char-menu');
+    menu.innerHTML = CHOICES.map(choice => `<button type="button" class="char-option ${choice.value === value ? 'sel' : ''}" data-value="${choice.value}"><span class="picker-avatar">${avatarSvg(choice.id, color, choice.name)}</span><span>${choice.name}</span></button>`).join('');
+    menu.querySelectorAll('.char-option').forEach(opt => opt.onclick = () => {
+      picker.dataset.value = opt.dataset.value;
+      menu.hidden = true;
+      refreshSetupColors();
+    });
+  });
 }
 
 function startGame() {
@@ -209,7 +236,7 @@ function startGame() {
   const participants = rows.map((row, i) => {
     const controller = row.querySelector('.ctrl').value;
     const team = row.querySelector('.team').value;
-    const value = row.querySelector('.char').value;
+    const value = row.querySelector('.char-picker').dataset.value;
     if (value.startsWith('boss:')) {
       const [, bossId, tier] = value.split(':');
       const b = BOSSES.find(x => x.id === bossId);

@@ -14,7 +14,7 @@ const GENDER = {
 };
 const MAPS = { 'grid-manor': GRID_MANOR, 'test-manor': TEST_MANOR };
 
-function teamColor(teamIndex, memberIndex, memberCount) {
+export function teamColor(teamIndex, memberIndex, memberCount) {
   const hue = Math.round((teamIndex * 137.508 + 12) % 360);
   const sat = 58 + (memberIndex % 3) * 7;
   const light = 44 + (memberIndex % 4) * 6 + (memberCount === 1 ? 4 : 0);
