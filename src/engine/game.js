@@ -42,7 +42,7 @@ export function createGame(config = {}) {
   const state = {
     seed, rng, mapId, map, config: { dayLimit: TUNING.dayLimit, ...config }, players, order: players.map(p => p.id),
     day: 0, priceIndex: TUNING.priceIndexStart, turn: 0,
-    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null,
+    phase: 'action', properties: {}, placements: {}, log: [], pending: null, landingCell: null, postGodCell: null, landingBuilt: [],
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
@@ -250,6 +250,17 @@ export function endTurn(state) {
     if (p?.alive && cell?.adjacentPlots?.length) return resolveAdjacentPlots(state, p, cell);
   }
 
+  if (state.postGodCell) {
+    const cell = state.map.nodes.find(n => n.id === state.postGodCell);
+    state.postGodCell = null;
+    const p = current(state);
+    if (p?.alive && cell) {
+      applyPostGods(state, p, cell);
+      if (state.pending) return state;
+    }
+    state.landingBuilt = [];
+  }
+
   const cur = current(state);
   if (cur?.pendingDirection?.length) {
     state.pending = { type: 'direction', options: cur.pendingDirection };
@@ -448,20 +459,6 @@ export function attachGod(state, p, name) {
   }
 }
 
-function godOnProperty(state, p, pr) {
-  if (!pr) return;
-  if (p.god === '天使') { pr.level = Math.min(TUNING.maxLevel, pr.level + 1); log(state, `天使让 ${label(state, Object.keys(state.properties).find(k => state.properties[k] === pr))} 加盖`); }
-  if (p.god === '恶魔') { pr.level = Math.max(1, pr.level - 1); }
-  if (p.god === '福神' && pr.ownerId === p.id) pr.level = Math.min(TUNING.maxLevel, pr.level + 1);
-  if (p.god === '土地公' && pr.ownerId !== p.id) {
-    const old = state.players.find(q => q.id === pr.ownerId);
-    if (old) old.properties = old.properties.filter(x => state.properties[x] !== pr);
-    pr.ownerId = p.id;
-    p.properties.push(Object.keys(state.properties).find(k => state.properties[k] === pr));
-    log(state, `${p.name} 用土地公抢走一块地`);
-  }
-}
-
 function resolveAdjacentPlots(state, p, cell) {
   const ids = cell.adjacentPlots ?? [];
   const unowned = [];
@@ -552,65 +549,60 @@ function spawnOccupants(state) {
   log(state, `路面上随机出现了 ${occ.kind}${occ.name ? '：' + occ.name : ''}`);
 }
 
-function resolvePlot(state, p, key) {
-  const plot = state.map.plots.find(x => x.id === key);
-  const label = plot?.big ? ((state.properties[key]?.bigType ? BIG_NAMES[state.properties[key].bigType] : '大空地')) : (plot?.label ?? key);
-  const pr = state.properties[key];
-  if (!pr || !pr.ownerId) {
-    if (p.god === '土地公') {
-      p.properties.push(key);
-      state.properties[key] = { ownerId: p.id, level: 0, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
-      log(state, `土地公附身，${p.name} 直接占领 ${label}`);
-      return endTurn(state);
-    }
-    const price = buyPrice(state, key);
-    state.pending = { type: 'buy', cellId: key, price, label };
-    log(state, `${label} 无主，售价 ${price}`);
-    return state;
-  }
-  godOnProperty(state, p, pr);
-  if (pr.ownerId === p.id) {
-    if (p.god === '衰神') { log(state, '衰神附身，不能加盖'); return endTurn(state); }
-    if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: key, label }; return state; }
-    if (pr.level < TUNING.maxLevel) {
-      state.pending = { type: 'build', cellId: key, cost: buildCost(pr.level), label };
-      log(state, `${label} 是己方地产（Lv.${pr.level}），可加盖`);
-      return state;
-    }
-    return endTurn(state);
-  }
-  const owner = state.players.find(q => q.id === pr.ownerId);
-  if (owner?.team === p.team) { log(state, `${label} 是队友 ${owner.name} 的地产，免租`); return endTurn(state); }
-  if (pr.bigType === 'park') { log(state, '公园不收费'); return endTurn(state); }
-  if (pr.bigType === 'energy') {
-    const fee = 5_000;
-    log(state, `${p.name} 使用能源中心，支付 ${fee} 给 ${owner.name}`);
-    pay(state, p, owner, fee, '能源');
-    return endTurn(state);
-  }
-  if (plot?.big && pr.bigType === 'research' && pr.ownerId === p.id) {
-    state.shopOffer = ['rushmissile', 'glory', 'predicament', 'green', 'disaster', 'godfavor'].map(id => ({ id, price: 5_000 }));
-    state.shopBought = 0; state.shopLimit = 1;
-    state.pending = { type: 'research', cellId: key };
-    log(state, '研究所：选择要研发的进阶卡');
-    return state;
-  }
-  let rent = rentFor(state, key);
-  if (pr.bigType === 'commercial') rent = Math.round(rent * (1 + state.rng.float() * 2));
-  if (pr.bigType === 'hotel') { rent = Math.round(rent * 0.6); p.skipTurns += 1; log(state, `${p.name} 被大饭店留下 1 回合`); }
-  if (p.talents.includes('rent_taken_down')) rent = Math.round(rent * 0.8);
-  if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
-  if (p.properties.some(id => state.properties[id]?.bigType === 'realestate')) rent = Math.round(rent * 0.7);
-  if (p.god === '财神') { log(state, '财神附身，免租'); return endTurn(state); }
-  if (p.god === '穷神') rent = Math.round(rent * 2);
-  if (owner?.isBoss) rent = Math.round(rent * (owner.bossId === 'bear' || owner.bossId === 'yuanyuan' ? 1.5 : 1));
-  log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
-  state.stats.rents += rent;
-  if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
-  return endTurn(state);
-}
-
 const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
+
+function applyPostGods(state, p, cell) {
+  const ids = cell.adjacentPlots ?? [];
+  const upgraded = [];
+  const take = (id) => {
+    const plot = state.map.plots.find(x => x.id === id);
+    const pr = state.properties[id] ?? { level: 0, street: plot?.street ?? null, big: !!plot?.big, bigType: null };
+    if (pr.ownerId === p.id) return;
+    const old = state.players.find(q => q.id === pr.ownerId);
+    if (old) old.properties = old.properties.filter(x => x !== id);
+    pr.ownerId = p.id;
+    state.properties[id] = pr;
+    p.properties.push(id);
+  };
+
+  if (p.god === '福神' || p.god === '天使') {
+    for (const id of ids) {
+      const pr = state.properties[id];
+      const plot = state.map.plots.find(x => x.id === id);
+      if (!pr || !plot || pr.closed > 0) continue;
+      if (p.god === '福神' && pr.ownerId !== p.id) continue;
+      if (!pr.ownerId && p.god === '福神') continue;
+      if (plot.big) {
+        if (pr.ownerId === p.id && !pr.bigType && !state.pending) {
+          state.pending = { type: 'chooseBig', cellId: id };
+          log(state, `${p.god}让 ${labelForPlot(state, id)} 免费选择大建筑`);
+          return;
+        }
+        continue;
+      }
+      if (pr.level < TUNING.maxLevel && (pr.ownerId === p.id || p.god === '天使')) {
+        pr.level += 1;
+        upgraded.push(id);
+        log(state, `${p.god}让 ${labelForPlot(state, id)} 免费加盖 1 层`);
+      }
+    }
+  }
+
+  if (p.god === '凶神') {
+    for (const id of [...(state.landingBuilt ?? []), ...upgraded]) {
+      const pr = state.properties[id];
+      if (pr && pr.ownerId === p.id && !pr.big && pr.level > 0) {
+        pr.level -= 1;
+        log(state, `凶神把刚加盖的 ${labelForPlot(state, id)} 打下 1 层`);
+      }
+    }
+  }
+
+  if (p.god === '土地公') {
+    for (const id of ids) take(id);
+    if (ids.length) log(state, `${p.name} 的土地公收走了相邻的无主/他人地产`);
+  }
+}
 
 function finishLanding(state, p, cell) {
   state.landingCell = null;
@@ -623,12 +615,9 @@ function resolveLanding(state, p) {
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return endTurn(state);
   state.landingCell = cell.id;
+  state.postGodCell = cell.id;
+  state.landingBuilt = [];
   log(state, `${p.name} 停在 ${cell.label}`);
-  if (p.god === '凶神' && state.rng.float() < 0.2) {
-    log(state, '凶神附身，部分地格无效');
-    state.landingCell = null;
-    return endTurn(state);
-  }
 
   if (handleOccupant(state, p, cell)) return state;
 
@@ -764,6 +753,8 @@ export function buildProperty(state) {
   if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId }; return state; }
   p.cash -= cost;
   pr.level += 1;
+  state.landingBuilt = state.landingBuilt ?? [];
+  state.landingBuilt.push(cellId);
   log(state, `${p.name} 将 ${state.map.plots.find(x => x.id === cellId)?.label ?? cellId} 升到 Lv.${pr.level}（花费 ${cost}）`);
   state.pending = null;
   return endTurn(state);
@@ -778,6 +769,8 @@ export function doChooseBig(state, bigType) {
   if (!allowed.includes(bigType)) return state;
   pr.bigType = bigType;
   pr.level = 1;
+  state.landingBuilt = state.landingBuilt ?? [];
+  state.landingBuilt.push(state.pending.cellId);
   log(state, `${p.name} 在 ${state.map.plots.find(x => x.id === state.pending.cellId)?.label ?? '大地产'} 建起 ${BIG_NAMES[bigType] ?? bigType}`);
   state.pending = null;
   return endTurn(state);

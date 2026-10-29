@@ -347,3 +347,52 @@ test('a bankrupt owner leaves the building standing but unowned', () => {
   assert.equal(s.properties[plot.id].ownerId, null);
   assert.equal(s.properties[plot.id].level, 2);
 });
+
+test('post-action gods resolve after ground handling, before direction', () => {
+  const s = createGame({ seed: 34 });
+  const p = current(s);
+  const cell = s.map.nodes.find(n => n.id === '3,14');
+  const id = cell.adjacentPlots[0];
+  s.properties[id] = { ownerId: p.id, level: 0, street: 'K', big: false };
+  p.properties.push(id);
+  p.god = '福神';
+  s.pending = null; s.phase = 'action';
+  p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+  roll(s, 1);
+  assert.equal(s.pending?.type, 'build', 'ground handling first');
+  skipPending(s);
+  assert.equal(s.properties[id].level, 1, '福神 upgrades the empty ground after the buy/build step');
+});
+
+test('土地公 takes a declined unowned plot after ground handling', () => {
+  const s = createGame({ seed: 35 });
+  const p = current(s);
+  const cell = s.map.nodes.find(n => n.id === '4,14');
+  const id = cell.adjacentPlots[0];
+  delete s.properties[id];
+  p.god = '土地公';
+  s.pending = null; s.phase = 'action';
+  p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+  roll(s, 1);
+  assert.equal(s.pending?.type, 'buy');
+  skipPending(s);
+  assert.equal(s.properties[id].ownerId, p.id);
+});
+
+test('凶神 knocks down a house upgraded during ground handling', () => {
+  const s = createGame({ seed: 36 });
+  const p = current(s);
+  const cell = s.map.nodes.find(n => n.id === '7,14');
+  const id = cell.adjacentPlots[0];
+  s.properties[id] = { ownerId: p.id, level: 0, street: 'G', big: false };
+  p.properties.push(id);
+  p.cash = 100_000;
+  p.god = '凶神';
+  s.pending = null; s.phase = 'action';
+  p.position = cell.id; p.lastNode = null; p.forcedDice = 0;
+  roll(s, 1);
+  assert.equal(s.pending?.type, 'build');
+  s.pending = { type: 'build', cellId: id, cost: 3000 };
+  buildProperty(s);
+  assert.equal(s.properties[id].level, 0, '凶神 should knock the newly built house down');
+});
