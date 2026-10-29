@@ -342,3 +342,25 @@ button { font: inherit; }
 .player-card-fields .team { width: 52%; }
 .player-card-fields .ctrl { width: 48%; }
 .player-card-fields select { padding: 3px 4px; }
+/* 侧栏 1.5x 可读性；地图内容放大并让 token 占两倍 */
+#system { font-size: 19px; }
+.ptitle { font-size: 21px; }
+.prow { font-size: 17px; }
+.team, .boss { font-size: 15px; }
+.slot { font-size: 16px; padding: 2px 7px; }
+#log { font-size: 17px; line-height: 1.5; }
+#actions, #choice { font-size: 19px; }
+#actions h3, #hand.choice h3, #choice h3 { font-size: 21px; }
+#actions .offer, #hand.choice .offer, #choice .offer { font-size: 17px; }
+#actions .offer b, #hand.choice .offer b, #choice .offer b { font-size: 19px; }
+.hint { font-size: 17px; }
+.avatar { width: 72px; height: 72px; }
+.avatar-svg { border-radius: 50%; }
+.ptitle { gap: 9px; }
+.player { padding-top: 4px; padding-bottom: 5px; }
+.cell .gicon .icon { width: 92%; height: 92%; }
+.prop .picon .icon { width: 94%; height: 94%; }
+.occs svg { width: 82%; height: 82%; }
+.tok { width: 26px; height: 26px; }
+.tok .ptr { top: -14px; margin-left: -8px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 13px solid var(--c, #fff); }
+.tok-avatar { width: 26px; height: 26px; }
