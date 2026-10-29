@@ -168,8 +168,7 @@ button { font: inherit; }
 .pslots { color: #7f8796; font-size: 9px; }
 .player { padding: 3px 0 4px 7px; }
 /* 底边：骰子一行靠右，卡片一行扇形叠放，错开 */
-#hand { flex-direction: column; gap: 0; min-height: 158px; }
+#hand { flex-direction: column; gap: 0; min-height: 136px; }
 #dice { order: 0; align-self: flex-end; flex-direction: row; border: 0; padding: 0 8px 4px 0; gap: 4px; }
-#cards { order: 1; display: flex; align-items: flex-end; overflow: visible; min-height: 92px; padding: 0 6px 0 22px; flex: 0 0 auto; }
-.card { flex: 0 0 74px; margin-left: -46px; transform: translateY(calc(var(--i) * 1px)) rotate(calc((var(--i) - 1) * 2deg)); transform-origin: 50% 100%; }
-.card:first-child { margin-left: 0; }
+#cards { order: 1; display: flex; flex-direction: row; gap: 0; align-items: flex-end; justify-content: flex-start; overflow: visible; min-height: 82px; padding: 0 4px; flex: 0 0 auto; width: 100%; }
+.card { flex: 0 0 74px; transform-origin: 50% 100%; }

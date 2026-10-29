@@ -31,7 +31,7 @@ export function createGame(config = {}) {
       controller: p.controller ?? 'human', isBoss: !!p.isBoss, bossId: p.bossId ?? null, bossTier: p.bossTier ?? 0, revived: false,
       cash: config.startingCash ?? TUNING.startingCash,
       deposit: config.startingDeposit ?? TUNING.startingDeposit,
-      cards: [], position: map.startId, facing: nextRing(map, map.startId),
+      cards: [], position: map.startId, facing: null, pendingDirection: null,
       jail: 0, hospital: 0, god: null, godDays: 0, status: null, statusDays: 0,
       vehicle: null, alive: true, properties: [], handLimit: p.isBoss && p.bossId === 'doctor' && p.bossTier === 3 ? 16 : TUNING.handLimit,
       talents: char.talents.map(t => t.id),
@@ -46,6 +46,15 @@ export function createGame(config = {}) {
     winnerTeam: null, stocks: makeStocks(rng), lottery: { tickets: [], sold: [], jackpot: TUNING.lotteryJackpotBase, lastDrawDay: 0 },
     stats: { rolls: 0, rents: 0, bankruptcies: 0 },
   };
+
+  const roadPool = rng.shuffle(map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform').map(n => n.id));
+  const adjMap = buildAdj(map);
+  players.forEach((p, i) => {
+    p.position = roadPool[i % roadPool.length];
+    const exits = adjMap[p.position] ?? [];
+    p.facing = exits.length ? rng.pick(exits).to : null;
+    p.lastNode = null;
+  });
 
   for (const p of players) {
     if (!p.isBoss) continue;
@@ -237,6 +246,15 @@ export function endTurn(state) {
   const aliveTeams = new Set(state.players.filter(p => p.alive).map(p => p.team));
   if (aliveTeams.size <= 1) return finish(state, [...aliveTeams][0] ?? null);
 
+  const cur = current(state);
+  if (cur?.pendingDirection?.length) {
+    state.pending = { type: 'direction', options: cur.pendingDirection };
+    cur.pendingDirection = null;
+    state.phase = 'resolve';
+    log(state, `${cur.name} 停在交叉点，选择下一步方向`);
+    return state;
+  }
+
   state.turn = (state.turn + 1) % state.order.length;
   state.pending = null;
   state.phase = 'action';
@@ -299,11 +317,7 @@ export function roll(state, diceCount = 1) {
   p.facing = res.pendingDirection ? null : nextForward(state.map, p.position, p.lastNode);
   if (!p.alive) return endTurn(state);
   state.phase = 'resolve';
-  if (res.pendingDirection) {
-    state.pending = { type: 'direction', options: exitsOf(state, p.position, p.lastNode) };
-    log(state, `${p.name} 正好停在交叉点，请选择方向`);
-    return state;
-  }
+  p.pendingDirection = res.pendingDirection ? exitsOf(state, p.position, p.lastNode) : null;
   const result = resolveLanding(state, p);
   if (state.phase === 'resolve' && !state.pending && state.passPrompt) {
     state.pending = state.passPrompt === 'bank' ? { type: 'bank', fromPass: true } : { type: 'lottery', fromPass: true };
@@ -327,9 +341,10 @@ export function chooseDirection(state, toId) {
   const p = current(state);
   if (toId === p.lastNode) return state;
   p.facing = toId;
+  p.pendingDirection = null;
   state.pending = null;
   log(state, `${p.name} 选择朝 ${label(state, toId)} 方向`);
-  return resolveLanding(state, p);
+  return endTurn(state);
 }
 
 function label(state, id) {

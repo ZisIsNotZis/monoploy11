@@ -35,12 +35,8 @@ export function render(root, state, actions) {
   root.system.innerHTML = `<span class="pill">第 ${state.day} 天</span>
     <span class="pill">物价 ${state.priceIndex.toFixed(2)}</span>
     <span class="grow"></span>
-    <button data-stock="1" ${state.phase === 'action' && !state.pending ? '' : 'disabled'}>股票</button>
-    <button data-bank="1" ${state.phase === 'action' && !state.pending ? '' : 'disabled'}>银行</button>
-    <button data-reset="1">重开</button>`;
+    <button data-stock="1" ${state.phase === 'action' && !state.pending ? '' : 'disabled'}>股票</button>`;
   root.system.querySelector('[data-stock]').onclick = () => actions.openStock();
-  root.system.querySelector('[data-bank]').onclick = () => actions.openBank();
-  root.system.querySelector('[data-reset]').onclick = () => actions.again();
 
   renderPlayers(root.players, state, p);
   renderBoard(root.board, state, p);
@@ -263,10 +259,14 @@ function renderHand(root, state, p, actions) {
   root.dice.innerHTML = Array.from({ length: maxDice(p) }, (_, i) =>
     `<button data-roll="${i + 1}" ${canRoll ? '' : 'disabled'}>${i + 1} 骰</button>`).join('');
   root.dice.querySelectorAll('button[data-roll]').forEach(b => b.onclick = () => actions.roll(+b.dataset.roll));
+  const n = p.cards.length;
+  const step = n > 1 ? Math.min(120, (350 - 74) / (n - 1)) : 78;
+  const overlap = step < 78;
   root.cards.innerHTML = p.cards.map((id, i) => {
     const def = CARD_DEFS[id];
     const tip = `${def?.name ?? id}：${CARD_DESC[id] ?? ''}`;
-    return `<button class="card" data-card="${i}" style="--i:${i};z-index:${i}" title="${tip}">
+    const rot = overlap ? (i - (n - 1) / 2) * 1.6 : 0;
+    return `<button class="card" data-card="${i}" style="--i:${i};z-index:${i};margin-left:${i ? Math.round(step - 74) : 0}px;transform:rotate(${rot}deg)" title="${tip}">
       <div class="art">${(def?.name ?? id).slice(0, 1)}</div>
     </button>`;
   }).join('');
