@@ -445,11 +445,11 @@ function godOnProperty(state, p, pr) {
 
 function resolveAdjacentPlots(state, p, cell) {
   const ids = cell.adjacentPlots ?? [];
-  let unowned = null;
+  const unowned = [];
   for (const id of ids) {
     const plot = state.map.plots.find(x => x.id === id);
     const pr = state.properties[id];
-    if (!pr || !pr.ownerId) { unowned ??= id; continue; }
+    if (!pr || !pr.ownerId) { unowned.push(id); continue; }
     if (pr.ownerId === p.id) {
       if (pr.big && !pr.bigType) { state.pending = { type: 'chooseBig', cellId: id }; return state; }
       if (pr.level < TUNING.maxLevel && !state.pending) { state.pending = { type: 'build', cellId: id, cost: buildCost(pr.level), label: plot?.label }; }
@@ -472,11 +472,12 @@ function resolveAdjacentPlots(state, p, cell) {
     state.stats.rents += rent;
     if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
   }
-  if (unowned) {
-    const plot = state.map.plots.find(x => x.id === unowned);
-    const price = buyPrice(state, unowned);
-    state.pending = { type: 'buy', cellId: unowned, price, label: plot?.label };
-    log(state, `${labelForPlot(state, unowned)} 无主，售价 ${price}`);
+  if (unowned.length) {
+    const id = unowned.shift();
+    const plot = state.map.plots.find(x => x.id === id);
+    const price = buyPrice(state, id);
+    state.pending = { type: 'buy', cellId: id, price, label: plot?.label, queue: unowned };
+    log(state, `${labelForPlot(state, id)} 无主，售价 ${price}`);
     return state;
   }
   return state.pending ? state : endTurn(state);
@@ -697,6 +698,14 @@ export function buyProperty(state) {
     ownerId: p.id, level: plot?.big ? 0 : 1, street: plot?.street ?? null, big: !!plot?.big, bigType: null,
   };
   log(state, `${p.name} 以 ${price} 买下 ${plot?.label ?? cellId}`);
+  const queue = state.pending.queue ?? [];
+  if (queue.length) {
+    const id = queue.shift();
+    const nextPlot = state.map.plots.find(x => x.id === id);
+    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: nextPlot?.label, queue };
+    log(state, `${nextPlot?.label ?? id} 也无主，售价 ${buyPrice(state, id)}`);
+    return state;
+  }
   state.pending = null;
   return endTurn(state);
 }
@@ -732,7 +741,15 @@ export function doChooseBig(state, bigType) {
 export function skipPending(state) {
   if (!state.pending) return state;
   const p = current(state);
+  const queue = state.pending.queue ?? [];
   log(state, `${p.name} 放弃 ${state.pending.type}`);
+  if (state.pending.type === 'buy' && queue.length) {
+    const id = queue.shift();
+    const plot = state.map.plots.find(x => x.id === id);
+    state.pending = { type: 'buy', cellId: id, price: buyPrice(state, id), label: plot?.label, queue };
+    log(state, `${plot?.label ?? id} 也无主，售价 ${buyPrice(state, id)}`);
+    return state;
+  }
   state.pending = null;
   return endTurn(state);
 }
