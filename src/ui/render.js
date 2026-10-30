@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=147';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=148';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=147';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=148';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -257,7 +257,7 @@ function renderPlayers(el, state, currentP) {
       <div class="pline">
         <span class="avatar">${avatarSvg(p.charId, p.color, p.name)}</span>
         <b>${p.name}</b><span class="team">${p.team}${p.isBoss ? ' T' + p.bossTier : ''}</span>
-        <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · 地 ${p.properties.length} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}</span>
+        <span class="pmeta">现 ${short(p.cash)} 存 ${short(p.deposit)} · 地 ${p.properties.length} · ${state.map.nodes.find(n => n.id === p.position)?.label ?? '-'}${p.dirMode ? ` · 方向${{ cw: '顺', ccw: '逆', random: '随机', choose: '自选' }[p.dirMode]}` : ''}</span>
         <span class="pslots">
           <span class="slot bind" title="绑定状态：${p.god ?? '无'}">${p.god ? (GOD_ICON[p.god] ?? '神') + p.godDays : '—'}</span>
           <span class="slot body" title="人物状态：${p.status ?? (p.skipTurns ? '停留 ' + p.skipTurns : '无')}">${p.status ? (STATUS_ICON[p.status] ?? '状') + p.statusDays : (p.skipTurns ? '停' + p.skipTurns : '—')}</span>
