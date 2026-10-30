@@ -1,7 +1,7 @@
 // 气泡队列：一次只显示一个气泡，语音和气泡共用同一句台词。
 // 引擎的 ui.ask / ui.step 调用 flushSpeech()，等气泡关闭后再继续。
 import { EXPERIENCE } from '../data/experience.js';
-import { speak, pickLine, stopSpeech } from './voice.js?v=148';
+import { speak, pickLine, stopSpeech } from './voice.js?v=149';
 
 let queue = [];
 let active = null;

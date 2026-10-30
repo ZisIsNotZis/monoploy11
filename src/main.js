@@ -1,13 +1,13 @@
 import { startSession, runGame } from './engine/flow.js';
-import { render } from './ui/render.js?v=148';
+import { render } from './ui/render.js?v=149';
 import { CHARACTERS } from './data/characters.js';
 import { BOSSES } from './data/bosses.js';
 import { reachableWithin } from './engine/board-v2.js';
 import { CARD_DEFS, teamColor } from './engine/game.js';
 import { aiAnswer } from './engine/ai.js';
 import { EXPERIENCE, aiPauseMs, CSS_TIMINGS } from './data/experience.js';
-import { say, flushSpeech } from './ui/speech.js?v=148';
-import { avatarSvg } from './ui/icons.js?v=148';
+import { say, flushSpeech } from './ui/speech.js?v=149';
+import { avatarSvg } from './ui/icons.js?v=149';
 
 const $ = s => document.querySelector(s);
 // 右侧栏可拖动：宽度写进 CSS 变量，棋盘随之缩放。
