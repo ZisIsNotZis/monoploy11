@@ -1,10 +1,10 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
-import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=149';
+import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=150';
 import { assetsOf, buyPrice } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
-import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=149';
+import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=150';
 
 const KIND_TAG = {
   start: '起', property: '地', big: '大', bank: '银', stock: '股', lottery: '彩',
@@ -27,8 +27,8 @@ const OCC_HELP = {
   god: '神仙：停下触发', dog: '野狗：停下触发；被咬住院，载具/免疫天赋可躲',
   beggar: '乞丐：停下触发；施舍 5000，免疫天赋可免', merchant: '神秘人：停下触发；6 张卡最多买 2 张，按基础价 ×0.5',
   mine: '地雷：经过触发；损失 20000', dynamite: '炸药：经过触发；损失 30000',
-  timebomb: '定时炸弹：经过触发；附身 30 天，追上别人可转嫁', banana: '香蕉皮：经过触发；停留 1 回合',
-  jelly: '果冻墙：经过触发；弹回 2 格', trap: '陷阱：经过触发；停留 1 回合', roadblock: '路障：经过触发；停留 1 回合',
+  timebomb: '定时炸弹：经过触发；附身 30 步，追上别人可转嫁', banana: '香蕉皮：经过触发；强制前进 1 格',
+  jelly: '果冻墙：经过触发；弹回 2 格', trap: '陷阱：经过触发；停止移动', roadblock: '路障：经过触发；停止移动',
 };
 const BIG_HELP = { commercial: '转盘收租', hotel: '强制对手住店', bookstore: '离店额外得卡', energy: '对手买卡更贵、停留收钱', realestate: '己方应付租金降低', research: '研发进阶卡', park: '不收费，只能被改建卡改成公园' };
 const CELL_HELP = {
