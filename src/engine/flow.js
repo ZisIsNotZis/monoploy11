@@ -366,13 +366,13 @@ function nextStep(state, p, cameFrom, first) {
   let choices = exits.filter(e => e.to !== cameFrom);
   if (!choices.length) choices = exits;
   if (exits.length <= 1) return exits[0].to;
-  if (p.dirMode === 'cw' || p.dirMode === 'ccw') { const to = turnChoice(state, p, cameFrom, p.dirMode); if (to) return to; }
-  if (p.dirMode === 'random') return state.rng.pick(choices).to;
   if (exits.length === 2) {
     if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
     const forward = choices.find(e => e.to === p.facing) ?? choices[0] ?? exits[0];
     return forward.to;
   }
+  if (p.dirMode === 'cw' || p.dirMode === 'ccw') { const to = turnChoice(state, p, cameFrom, p.dirMode); if (to) return to; }
+  if (p.dirMode === 'random') return state.rng.pick(choices).to;
   if (p.forceRandom && exits.length >= 3) { p.forceRandom = false; return state.rng.pick(choices).to; }
   if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
   return state.rng.pick(choices).to;
