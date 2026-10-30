@@ -269,7 +269,7 @@ voice.speak(player, event, text?) -> Promise<{audio, text}> // 单句语音，�
 - 气泡/语音是一条串行队列：同一时间只有一个气泡；台词只抽一次，气泡和 `speak` 共用同一句 `VOICE_LINES` 文本。
 - 气泡跟随说话者 token 的屏幕坐标，fixed 定位挂到 body，不参与棋盘 `transform: scale()`；上方空间不足时翻到下方，尾尖始终指向 token。
 - 气泡最多两行；点击或空格提前关闭；有语音时语音结束再停 0.3s，无语音 1.8s，静音 1.2s。静音状态由 `voice.setMuted()` / `localStorage['monopoly11:muted']` 控制。
-- 本地 mp3 优先；只有浏览器存在中文语音时才回退 `speechSynthesis`，且整句朗读，不逐字读中文。自动播放被拦截或素材缺失时按无语音时长 resolve，流程不会挂住。
+- 本地 mp3 优先；台词不包含角色名和冒号；20 名角色使用 8 个中文声线加各自音高/语速。只有浏览器存在中文语音时才回退 `speechSynthesis`，且整句朗读，不逐字读中文。自动播放被拦截或素材缺失时按无语音时长 resolve，流程不会挂住。
 - `speak` 返回 Promise 并进入语音队列；提前关闭时 `stopSpeech()` 让当前 Promise 立即 resolve。
 - `flow.js` 不改暂停点；UI 在 `ui.ask` 和 `ui.step` 继续前 `await flushSpeech()`，所以金钱、卡牌、状态、神仙、监狱、医院台词期间引擎不会继续下一步。
 - 人类玩家不额外等待 AI 停顿，但点完按钮后仍等当前气泡结束。
