@@ -24,9 +24,9 @@ const STOP_ROAD = new Set(['shop', 'news', 'magic', 'tax', 'event', 'god', 'dog'
 const PASS_OCC = new Set(['mine', 'dynamite', 'timebomb', 'banana', 'jelly', 'trap', 'roadblock']);
 const STOP_OCC = new Set(['god', 'dog', 'beggar', 'merchant']);
 const OCC_HELP = {
-  god: '神仙：停下触发', dog: '野狗：停下触发；50% 住院 2 回合，50% 损失 5000；载具/免疫天赋可躲',
-  beggar: '乞丐：停下触发；施舍 3000，免疫天赋可免', merchant: '神秘人：停下触发；6 张卡最多买 2 张，每张 1000',
-  mine: '地雷：经过触发；损失 8000', dynamite: '炸药：经过触发；损失 15000',
+  god: '神仙：停下触发', dog: '野狗：停下触发；被咬住院，载具/免疫天赋可躲',
+  beggar: '乞丐：停下触发；施舍 5000，免疫天赋可免', merchant: '神秘人：停下触发；6 张卡最多买 2 张，按基础价 ×0.5',
+  mine: '地雷：经过触发；损失 20000', dynamite: '炸药：经过触发；损失 30000',
   timebomb: '定时炸弹：经过触发；附身 30 天，追上别人可转嫁', banana: '香蕉皮：经过触发；停留 1 回合',
   jelly: '果冻墙：经过触发；弹回 2 格', trap: '陷阱：经过触发；停留 1 回合', roadblock: '路障：经过触发；停留 1 回合',
 };
@@ -37,13 +37,37 @@ const CELL_HELP = {
   bank: '经过或停留：打开存取款面板', stock: '股票：随时买卖',
   lottery: '经过或停留：买一注 1–30 的号码，每 10 天开奖', shop: '停下触发：9 张卡，最多买 3 张',
   magic: '停下触发：选择魔法效果', news: '停下触发：立即结算随机新闻',
-  card: '经过或停留：获得 1 张卡', money: '经过或停留：获得 1 到上限之间的现金', tax: '停下触发：支付现金的 5%',
-  event: '停下触发：随机现金事件', god: '停下触发：随机神仙附身', dog: '停下触发：50% 住院 2 回合，50% 损失 5000',
-  beggar: '停下触发：损失 3000', merchant: '停下触发：6 张卡，最多买 2 张，每张 1000',
+  card: '经过或停留：获得 1 张卡', money: '经过或停留：获得现金', tax: '停下触发：支付现金的 5%',
+  event: '停下触发：随机现金事件', god: '停下触发：随机神仙附身', dog: '停下触发：被咬住院；载具/免疫可躲',
+  beggar: '停下触发：按本局乞丐金额支付', merchant: '停下触发：6 张卡，最多买 2 张，按基础价 ×0.5',
   hospitalGate: '医院入口，侧路连回主路', jailGate: '监狱入口，侧路连回主路',
   hospital: '停下触发：住院 2 回合', jail: '停下触发：入狱 2 回合', teleport: '停下触发：随机传送',
   platform: '活动机关板，会周期消失', empty: '',
 };
+
+function cellHelp(state, kind) {
+  const cap = state.config?.moneyCap ?? TUNING.moneyCap;
+  const ticketEvery = state.config?.lotteryEveryDays ?? TUNING.lotteryEveryDays;
+  const hospital = state.config?.hospitalTurns ?? TUNING.hospitalTurns;
+  const jail = state.config?.jailTurns ?? TUNING.jailTurns;
+  if (kind === 'money') return `经过或停留：获得 1 到 ${cap.toLocaleString()} 的现金`;
+  if (kind === 'lottery') return `经过或停留：买一注 1–30 的号码，每 ${ticketEvery} 天开奖`;
+  if (kind === 'hospital') return `停下触发：住院 ${hospital} 回合`;
+  if (kind === 'jail') return `停下触发：入狱 ${jail} 回合`;
+  if (kind === 'dog') return `停下触发：被咬住院 ${hospital} 回合；载具/免疫天赋可躲`;
+  if (kind === 'beggar') return `停下触发：损失 ${TUNING.beggarAsk.toLocaleString()}`;
+  if (kind === 'merchant') return '停下触发：6 张卡，最多买 2 张，按基础价 ×0.5';
+  return CELL_HELP[kind] ?? '';
+}
+
+function occHelp(state, kind, name) {
+  if (kind === 'dog') return `野狗：停下触发；被咬住院 ${state.config?.hospitalTurns ?? TUNING.hospitalTurns} 回合，载具/免疫天赋可躲`;
+  if (kind === 'beggar') return `乞丐：停下触发；施舍 ${TUNING.beggarAsk.toLocaleString()}，免疫天赋可免`;
+  if (kind === 'merchant') return '神秘人：停下触发；6 张卡最多买 2 张，按基础价 ×0.5';
+  if (kind === 'mine') return `地雷：经过触发；损失 ${TUNING.mineDamage.toLocaleString()}`;
+  if (kind === 'dynamite') return `炸药：经过触发；损失 ${TUNING.bombDamage.toLocaleString()}`;
+  return `${OCC_HELP[kind] ?? ''}${kind === 'god' ? '：' + name : ''}`;
+}
 
 export function render(root, state, actions) {
   const p = current(state);
@@ -118,7 +142,7 @@ function cellTitle(n, pr, owner, state) {
     const what = plot?.big ? (pr?.bigType ? BIG_NAME[pr.bigType] : '大空地') : '小地产';
     return `路：旁边是 ${what}${pr ? `｜${owner?.name ?? '无主'} Lv.${pr.level}` : ''}`;
   }
-  let s = `${n.label}：${CELL_HELP[n.kind] ?? ''}`;
+  let s = `${n.label}：${cellHelp(state, n.kind)}`;
   if (n.kind === 'big') s = `${pr?.bigType ? BIG_NAME[pr.bigType] : '大空地'}：${pr?.bigType ? BIG_HELP[pr.bigType] : '第二次投资选择建筑'}`;
   if (pr) s += `｜${owner?.name ?? '无主'} Lv.${pr.level}`;
   if (n.kind === 'god') s += '｜财神、穷神、福神、衰神、天使、恶魔、土地公、糊涂神、武神、凶神';
@@ -152,7 +176,8 @@ function renderBoard(el, state, currentP, actions) {
     const w = (Math.max(...xs) - Math.min(...xs) + 1) * S;
     const h = (Math.max(...ys) - Math.min(...ys) + 1) * S;
     const frontage = state.map.nodes.filter(n => n.adjacentPlots?.includes(plot.id)).length;
-    const title = `${name}${pr?.bigType ? `（${BIG_NAME[pr.bigType]}）` : ''}${owner ? `｜${owner.name} Lv.${pr.level}` : '｜无主'}${pr ? `｜${(pr.price ?? buyPrice(state, plot.id)).toLocaleString()}` : ''}${frontage ? `｜${frontage} 个入口` : ''}`;
+    const status = owner ? `${owner.name} Lv.${pr.level}` : (pr?.level > 0 ? `无主已建 Lv.${pr.level}` : '无主空地');
+    const title = `${name}${pr?.bigType ? `（${BIG_NAME[pr.bigType]}）` : ''}｜${status}｜${(pr?.price ?? buyPrice(state, plot.id)).toLocaleString()}${frontage ? `｜${frontage} 个入口` : ''}`;
     const pickPlot = state.mapPick?.plot;
     const filter = state.mapPick?.filter;
     const filterPlayer = state.players.find(q => q.id === state.mapPick?.playerId);
@@ -179,7 +204,7 @@ function renderBoard(el, state, currentP, actions) {
     const here = state.players.filter(q => q.alive && q.position === n.id);
     const place = state.placements[n.id];
     const ground = n.kind === 'empty' ? '' : (svgIcon(n.kind) ?? GROUND_ICON[n.kind] ?? '?');
-    const title = n.kind === 'empty' ? '' : `${n.label}${CELL_HELP[n.kind] ? '：' + CELL_HELP[n.kind] : ''}`;
+    const title = n.kind === 'empty' ? '' : `${n.label}：${cellHelp(state, n.kind)}`;
     const roadStop = STOP_ROAD.has(n.kind);
     const roadPass = PASS_ROAD.has(n.kind);
     const occStop = !!place && STOP_OCC.has(place.kind);
@@ -193,7 +218,7 @@ function renderBoard(el, state, currentP, actions) {
     const flow = `${roadStop ? 'road-stop' : ''} ${roadPass ? 'road-pass' : ''} ${occStop ? 'occ-stop' : ''} ${occPass ? 'occ-pass' : ''}`;
     const [nx, ny] = n.id.split(',').map(Number);
     const links = `${nodes[`${nx},${ny - 1}`] ? ' link-n' : ''}${nodes[`${nx},${ny + 1}`] ? ' link-s' : ''}${nodes[`${nx - 1},${ny}`] ? ' link-w' : ''}${nodes[`${nx + 1},${ny}`] ? ' link-e' : ''}`;
-    const occTitle = place ? `${OCC_HELP[place.kind] ?? ''}${place.kind === 'god' ? '：' + place.name : ''}` : '';
+    const occTitle = place ? occHelp(state, place.kind, place.name) : '';
     return `<div class="cell ${extra} ${flow}${links}${n.surface ? ` surface-${n.surface}` : ''}${n.centerFront ? ' center-front' : ''}${!ground ? ' no-ground' : ''}${ground ? ' has-ground' : ''}${place ? ' has-occ' : ''}${here.length ? ' has-token' : ''}" data-cell="${n.id}"${attr}
       style="left:${n.x + 1}px;top:${n.y + 1}px;width:${S - 2}px;height:${S - 2}px">
       ${ground ? `<div class="gicon" title="${title}">${ground}</div>` : ''}
@@ -265,6 +290,16 @@ function renderChoice(el, state, p, actions) {
   }
   const pending = state.pending;
   if (!pending) return;
+  if (pending.type === 'diceValue' || pending.type === 'steps') {
+    const isSteps = pending.type === 'steps';
+    const min = pending.min ?? (isSteps ? 0 : 1), max = pending.max ?? (isSteps ? 12 : 6);
+    const nums = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    const title = isSteps ? '超级骰子' : '遥控骰子';
+    const desc = isSteps ? '选择本回合要走的步数；方向按正常规则处理。' : '选择本回合每颗骰子的点数；最终步数 = 点数 × 骰子数。';
+    el.innerHTML = `<h3>${title}</h3><p class="hint">${desc}</p><div class="dice-choice">${nums.map(n => `<button data-dice-choice="${n}">${n}</button>`).join('')}</div>`;
+    el.querySelectorAll('[data-dice-choice]').forEach(b => b.onclick = () => actions.diceValue(+b.dataset.diceChoice));
+    return;
+  }
   const box = (title, body) => `<h3>${title}</h3>${body}`;
   let html = '';
   if (pending.type === 'target') {
@@ -338,6 +373,7 @@ function renderChoice(el, state, p, actions) {
   el.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => actions.act(b.dataset.act));
   el.querySelectorAll('button[data-target]').forEach(b => b.onclick = () => actions.pickCell ? actions.pickCell(b.dataset.target) : null);
   el.querySelectorAll('button[data-dir]').forEach(b => b.onclick = () => actions.direction(b.dataset.dir));
+  el.querySelectorAll('button[data-dice-choice]').forEach(b => b.onclick = () => actions.diceValue(+b.dataset.diceChoice));
   el.querySelectorAll('button[data-big]').forEach(b => b.onclick = () => actions.chooseBig(b.dataset.big));
   el.querySelectorAll('button[data-buy]').forEach(b => b.onclick = () => actions.stock(b.dataset.buy, 10, 'buy'));
   el.querySelectorAll('button[data-sell]').forEach(b => b.onclick = () => actions.stock(b.dataset.sell, 10, 'sell'));

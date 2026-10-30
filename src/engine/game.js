@@ -116,7 +116,11 @@ const CARD_LIST = [
   ['worker', '机器工人卡', 'plot'], ['inflate', '涨价卡', 'street'], ['remotedice', '遥控骰子卡', 'cell'],
   ['turtle', '乌龟卡', 'player'], ['turn', '转向卡', 'player'], ['stay', '停留卡', 'player'],
   ['sleep', '梦游卡', 'player'], ['hibernate', '冬眠卡', 'player'], ['roadblock', '路障卡', 'cell'],
-  ['superdice', '超级骰子卡', 'self'], ['jelly', '果冻墙卡', 'cell'], ['randomdoor', '随意门卡', 'self'],
+  ['superdice', '超级骰子卡', 'self'],
+  ['dirchoose', '自选方向卡', 'self'],
+  ['dirclockwise', '顺时针卡', 'self'],
+  ['dircounter', '逆时针卡', 'self'],
+  ['dirrandom', '混乱方向卡', 'player'], ['jelly', '果冻墙卡', 'cell'], ['randomdoor', '随意门卡', 'self'],
   ['portal', '传送门卡', 'player'], ['motorcycle', '机车卡', 'self'], ['car', '汽车卡', 'self'],
   ['robotdoll', '机器娃娃卡', 'cell'], ['start', '启动卡', 'player'], ['mine', '地雷卡', 'cell'],
   ['timebomb', '定时炸弹卡', 'cell'], ['missile', '飞弹卡', 'player'], ['quantum', '量子飞弹卡', 'all'],
@@ -324,7 +328,7 @@ export function spawnOccupants(state) {
 
 export const BIG_NAMES = { commercial: '商业中心', hotel: '大饭店', bookstore: '书店', energy: '能源中心', realestate: '地产公司', research: '研究所', park: '公园' };
 
-export const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start', 'audit', 'missile', 'quantum', 'rushmissile']);
+export const TARGET_RANGE_5 = new Set(['turtle', 'turn', 'stay', 'sleep', 'equalpoor', 'pick', 'scheme', 'magic', 'sendgod', 'samefate', 'start', 'audit', 'missile', 'quantum', 'rushmissile', 'dirrandom']);
 export const SELF_TARGET = new Set(['turtle', 'turn', 'stay']);
 export const PASSIVE = new Set(['free', 'samefate', 'transfer', 'wuxie']);
 
@@ -543,6 +547,10 @@ export function applyCard(state, p, id, target) {
       }
       return true;
     }
+    case 'dirchoose': p.dirMode = 'choose'; p.dirModeOwner = p.id; log(state, `${p.name} 本回合的方向由自己选择`); return true;
+    case 'dirclockwise': p.dirMode = 'cw'; p.dirModeOwner = p.id; log(state, `${p.name} 本回合的方向固定为顺时针`); return true;
+    case 'dircounter': p.dirMode = 'ccw'; p.dirModeOwner = p.id; log(state, `${p.name} 本回合的方向固定为逆时针`); return true;
+    case 'dirrandom': if (!q) return false; q.dirMode = 'random'; q.dirModeOwner = q.id; log(state, `${q.name} 到本回合结束前方向随机`); return true;
     case 'randomdoor': {
       const walkable = state.map.nodes.filter(n => n.kind !== 'teleport' && n.kind !== 'platform');
       p.position = state.rng.pick(walkable).id;

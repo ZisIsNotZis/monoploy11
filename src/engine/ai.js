@@ -1,8 +1,8 @@
 // 规则型 AI：只通过 ui.ask 返回动作，不直接改状态。
 import { CARD_DEFS } from './game.js';
 
-const ATTACK = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','equalpoor','magic','sendgod']);
-const SELF = new Set(['motorcycle','car','invitegod','godfavor','glory','green','free']);
+const ATTACK = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','equalpoor','magic','sendgod','dirrandom']);
+const SELF = new Set(['motorcycle','car','invitegod','godfavor','glory','green','free','dirchoose','dirclockwise','dircounter']);
 const PLOT_CARDS = new Set(['worker','truck','buyland','rebuild','monster','exchange']);
 // 这些基础卡集满 5 张能合成进阶卡；AI 拿到 3 张后不再烧掉，留作合成。
 const FUSION_BASE = new Set(['missile', 'inflate', 'close', 'sendgod', 'monster', 'invitegod']);
@@ -93,6 +93,8 @@ export function aiAnswer(prompt, state) {
     case 'build': return p.cash >= prompt.cost + 30_000;
     case 'chooseBig': return prompt.plot?.name === '中央大酒店' ? 'hotel' : 'commercial';
     case 'direction': return chooseDirection(prompt, state);
+    case 'diceValue': return 6;
+    case 'steps': return 6;
     case 'target': {
       if (prompt.kind === 'player') return choosePlayerTarget(prompt);
       if (prompt.kind === 'plot') return choosePlotTarget(prompt, state);

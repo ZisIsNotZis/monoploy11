@@ -26,13 +26,14 @@ test('AI read-info prompts wait 500ms, action prompts 350ms', () => {
   assert.equal(aiPauseMs('stock'), 350);
 });
 
-test('voice line is the full line with the player name, never single characters', () => {
+test('voice line is a complete sentence without the speaker name or colon', () => {
   const p = { name: '阿土伯', charId: 'atubo' };
   for (const event of ['gain', 'lose', 'buy', 'god', 'jail', 'hospital']) {
     const line = pickLine(p, event);
-    assert.ok(line.includes('阿土伯'), `${event} line should include name`);
+    assert.ok(!line.includes('阿土伯'), `${event} line should not embed name`);
+    assert.ok(!line.includes('：'), `${event} line should not include colon`);
     assert.ok(!line.includes('{name}'), `${event} line should be resolved`);
-    assert.ok(line.length > 4, `${event} line should be a sentence`);
+    assert.ok(line.length >= 2, `${event} line should be a sentence`);
   }
 });
 

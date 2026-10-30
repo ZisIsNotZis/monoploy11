@@ -1,4 +1,4 @@
-import { VOICE_LINES, VOICE_PROFILES } from '../data/lines.js';
+import { VOICE_LINES, VOICE_PROFILES, VOICE_STYLE } from '../data/lines.js';
 import { EXPERIENCE } from '../data/experience.js';
 
 // 语音也是一条队列：一次只播一句，气泡和语音共用同一句台词。
@@ -9,7 +9,7 @@ try { muted = globalThis.localStorage?.getItem('monopoly11:muted') === '1'; } ca
 
 function fileFor(p, event, i) {
   if (!p?.charId) return null;
-  return `./assets/voice/${p.charId}/${event}-${i}.mp3?v=1`;
+  return `./assets/voice/${p.charId}/${event}-${i}.mp3?v=2`;
 }
 
 // 只读地抽一句完整台词。main 的气泡和 speak 的 fallback 都用这一句，
@@ -99,7 +99,9 @@ function playSpeech(p, event, text, index) {
       try {
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-CN';
-        u.rate = 1.05;
+        const style = VOICE_STYLE[p?.charId] ?? { rate: 1, pitch: 1 };
+        u.rate = style.rate;
+        u.pitch = style.pitch;
         const voices = speechSynthesis.getVoices();
         const profile = VOICE_PROFILES[p?.charId];
         u.voice = voices.find(v => profile && v.name.includes(profile.split('-').pop()))

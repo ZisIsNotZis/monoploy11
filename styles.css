@@ -396,7 +396,7 @@ button { font: inherit; }
 .prop.grand { border-color: #c9a24a; border-width: 2px; box-shadow: inset 0 0 0 1px rgba(201,162,74,.35), 0 0 18px rgba(201,162,74,.12); }
 .prop.grand .picon { filter: drop-shadow(0 0 8px rgba(216,161,63,.35)); }
 .prop.unowned { border-style: dashed; }
-.prop.unowned::after { content: '无主'; position: absolute; left: 3px; top: 2px; font-size: 9px; color: #c9a24a; background: rgba(10,12,16,.72); padding: 0 3px; border-radius: 2px; }
+.prop.unowned::after { content: '无主已建'; position: absolute; left: 3px; top: 2px; font-size: 9px; color: #c9a24a; background: rgba(10,12,16,.72); padding: 0 3px; border-radius: 2px; }
 .cell.center-front { box-shadow: inset 0 0 0 1px rgba(201,162,74,.22); }
 .cell.center-front.has-ground { box-shadow: inset 0 0 0 1px rgba(201,162,74,.28); }
 
@@ -492,3 +492,6 @@ button { font: inherit; }
 .cell.surface-mud { background: #242019; border-color: #6f5f42; }
 .cell.surface-slope { background: linear-gradient(135deg, #20271f, #2c3325); border-color: #69804b; }
 .cell.surface-ice .gicon, .cell.surface-water .gicon, .cell.surface-lava .gicon, .cell.surface-slope .gicon { filter: drop-shadow(0 0 2px #000); }
+
+.dice-choice { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.dice-choice button { min-width: 34px; min-height: 34px; font-size: 15px; }

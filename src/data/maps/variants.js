@@ -93,6 +93,12 @@ export const FESTIVAL = variant(GRAND_HOTEL, {
   id: 'festival', name: '狂欢节',
   intro: '每天轮换一个加成区；巡游时该区道路单行。',
   initial: baseInitial,
+  zones: [
+    { id: 'nw', x: 3, y: 3, w: 8, h: 6, color: 'rgba(120, 92, 48, .10)' },
+    { id: 'ne', x: 16, y: 3, w: 7, h: 6, color: 'rgba(70, 100, 128, .10)' },
+    { id: 'sw', x: 3, y: 11, w: 8, h: 6, color: 'rgba(72, 112, 82, .10)' },
+    { id: 'se', x: 16, y: 11, w: 7, h: 6, color: 'rgba(110, 78, 120, .10)' },
+  ],
   mechanic: { id: 'festival', rotateEvery: 1, rentBonus: 2 },
 });
 

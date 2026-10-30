@@ -63,6 +63,7 @@ function beginTurn(state, p) {
 
 function endPlayerTurn(state, p) {
   if (!p) return;
+  if (p.dirModeOwner === p.id) { p.dirMode = null; p.dirModeOwner = null; }
   if (p.statusDays > 0) {
     p.statusDays -= 1;
     if (p.statusDays <= 0) { log(state, `${p.name} 的 ${p.status} 状态结束`); p.status = null; }
@@ -120,6 +121,7 @@ async function playTurn(state, p, ui) {
   else if (p.status === '乌龟') n = 1;
   else if (p.status === '冰冻') n = 0;
   else if (p.forcedDice != null) { n = p.forcedDice; p.forcedDice = null; }
+  else if (p.diceValue != null) { n = p.diceValue * diceCount; p.diceValue = null; log(state, `遥控骰子：${diceCount} 颗骰子都按 ${n / diceCount} 点计算`); }
   else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
@@ -154,8 +156,8 @@ async function actionPhase(state, p, ui) {
     if (a.action === 'card') {
       const id = p.cards[a.index];
       if (!id || PASSIVE.has(id)) continue;
-      if (id === 'remotedice') { if (await remoteDiceFlow(state, p, ui, a.index, (1 + Math.max(0, p.vehicle ?? 0)) * 6)) return null; continue; }
-      if (id === 'superdice') { if (await remoteDiceFlow(state, p, ui, a.index, 12)) return null; continue; }
+      if (id === 'remotedice') { await diceChoiceFlow(state, p, ui, a.index, 1, 6); continue; }
+      if (id === 'superdice') { await diceChoiceFlow(state, p, ui, a.index, 0, 12); continue; }
       let target = null;
       const def = CARD_DEFS[id];
       if (def.target !== 'self' && def.target !== 'all') {
@@ -340,7 +342,7 @@ function nextForward(state, pos, cameFrom) {
 async function chooseStep(state, p, cameFrom, first, ui, allowAsk) {
   const adj = buildAdj(state.map);
   const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
-  if (exits.length >= 3 && !p.forceRandom && allowAsk && typeof ui.ask === 'function') {
+  if (exits.length >= 3 && !p.forceRandom && !['cw','ccw','random'].includes(p.dirMode) && allowAsk && typeof ui.ask === 'function') {
     const options = exits.filter(e => e.to !== cameFrom).map(e => e.to);
     if (options.length > 1) {
       const to = await ui.ask({ type: 'direction', player: p, options });
@@ -364,6 +366,8 @@ function nextStep(state, p, cameFrom, first) {
   let choices = exits.filter(e => e.to !== cameFrom);
   if (!choices.length) choices = exits;
   if (exits.length <= 1) return exits[0].to;
+  if (p.dirMode === 'cw' || p.dirMode === 'ccw') { const to = turnChoice(state, p, cameFrom, p.dirMode); if (to) return to; }
+  if (p.dirMode === 'random') return state.rng.pick(choices).to;
   if (exits.length === 2) {
     if (first && p.facing && exits.some(e => e.to === p.facing)) return p.facing;
     const forward = choices.find(e => e.to === p.facing) ?? choices[0] ?? exits[0];
@@ -630,11 +634,33 @@ export async function postGodPhase(state, p, ui) {
   }
 }
 
+function turnChoice(state, p, cameFrom, mode) {
+  const adj = buildAdj(state.map);
+  const node = state.map.nodes.find(n => n.id === p.position);
+  const from = state.map.nodes.find(n => n.id === (cameFrom ?? p.lastNode));
+  if (!node || !from) return null;
+  const base = Math.atan2(node.y - from.y, node.x - from.x);
+  const opts = adj[p.position].filter(e => e.to !== cameFrom).map(e => e.to);
+  if (!opts.length) return null;
+  const scored = opts.map(id => {
+    const n = state.map.nodes.find(x => x.id === id);
+    let delta = Math.atan2(n.y - node.y, n.x - node.x) - base;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    return { id, delta };
+  });
+  const target = mode === 'cw' ? Math.PI / 2 : -Math.PI / 2;
+  scored.sort((a, b) => Math.abs(a.delta - target) - Math.abs(b.delta - target));
+  return scored[0]?.id ?? null;
+}
+
 async function directionPhase(state, p, ui) {
   const adj = buildAdj(state.map);
   if (adj[p.position].length < 3) return;
   const opts = adj[p.position].map(e => e.to).filter(id => id !== p.lastNode);
   if (!opts.length) return;
+  if (p.dirMode === 'cw' || p.dirMode === 'ccw') { p.facing = turnChoice(state, p, p.lastNode, p.dirMode); return; }
+  if (p.dirMode === 'random') { p.facing = state.rng.pick(opts); return; }
   const to = await ui.ask({ type: 'direction', player: p, options: opts });
   if (to) p.facing = to;
 }
@@ -790,6 +816,23 @@ async function magicFlow(state, p, ui) {
     attachGod(state, target, name);
     log(state, `魔法屋按“${cond.label}”选中 ${target.name}，请来 ${name}`);
   }
+}
+
+async function diceChoiceFlow(state, p, ui, index, min, max) {
+  const id = p.cards[index];
+  if (!id) return false;
+  const type = id === 'superdice' ? 'steps' : 'diceValue';
+  const value = await ui.ask({ type, player: p, cardId: id, min, max });
+  if (value == null || value < min || value > max) return false;
+  p.cards.splice(index, 1);
+  if (id === 'superdice') {
+    p.forcedDice = value;
+    log(state, `${p.name} 使用超级骰子卡：本回合走 ${value} 步`);
+  } else {
+    p.diceValue = value;
+    log(state, `${p.name} 使用遥控骰子：本回合每颗骰子固定为 ${value} 点`);
+  }
+  return true;
 }
 
 async function remoteDiceFlow(state, p, ui, index, max = (1 + Math.max(0, p.vehicle ?? 0)) * 6) {

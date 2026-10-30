@@ -155,6 +155,7 @@ function applyPromptToState(p) {
   state.mapPick = null;
   if (!p) return;
   if (p.type === 'action') return;
+  if (p.type === 'diceValue' || p.type === 'steps') { state.pending = { type: p.type, min: p.min, max: p.max }; return; }
   if (p.type === 'target') {
     if (p.kind === 'cell') {
       const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
@@ -200,6 +201,7 @@ const actions = {
   openStock() { answer({ action: 'stock' }); },
   stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
   direction(id) { answer(id); },
+  diceValue(n) { answer(n); },
   pickCell(id) { answer(id); },
   pickPlot(id) { const plot = state.map.plots.find(x => x.id === id); if (!plot) return; if (!plotAllowed(plot)) return; answer(state.mapPick?.value === 'street' ? plot.street : id); },
   chooseBig(type) { answer(type); },
