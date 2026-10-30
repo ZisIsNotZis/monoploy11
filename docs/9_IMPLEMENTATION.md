@@ -52,7 +52,7 @@ index.html      单页入口；不承载规则
 | `src/data/maps/grid-manor.js` | 旧 25×17 测试地图；只用于回归 |
 | `src/data/maps/test-manor.js` | 旧环图测试数据，只用于回归测试 |
 | `src/ui/render.js` | 网格棋盘、侧栏、日志、底部情境区、tooltip |
-| `src/ui/voice.js` | 本地 mp3 语音、中文语音回退、串行语音队列 |
+| `src/ui/voice.js` | 本地 mp3 语音、8 声线 + 角色音高/语速、中文回退、串行语音队列 |
 | `src/ui/speech.js` | 对话气泡队列、token 定位、空格/点击跳过 |
 | `test/*.test.js` | 规则/流程/体验时长测试 |
 
