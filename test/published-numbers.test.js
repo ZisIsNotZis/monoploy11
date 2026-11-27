@@ -69,6 +69,61 @@ test('README 描述的起手牌就是产品里的那三张', async () => {
   }
 });
 
+test('入口对「分得开 / 分不开」的说法与区间逐对相符', () => {
+  // 上一版的错：工具把「不是两两全重叠」印成「有三格区间不重叠」，我直接把那句抄进了 README。
+  // 真实的成对关系是：grow↔take 分得开，grow↔cross 重叠 0.1pp，take↔cross 重叠 8pp。
+  // 所以这条不检查我的措辞，而是自己算：入口声称分得开的那对必须真的不相交，
+  // 声称重叠的那对必须真的相交。我改一个字而没说真话，它就会红。
+  const a = artifact();
+  const ci = Object.fromEntries(a.byStyle.map(b => [b.id, b.ci95]));
+  const overlaps = (x, y) => Math.max(ci[x].lo, ci[y].lo) <= Math.min(ci[x].hi, ci[y].hi);
+  const entry = read('README.md');
+
+  // 名字 → id 的对应也从产品数据取，不手写。
+  const byId = Object.fromEntries(a.byStyle.map(b => [b.id, b.name]));
+  // 连接词要全认：第一版只认「A与B」，而我把文案写成「A对B」就绕过了整条判据
+  // （负对照跑出来的，不是读出来的）。名字之间的任何分隔都归这条管。
+  const pairs = [['grow', 'take'], ['grow', 'cross'], ['take', 'cross']];
+  for (const [x, y] of pairs) {
+    const phrase = new RegExp(`${byId[x]}\\s*(?:与|对|↔|vs|VS)\\s*${byId[y]}`);
+    const hit = phrase.exec(entry);
+    if (!hit) continue; // 没点名就不归这条管
+    // 窗口必须止于本句：用 80 字符的滑动窗口会跨到下一句（下一句谈的是另一对，
+    // 常见的词是「重叠」），于是「A 分得开」+「B 重叠」会被读成「A 重叠」。
+    // 这是判据自己越界，不是文案错 —— 负对照跑出来的第二次。
+    const rest = entry.slice(hit.index);
+    const tail = rest.slice(0, rest.search(/[。；\n]/) + 1 || rest.length);
+    const saysSeparable = /分得开|不相交/.test(tail);
+    const saysOverlap = /重叠|分不开/.test(tail);
+    const label = `${byId[x]}↔${byId[y]}`;
+    assert.ok(saysSeparable || saysOverlap, `README 点名了 ${label} 就该说清它们分不分得开`);
+    if (saysSeparable) assert.equal(overlaps(x, y), false,
+      `README 说 ${label} 分得开，但它们的 95% 区间是重叠的`);
+    if (saysOverlap) assert.equal(overlaps(x, y), true,
+      `README 说 ${label} 重叠，但它们的 95% 区间其实不相交`);
+  }
+
+  // 没点名的对不许被一句话扫成「全部分开」或「全部重叠」。
+  assert.equal(/区(?:间)?[^\\n]{0,12}(?:都|全|两两)[^\\n]{0,6}不重叠/.test(entry), false,
+    'README 用一句话概括了所有区间 —— 先逐对算过再写（上一版就在这里错过）');
+});
+
+test('量具的输出只陈述逐对区间，不给一句会失真的总结', () => {
+  // 错的源头在工具，不在文案：它只检查「是否两两全重叠」，不成立就印成
+  // 「有三格 95% 区间不重叠」—— 而真实情况是只有一对分开。我把那句直接抄进了入口。
+  // 这条钉住工具的**输出形式**：必须逐对列出，且不得再出现「全部 / 两两不重叠」。
+  // 只看**会打印出去的字符串**：源码注释里会照着旧错句记录它（那是应该保留的历史），
+  // 禁的是再把它当结论印给读者。
+  const src = read('tools/balance-slice.mjs');
+  const printed = [...src.matchAll(/console\.log\(([^)]*)\)/g)].map(m => m[1]).join('\n');
+  assert.equal(/三格 95% 区间(?:两两|都)?不重叠/.test(printed), false,
+    '量具又在用一句话概括区间关系了');
+  assert.equal(/console\.log\([^)]*三格 95% 区间[^)]*两两重叠/.test(src), false,
+    '量具还在印「三格两两重叠」这句反向概括');
+  assert.match(src, /95% 区间逐对/, '量具应当逐对列出区间关系');
+  assert.match(src, /重叠宽/, '重叠的对要给出宽度，否则「重叠」读不出有多大');
+});
+
 test('README 与 6_SLICE 公布的百分比来自那份表', () => {
   const a = artifact();
   const pct = Object.fromEntries(a.byStyle.map(b => [b.id, b.winRatePct]));
@@ -114,10 +169,19 @@ test('被收回的数字不许当成现状，引用它的报告必须在同一�
     assert.equal(current.includes(`${n}%`), false, `${n}% 重新出现在入库的胜率表里`);
   }
 
-  // 玩家入口（README）：一概不该出现 —— 它不带历史上下文，读者只会把它当成现在的数。
+  // 玩家入口（README）：这三个数不该作为**胜率**出现。
+  //
+  // 需要注意的巧合：42.7 又是一个真实存在的数——改前的**差距**（42.7 个百分点）。
+  // 第一版判据用裸子串，于是它把「差距 42.7 个百分点」也当成了漏网的胜率。
+  // 那不是判据太严，是文案把一个已收回的胜率与另一个真数写成了同一个形式；
+  // 所以两边都改：判据只咬「当胜率写」（带 % 或三者连写），文案把两个数分开说清。
   const entry = read('README.md');
-  assert.deepEqual(WITHDRAWN.filter(n => entry.includes(n)), [],
-    'README 还在用已收回的 42.0 / 39.0 / 42.7 —— 玩家入口不是放历史数字的地方');
+  const asWinRate = WITHDRAWN.map(n => new RegExp(`${n}\\s*%`)).filter(re => re.test(entry))
+    .map(re => re.source);
+  assert.deepEqual(asWinRate, [],
+    'README 把已收回的胜率当胜率写了（带 %）：玩家入口不放历史胜率');
+  assert.equal(/42\.0[^\n]{0,20}39\.0[^\n]{0,20}42\.7/.test(entry), false,
+    'README 把已收回的三个数当成一组数写在一起了');
 
   // 规则文档（6_SLICE）：可以引用（「已收回 X，现在是 Y」比删掉更有用），
   // 但**同一行**必须写明收回，否则就是又把它当现状写了一遍。

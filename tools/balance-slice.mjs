@@ -186,10 +186,20 @@ if (AS_JSON) {
     console.log(`最大差距 ${((Math.max(...rates) - Math.min(...rates)) * 100).toFixed(1)} 个百分点`);
     // 「差距收窄」是能说的；「三条一样强」要另外的证据。区间重叠只说明这个样本量分不开
     // 它们，不说明它们真的相等 —— 换了样本，读数还会动。
-    const overlap = scored.every(a => scored.every(b => a === b || (a.ci95.lo <= b.ci95.hi && b.ci95.lo <= a.ci95.hi)));
-    console.log(overlap
-      ? '三格 95% 区间两两重叠：这个样本量分不开它们。（只说明「看不出差别」，不证明「没有差别」。）'
-      : '有三格 95% 区间不重叠：这个样本量已经能分开它们，差距是真的。');
+    // 逐对说，不做一句话总结。旧版在这里说的是「三格 95% 区间不重叠」——
+    // 上线后立刻被抓到：真实情况是只有 grow↔take 分得开，grow↔cross 的区间还差
+    // 0.1 个百分点就碰上。一句读起来像「三对都分开」的话，把一个窄重叠抹掉了。
+    // 量具不要在结论层替读者概括到失真 —— 它该把每对的关系摆出来，自己判断。
+    const pairs = [];
+    for (let i = 0; i < scored.length; i++) for (let j = i + 1; j < scored.length; j++) {
+      const a = scored[i], b = scored[j];
+      const lo = Math.max(a.ci95.lo, b.ci95.lo), hi = Math.min(a.ci95.hi, b.ci95.hi);
+      const disjoint = lo > hi;
+      pairs.push(`${a.name}↔${b.name} ${disjoint ? '分得开' : '区间重叠'}${disjoint ? ''
+        : `（重叠宽 ${((hi - lo) * 100).toFixed(1)} 个百分点）`}`);
+    }
+    console.log('95% 区间逐对：' + pairs.join('；'));
+    console.log('（「分得开」只对这个样本量成立；重叠不等于相等，不重叠也不等于差很多。）');
   }
   if (report.failures.length) {
     console.log('');
