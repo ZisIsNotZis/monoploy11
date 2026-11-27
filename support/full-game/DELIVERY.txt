@@ -13,7 +13,7 @@
 #
 # 校验：python3 support/full-game/check-delivery.py
 
-# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3400.sha256（#3391v）。
+# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3401.sha256（#3391z）。
 # 相对 3345 的玩家可见改动（其余是注释与证据）：
 #   ① src/data/slice.js —— 三句起手 hook 只写手上真有的卡；sliceStats 多一个 business 计数；
 #   ② src/main.js     —— 开局说明照实写（你那条街的另一半是空地，两个对手才互为另一半）；
@@ -88,6 +88,14 @@ lock src/engine/market-ledger.js
 # 「当前」两处说法必须是同一份文件，不是两段各自维护的注释）。
 # #3391 的锁与证据。
 # #3391t 的锁（**已不是当前**）：36 个文件，文件集与 3393 相同。
+doc  docs/evidence/slice-entry-3401.sha256
+doc  docs/evidence/receipt-3401-full/raw/after.json.gz
+doc  docs/evidence/receipt-3401-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3401-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3401-full/after.json
+doc  docs/evidence/receipt-3401-full/record-10-replay.json
+doc  docs/evidence/receipt-3401-full/record-8-summary.json
+doc  docs/evidence/receipt-3401-full/provenance.json
 doc  docs/evidence/slice-entry-3400.sha256
 # #3391v 的整局回执（跑在 3400 这把锁上）：默认争街入口，VERDICT PASS。
 # 它同时证明「规则档默认关」没改玩法：同一套动作、同一结局、同一差额（51,600）。

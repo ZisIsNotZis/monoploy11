@@ -40,10 +40,10 @@ test('付费加盖的回本回合数与用 rentFor+buildCost 独立算出的值�
   assert.equal(s.properties[id].level, 3, 'precondition: 加盖应已生效');
   const expected = expectedPayback(s, id, cost, 3);
   assert.ok(expected > 0, `增量应为正，否则测不出回本（算得 ${expected}）`);
-  const line = logText(s).find(t => t.includes('回合回本'));
-  assert.ok(line, '加盖日志里没有回本回合数');
+  const line = logText(s).find(t => t.includes('次回本'));
+  assert.ok(line, '加盖日志里没有回本次数');
   assert.ok(line.includes(`（花费 ${cost}）`), `日志里的花费不是 ${cost}：${line}`);
-  assert.ok(line.includes(`${expected} 回合回本`), `回本数不是独立算出的 ${expected}：${line}`);
+  assert.ok(line.includes(`${expected} 次回本`), `回本数不是独立算出的 ${expected}：${line}`);
 });
 
 test('免费翻修写成「立即回本」，不是编一个回合数', () => {
@@ -79,7 +79,7 @@ test('满级时既不加盖也不产生回本文本', () => {
   const logs = s.log.length;
   buildPlot(s, p, id);
   assert.equal(s.log.length, logs, '满级时不该产生日志');
-  assert.equal(logText(s).some(t => t.includes('回合回本')), false);
+  assert.equal(logText(s).some(t => t.includes('次回本')), false);
 });
 
 test('完整模式不加回本文本', () => {

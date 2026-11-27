@@ -6,7 +6,7 @@ import { sliceAnswer } from '../src/engine/slice-ai.js';
 import { rentFor } from '../src/engine/economy.js';
 import { render } from '../src/ui/render.js';
 import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, POOL_SOURCE } from '../src/engine/payback.js';
-import { buildForwardLine } from '../src/ui/slice.js';
+import { buildForwardLine, buildForwardK } from '../src/ui/slice.js';
 
 // #1044：付费加盖/买地那句
 //
@@ -54,7 +54,14 @@ test('#1044 提议框主句是池子比例，且排在 K 句之前', () => {
   assert.ok(line, `提议框里没有前向句：${html}`);
   const poolIdx = line.indexOf(POOL_MARK);
   assert.ok(poolIdx >= 0, `主句不是池子比例：${line}`);
-  const kIdx = line.indexOf('满 2 次一定够本');
+  // #3391z：这里原来硬编码「满 2 次一定够本」—— 那个 2 是**旧口径**（用升级后全额
+  // 5,600 算出来的）的数字，而且措辞也改成了「本笔每次多收 X，满 K 次一定回本」。
+  // 硬编码旧值会让一条本该守「次序」的判据同时继承回本口径的 bug。
+  // 现在按现算的 K 拼，只判次序。
+  const info = buildForwardK(s, id, 10000);
+  assert.ok(info && info.K > 0, '这条判据需要一个能算出的 K');
+  const kIdx = line.indexOf(`满 ${info.K} 次一定回本`);
+  assert.ok(kIdx >= 0, `K 句没出现（按现算 K=${info.K}）：${line}`);
   assert.ok(kIdx > poolIdx, `K 句跑到了池子句前面（K 还在当主句）：${line}`);
   assert.ok(line.startsWith(POOL_MARK.slice(0, 6)) || poolIdx < 10, `池子句不在句首：${line}`);
   // #993 已签的不变量不能丢
@@ -92,7 +99,8 @@ test('#1044 三个打印点的池子句与回合数来自同一个实现', () =>
     const v = rentFor(s, id); s.properties[id].level = lv; return v; })();
   const gain = rent - prev;
   assert.equal(roundsToRecover(cost, gain), Math.max(1, Math.ceil(cost / gain)));
-  assert.equal(roundsLine(cost, gain), `${Math.max(1, Math.ceil(cost / gain))} 回合回本`);
+  // #3391z：单位从「回合」改成「次」—— 数的是被踩到的次数，引擎没有「每回合收租」。
+  assert.equal(roundsLine(cost, gain), `${Math.max(1, Math.ceil(cost / gain))} 次回本`);
 });
 
 // ③ 日志里「；」之后仍然只有 rentFor 一个金额（#807 已签，不许被新句撞坏）。
@@ -208,8 +216,13 @@ test('#3338 买地框不再印池子句（那笔钱没有消失，它变成了�
 test('#1044 尾部上限句只在 unit 与 K 都算得出时出现', () => {
   assert.equal(poolKLine(0, 3), '');
   assert.equal(poolKLine(5600, 0), '');
-  const s = poolKLine(5600, 2);
-  assert.ok(s.includes('5,600') && s.includes('满 2 次一定够本'), s);
+  // #3391z：unit 现在是**增量**，第三参数 full 是升级后的全额。
+  // 两种账都要出现 —— 只给全额会让读者算出更早回本（supervisor 撞到的就是那个）。
+  const s = poolKLine(2800, 4, 5600);
+  assert.ok(s.includes('2,800'), `K 句没写增量：${s}`);
+  assert.ok(s.includes('5,600'), `K 句没写全额（两种账要并列）：${s}`);
+  assert.ok(s.includes('满 4 次一定回本'), s);
+  assert.ok(s.includes('不是回合'), `K 句没说清单位是次数不是回合：${s}`);
   assert.equal(roundsToRecover(10000, 0), null);
   assert.equal(roundsLine(10000, 0), '');
 });

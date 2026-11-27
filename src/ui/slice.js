@@ -893,12 +893,22 @@ export const LANDING_STATS = {
 export function buildForwardK(state, plotId, cost) {
   const pr = state.properties?.[plotId];
   if (!pr) return null;
+  // #3391z（supervisor 在公开版 seed 3 第 6 天亲手撞到的真缺陷）：
+  // 这里以前用**升级后的全额租金**做 K，而这笔加盖真正多赚的是**增量**。
+  // 实例：月色街茶铺 2,000 → 4,000，费用 10,000。
+  //   旧算法 10,000 / 4,000 = **3 次**（屏上就这么写的）；
+  //   正确 10,000 / 2,000 = **5 次**（这笔钱真正要多收几次才回来）。
+  // 差在：不盖也能收到那 2,000，所以那部分不能算进「这笔投资」的回本。
   const saved = pr.level;
-  let unit = 0;
-  try { pr.level = (saved ?? 0) + 1; unit = rentFor(state, plotId); }
-  finally { pr.level = saved; }
-  if (!(unit > 0)) return { unit: 0, K: null, closed: (pr.closed ?? 0) > 0 };
-  return { unit, K: Math.max(1, Math.ceil(cost / unit)), closed: false };
+  let before = 0, after = 0;
+  try {
+    before = rentFor(state, plotId);
+    pr.level = (saved ?? 0) + 1;
+    after = rentFor(state, plotId);
+  } finally { pr.level = saved; }
+  const gain = after - before;
+  if (!(gain > 0)) return { unit: 0, gain: 0, before, after, K: null, closed: (pr.closed ?? 0) > 0 };
+  return { unit: gain, gain, before, after, K: Math.max(1, Math.ceil(cost / gain)), closed: false };
 }
 
 // 屏上那一行。返回 '' 表示“此刻没什么可说”（非切片模式 / 不知道这间店），
@@ -927,7 +937,7 @@ export function buildForwardLine(state, plotId, cost) {
   // K 句逐字保留在上界的位置（#993 已签的不变量：不许写成「才够本/至少要」，
   // 因为 grow/7 街心书屋 K=4 却在 2 次足额 + 1 次少付时就收回 37,000）。
   const share = poolShareLine(cost, plot.name);
-  const kLine = poolKLine(info.unit, info.K);
+  const kLine = poolKLine(info.unit, info.K, info.after);
   return `${share}${dist}${kLine}`
     + `K 只数真收到钱的那几次，上面“被踩到”含撞上停业、没收到钱的次数。`
     + `这句不是“会有人来”的预测。`;

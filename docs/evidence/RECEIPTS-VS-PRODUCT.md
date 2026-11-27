@@ -10,7 +10,8 @@
 
 | 回执 | 播放的产品字节 | 当前 | 说明 |
 |---|---|---|---|
-| `receipt-3400-full` | `slice-entry-3400.sha256` | **当前** | #3391v 的整局回执，默认争街入口：494 帧 / 66 按 / 3 次买地，`VERDICT: PASS`。产品字节相对 3345 只改了 `src/main.js`、`src/engine/flow.js`（默认关闭的 `settleStreetBusiness`）、`src/ui/slice.js` 与 `src/engine/market-ledger.js`；`index.html`/`styles.css`/`src/data/slice.js` 与 3345 逐字节相同，所以五个 HTTP 路径测试与 `balance-3344-300` 的指纹常量一个字没动。规则仍默认关闭。见 `RESULT-3391v.md`。 |
+| `receipt-3401-full` | `slice-entry-3401.sha256` | **当前** | #3391z：回本口径修正（增量而非全额；单位次数而非回合）的整局回执。494 帧 / 66 按 / 3 次买地，`VERDICT: PASS`。 |
+| `receipt-3400-full` | `slice-entry-3400.sha256` | — | #3391v 的整局回执，默认争街入口：494 帧 / 66 按 / 3 次买地，`VERDICT: PASS`。产品字节相对 3345 只改了 `src/main.js`、`src/engine/flow.js`（默认关闭的 `settleStreetBusiness`）、`src/ui/slice.js` 与 `src/engine/market-ledger.js`；`index.html`/`styles.css`/`src/data/slice.js` 与 3345 逐字节相同，所以五个 HTTP 路径测试与 `balance-3344-300` 的指纹常量一个字没动。规则仍默认关闭。见 `RESULT-3391v.md`。 |
 | `receipt-3317-390` | `slice-entry-3278.sha256` 之前 | — | 记录的是 F6 扩到所有屏之后判红的那一次，判词是 FAIL，作为失败样本保留 |
 | `receipt-3319-390` | `slice-entry-3278.sha256` 之前 | — | 无 raw/，已在 `UNVERIFIABLE.md` 登记为不可核对 |
 | `receipt-3319i-tree` | `slice-entry-3278.sha256` | — | 当时用 `tree-after.sha256` 逐项核过 35 个产品文件，那份核对表未随交付发出 |

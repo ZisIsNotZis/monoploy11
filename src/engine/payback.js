@@ -93,9 +93,21 @@ export function poolShareLine(cost, plotName) {
 // 这里**不**重复 #993 的落地分布表：那件事已经有 LANDING_STATS 一份真相，
 // 由调用方（ui/slice.js）把它接在后面。engine 不 import ui —— 层级反转会让 ui 的改动
 // 反过来改引擎行为，这不是取数问题，是依赖方向问题。
-export function poolKLine(unit, K) {
+// #3391z：`unit` 现在是**本笔的增量**（升级后 − 升级前），不是升级后的全额。
+// 两种账必须分开写，因为读者拿全额去算会得出「3 次就够本」，而真账是 5 次。
+export function poolKLine(unit, K, full) {
   if (!(unit > 0) || !(K > 0)) return '';
-  return `上限不变：升级后每次足额 ${n0(unit)}，满 ${K} 次一定够本（单次被抬价时可少，不满也可能够本）。`;
+  // #3391z（supervisor 第二轮）：不能把增量叫成「升级后每次足额」—— 那读起来像总租。
+  // 三个数必须用三个名字分开写：全额租金 / 不盖也有的那部分 / 这笔新增。
+  // 两个数用两个名字说开：全额租金（不盖也有的那部分含在里面）与这笔新增。
+  // 同一个数不在两句里各说一遍（上一版把 2,800 写成「不盖也有」又说成「这笔新增」，
+  // 读起来像两笔钱）。
+  const both = full > 0
+    ? `升级后全额租金 ${n0(full)}/次，其中 ${n0(full - unit)} 是原本就有的、不算回本。`
+    : '';
+  // 次序沿用 #1044 已签的：调用方把池子主句拼在最前，这一段只说本笔的账。
+  return `本笔每次多收 ${n0(unit)}，满 ${K} 次一定回本${both}`
+    + `单位：数的是「对手停在你这块地上的次数」，不是回合 —— 对手不走过来就不兑现。`;
 }
 
 // 回合回本：整个仓库只有一个 ceil 实现。
@@ -106,7 +118,10 @@ export function roundsToRecover(cost, perRound) {
   return Math.max(1, Math.ceil(cost / perRound));
 }
 
+// #3391z（supervisor 抓到）：这里数的是「被踩到几次」，不是回合。
+// 引擎只在有人**停到这块地上**时收租，从来没有「每回合收租」这回事；
+// 写成「回合回本」会把 5 次读成 5 个回合，而 16 天里这间店平均只被踩 0.13 次。
 export function roundsLine(cost, perRound, tail = '') {
   const r = roundsToRecover(cost, perRound);
-  return r == null ? '' : `${r} 回合回本${tail}`;
+  return r == null ? '' : `${r} 次回本${tail}`;
 }

@@ -40,21 +40,36 @@ function renderBuild(state, cellId, cost) {
   return r.choice.innerHTML;
 }
 
-test('#993 K 与「升级后 rentFor」独立算出的 ceil 一致（不写常数）', () => {
+// #3391z（supervisor 在公开版 seed 3 第 6 天亲手撞到）：口径从「升级后的**全额**租金」
+// 改成「这笔加盖的**增量**」。两者不是一回事：不盖也能收到原来那部分，所以它不算回本。
+//
+// 实例（就是 supervisor 那一笔）：月色街茶铺 Lv.1 租 2,800 → Lv.2 租 5,600，费用 10,000。
+//   旧口径 ceil(10000/5600) = 2 次；新口径 ceil(10000/2800) = 4 次。
+// 这条测试原来把旧口径钉成了断言 —— 它不是被新代码弄坏的，是它自己继承了错口径。
+// 保留的本意：K 必须**现算**、不许写常数，且 buildForwardK 必须把等级恢复。
+test('#3391z K 按「升级增量」独立算出的 ceil 一致（不写常数，等级要恢复）', () => {
   const s = slice();
   const [p] = s.players;
   const id = p.properties[0];
   s.properties[id].level = 1;
   const cost = 10000;
   const info = buildForwardK(s, id, cost);
-  // 独立复算：把等级 +1 读 rentFor
+  // 独立复算：分别读「升级前」与「升级后」，增量 = 后者 − 前者。
   const saved = s.properties[id].level;
+  const before = rentFor(s, id);
   s.properties[id].level = saved + 1;
-  const unit = rentFor(s, id);
+  const after = rentFor(s, id);
   s.properties[id].level = saved;
-  assert.equal(info.unit, unit, 'unit 不是升级后的 rentFor');
-  assert.equal(info.K, Math.ceil(cost / unit), 'K 不是 ceil(cost/unit)');
-  assert.equal(buildForwardK(s, id, cost).unit, unit, 'buildForwardK 没把等级恢复（读两次不同）');
+  const gain = after - before;
+  assert.ok(gain > 0, '这条测试需要一个真能涨租的标的');
+  assert.equal(info.unit, gain, 'unit 不是升级增量（after − before）');
+  assert.equal(info.K, Math.ceil(cost / gain), 'K 不是 ceil(cost/增量)');
+  assert.equal(info.before, before, 'before 必须是升级前的租金（两种账并列要用它）');
+  assert.equal(info.after, after, 'after 必须是升级后的全额（两种账并列要用它）');
+  // 旧口径会算出一个**更小**的 K —— 如果哪天代码回退，这一条会立刻报出来。
+  assert.ok(info.K > Math.ceil(cost / after) || after === gain,
+    'K 回到了「按全额算」的旧口径：那会让玩家以为比实际更早回本');
+  assert.equal(buildForwardK(s, id, cost).unit, gain, 'buildForwardK 没把等级恢复（读两次不同）');
 });
 
 test('#993 升级后等级越高 K 越小，同一间店同一笔钱', () => {
@@ -77,11 +92,16 @@ test('#993 提议框真的印出 K（真 render，不是拼串）', () => {
   const html = renderBuild(s, id, 10000);
   const line = /data-forward-k>(.+?)<\/p>/.exec(html)?.[1];
   assert.ok(line, `提议框里没有前向 K：${html}`);
-  const unit = buildForwardK(s, id, 10000).unit;
-  assert.ok(line.includes(unit.toLocaleString()), `K 行没写升级后单价 ${unit}：${line}`);
-  assert.ok(/满 \d+ 次一定够本/.test(line), `K 行没说「满 N 次一定够本」：${line}`);
+  const info = buildForwardK(s, id, 10000);
+  // #3391z：这句现在必须同时给出**两种账**（增量 / 全额）并说清单位。
+  assert.ok(line.includes(info.unit.toLocaleString()), `K 行没写「每次多收」的增量 ${info.unit}：${line}`);
+  assert.ok(line.includes(info.after.toLocaleString()), `K 行没写升级后的全额 ${info.after}（读者拿全额算会得出更早回本）：${line}`);
+  assert.ok(/满 \d+ 次一定回本/.test(line), `K 行没说「满 N 次一定回本」：${line}`);
+  // 单位：数的是「被踩到的次数」，不是回合 —— supervisor 撞到的就是这个混淆。
+  assert.ok(/不是回合/.test(line), `K 行没说清单位是次数不是回合：${line}`);
   // 上界而非下限：不许出现「才够本」「至少要」
   assert.equal(/才够本/.test(line), false, `把上界写成下限了：${line}`);
+  assert.equal(/至少要/.test(line), false, `把上界写成下限了：${line}`);
   assert.equal(/至少/.test(line), false, `把上界写成下限了：${line}`);
 });
 
