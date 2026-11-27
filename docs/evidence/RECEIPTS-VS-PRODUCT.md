@@ -13,7 +13,8 @@
 | `receipt-3330-final` | `slice-entry-3330.sha256` | 起手开工现金改动后的一整局：415 帧 / 62 按，`VERDICT: PASS`（人类获胜），见 `RESULT-3330.md`。回执自己报 `NOT BOUND`（剪的时候还没有 `product` 字段）；这一行的锁是**对着那一版的字节核出来的**，不是它自报的 |
 | `receipt-3331-final` | `slice-entry-3331.sha256` | **第一份真正绑定产品的回执**：`provenance.json` 带 `product.lock` / `product.lock_sha256` / `product.tree_sha256`，`verify-receipt.py` 的 E 项可从库里的锁文件重算；415 帧 / 62 按，`VERDICT: PASS`（人类获胜） |
 | `receipt-3332-final` | `slice-entry-3332.sha256` | #3332 的整局回执，跑在**当前**这把锁上。修了「收购卡对空地也收 125% 溢价」（空地不再是合法目标），产品字节因此变了，所以重签锁并重跑。416 帧 / 62 按，`VERDICT: PASS`（人类获胜）。收购卡改了目标规则、平衡表逐位未变（45.7/32.0/34.7）。 |
-| `receipt-3333-final` | `slice-entry-3333.sha256` | #3333 的整局回执，跑在**当前**这把锁上（相对 3332 只改 `insight.js` / `slice-ai.js` / `render.js`）。修了两处：①「每局约 +N，另压对手 M」把已在 N 里的 M 又印一次、且两个单位不同；②AI 的收购候选集 ⊃ 引擎合法集，导致 seed 173 那一局**永远走不下去**。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3333.md`。 |
+| `receipt-3334-final` | `slice-entry-3334.sha256` | #3334 的整局回执，跑在**当前**这把锁上（相对 3333 只改 `src/ui/slice.js` / `src/ui/render.js`，都是加盖屏那句话）。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3334.md`。 |
+| `receipt-3333-final` | `slice-entry-3333.sha256` | #3333 的整局回执，跑在它自己那把锁上（已不是当前产品）（相对 3332 只改 `insight.js` / `slice-ai.js` / `render.js`）。修了两处：①「每局约 +N，另压对手 M」把已在 N 里的 M 又印一次、且两个单位不同；②AI 的收购候选集 ⊃ 引擎合法集，导致 seed 173 那一局**永远走不下去**。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3333.md`。 |
 
 判据由 `test/receipt-product-binding.test.js` 咬住：
 **每一份在库回执都必须在这张表里出现**，而且点名的那把锁必须是库里真实存在的文件。

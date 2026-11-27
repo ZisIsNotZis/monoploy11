@@ -6,7 +6,7 @@ import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
 import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=150';
 import { reachableLandings, landingInfo, landingText, routePreview, sliceTargetIds, nextTurnWords, nextTurnStreetNames, streetCardModel, supplyWorth } from '../engine/insight.js';
-import { renderSliceInsight, sliceResults, sliceCardName, sliceCardDescription, sliceCardLine, upgradeAfterLine, money, buildForwardLine, buildOpportunityLine } from './slice.js';
+import { renderSliceInsight, sliceResults, sliceCardName, sliceCardDescription, sliceCardLine, upgradeAfterLine, money, buildForwardLine, buildOpportunityLine, buildOrderLine } from './slice.js';
 import { poolShareLine, roundsToRecover } from '../engine/payback.js';
 import { superdiceLines } from './superdice-preview.js';
 
@@ -849,7 +849,8 @@ function renderChoice(el, state, p, actions) {
     const label = plot?.big ? '大空地' : '小地产';
     const poor = (p?.cash ?? 0) < pending.cost;
     html = box(`加盖 ${label}`, `<p>费用 ${pending.cost.toLocaleString()}${poor ? ' · 现金不足' : ''}</p>
-      ${state.slice?`<p class="hint">升到 ${state.properties[plot.id].level+1} 级；小店基础租金翻倍，最高 3 级。书屋按等级计租。剩余现金 ${money(p.cash-pending.cost)}，估值增加 ${plot.big?'8,000':'4,000'}。</p>`:''}
+      ${state.slice?`<p class="hint">升到 ${state.properties[plot.id].level+1} 级；小店基础租金翻倍，最高 3 级。书屋按等级计租。剩余现金 ${money(p.cash-pending.cost)}。</p>`:''}
+      ${(() => { const fo = buildOrderLine(state, plot?.id, pending.cost, p); return fo ? `<p class="hint" data-fork>${fo}</p>` : ''; })()}
       ${(() => { const op = buildOpportunityLine(state, plot?.id, pending.cost, p); return op ? `<p class="hint" data-opportunity>${op}</p>` : ''; })()}
       ${(() => { const fk = buildForwardLine(state, plot?.id, pending.cost); return fk ? `<p class="hint" data-forward-k>${fk}</p>` : ''; })()}
       <button data-act="build" ${poor ? 'disabled' : ''}>加盖</button><button data-act="skip">放弃</button>`);

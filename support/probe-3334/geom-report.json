@@ -1,0 +1,157 @@
+{
+  "url": "http://127.0.0.1:46081/index.html?slice=1&style=grow&seed=1",
+  "steps": [
+    {
+      "step": "entry",
+      "startButton": {
+        "x": 90,
+        "y": 540.0078125,
+        "top": 521.859375,
+        "bottom": 558.15625,
+        "h": 844
+      }
+    },
+    {
+      "step": "dice",
+      "found": true,
+      "x": 243.0390625,
+      "y": 715.8359375,
+      "top": 698.6875,
+      "bottom": 732.984375
+    },
+    {
+      "step": "build-panel",
+      "measure": {
+        "vw": 390,
+        "vh": 844,
+        "panel": [
+          0,
+          332,
+          390,
+          844
+        ],
+        "heading": "加盖 小地产",
+        "forkRect": [
+          10,
+          477.4,
+          380,
+          534.9
+        ],
+        "forkText": "付这笔：现金 -10,000，标价 +4,000，总资产 -6,000。不付：翻修卡下回合免费升到 2 级。两步到 3 级，先付再免费 10,000 / 先免费再付 15,000（差 5,000）。卡也可留给晨光街小店（到 2 级）。",
+        "opRect": [
+          10,
+          546.9,
+          380,
+          604.5
+        ],
+        "fkRect": [
+          10,
+          616.5,
+          380,
+          770
+        ],
+        "scrollH": 511,
+        "clientH": 511,
+        "scrollTop": 0,
+        "buttons": [
+          {
+            "tag": "build",
+            "text": "加盖",
+            "rect": [
+              10,
+              788,
+              191,
+              836
+            ],
+            "hit": true,
+            "at": "<button data-act=\"build\">加盖</button>",
+            "x": 100.5,
+            "y": 812,
+            "disabled": false
+          },
+          {
+            "tag": "skip",
+            "text": "放弃",
+            "rect": [
+              191,
+              788,
+              372,
+              836
+            ],
+            "hit": true,
+            "at": "<button data-act=\"skip\">放弃</button>",
+            "x": 281.5,
+            "y": 812,
+            "disabled": false
+          }
+        ]
+      }
+    },
+    {
+      "step": "after-skip",
+      "after": {
+        "heading": "加盖 小地产",
+        "hidden": true,
+        "system": "第 1 天 物价 1.00 街角生意 · 每回合两张卡"
+      }
+    }
+  ],
+  "shotBefore": {
+    "size": [
+      390,
+      844
+    ],
+    "sha256": "19566693e5e73d3b"
+  },
+  "skipReady": {
+    "tag": "skip",
+    "text": "放弃",
+    "rect": [
+      191,
+      788,
+      372,
+      836
+    ],
+    "hit": true,
+    "at": "<button data-act=\"skip\">放弃</button>",
+    "x": 281.5,
+    "y": 812,
+    "disabled": false
+  },
+  "shotAfter": {
+    "size": [
+      390,
+      844
+    ],
+    "sha256": "4b3d9724cabb2cbf"
+  },
+  "pressBuild": {
+    "hit": true,
+    "rect": [
+      10,
+      788,
+      191,
+      836
+    ],
+    "clicked": true,
+    "cashBefore": "现 42k 存 0 · 地 2 · 街道",
+    "after": {
+      "choiceHidden": true,
+      "cash": "现 32k 存 0 · 地 2 · 街道",
+      "log": "角店主 将 晨光街茶铺 升到 Lv.2（花费 10000），租 5,600, 4 回合回本；这条街现在归你，对手踩到付 5,600D1 —— 第 1 天 · 机会买家 的回合 ——D1 机会买家 使用 停业 → 晨光街，停租 2 天D1 机会买家 掷出 2 点D1 机会买家 停在 街道，旁边是 街心书屋D1 街心书屋 第 4 天开售，现在先看好位置D1 —— 第 1 天 · 穿街高手 的回合 ——"
+    }
+  },
+  "shotCommitted": {
+    "size": [
+      390,
+      844
+    ],
+    "sha256": "7f6d5be3bb6be2c1"
+  },
+  "cleanup": {
+    "edgeGone": true,
+    "serverGone": true,
+    "httpStillOpen": false,
+    "cdpStillOpen": false
+  }
+}

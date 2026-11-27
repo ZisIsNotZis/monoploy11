@@ -16,8 +16,10 @@ from pathlib import Path
 from urllib.request import build_opener, ProxyHandler
 
 HERE = Path(__file__).resolve().parent
-# #3330：新锁（起手开工现金那一轮）。旧锁 3278 保留在库里作为历史。
-LOCK = HERE.parent.parent / 'docs/evidence/slice-entry-3333.sha256'
+# #3334：当前产品的锁（加盖屏那句话）。旧锁 3278/3330/3333 保留在库里作为历史。
+# 这一行必须与 run-full.py 的 LOCK 同步 —— 只改一个就会出现「整局跑在新树上、
+# 字节校验却对旧锁」，报出来是一句看不懂的 DIFFERS。
+LOCK = HERE.parent.parent / 'docs/evidence/slice-entry-3334.sha256'
 CHECK = ['index.html', 'styles.css', 'src/main.js', 'src/ui/render.js', 'serve.py']
 
 

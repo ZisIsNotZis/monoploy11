@@ -972,6 +972,92 @@ export function buildOpportunityLine(state, plotId, cost, viewer) {
   return `${head}${altPart}${tag}`;
 }
 
+// #3334：付费加盖那一屏，把「付」与「不付」到底换到什么的差**算出来**。
+//
+// 这一屏是正常首局最早的一处花钱决定（真入口 seed 1 三种起手都是第 2 个决策）：
+// 停在自家小店旁，问你要不要花 10,000 把这间从 Lv1 升到 Lv2。改前它只说
+// 「剩余现金 32,000，估值增加 4,000」—— 读起来像赚了 4,000，实际是现金 -10,000、
+// 标价 +4,000，**总资产当场少 6,000**（.scratch/3334/net.mjs 用真 buildPlot 量过：
+// 58,000 → 52,000，三种起手一样）。
+//
+// 更关键的是屏上没说这一下与手里那张「翻修」卡的关系：
+//   playTurn 的顺序是 补给 → 出牌(actionPhase) → 移动 → 落地 → 这里的 build 提示，
+//   所以提示出现时本回合出牌阶段**已经过去**，翻修卡只能下个回合用。
+//   于是同一条街上真正有三条路，代价完全不同（引擎算，不是我推）：
+//     付这 10,000，下回合翻修卡再升这间  → 两步到 Lv3，共花 10,000
+//     不付，下回合翻修卡升这间          → 到 Lv2，共花 0；要到 Lv3 再付 15,000
+//                                      ⇒ 「先付费再翻修」比「先翻修再付费」省 5,000
+//     付这 10,000，翻修卡留给另一间      → 两间都 Lv2，共花 10,000
+//   这三条的差价是真的（.scratch/3334/net.mjs order：paidFirst 花 10,000 / freeFirst 花 15,000，
+//   都到 3 级），但改前屏上一个字都没有 —— 玩家只能看到「10,000 换 +4,000」。
+//
+// 口径：每个数都当场算（buyPrice / buildCost / rentFor 同源），不写常数；
+// 只对店主人说（别人的店不是他的选择）；停业街由已签的停业句负责，不在这里重复。
+// 只读 state：临时改等级读 buyPrice 后立刻恢复，与 buildForwardK / buildOpportunityLine 同构。
+export function buildOrderLine(state, plotId, cost, viewer) {
+  if (!state?.slice) return '';
+  const plot = state.map?.plots?.find(x => x.id === plotId);
+  const p = viewer ?? state.players?.find(q => q.controller === 'human');
+  if (!plot || !p || !Number.isFinite(cost)) return '';
+  const pr = state.properties?.[plotId];
+  if (!pr) return '';
+  if (pr.ownerId && pr.ownerId !== p.id) return '';
+  if ((pr.closed ?? 0) > 0) return '';
+  const max = state.config.maxLevel ?? 3;
+  const lv = pr.level ?? 0;
+  if (lv <= 0 || lv >= max) return '';
+
+  // 标价增量：与 assetsOf / buyPrice 同一把尺子（临时升一级读价，立刻恢复）。
+  const mark0 = buyPrice(state, plotId);
+  const saved = pr.level;
+  let mark1 = mark0;
+  try { pr.level = saved + 1; mark1 = buyPrice(state, plotId); }
+  finally { pr.level = saved; }
+  const markGain = mark1 - mark0;
+  const net = markGain - cost;              // 当场总资产变化（负数 = 这一下净变少）
+  const after = lv + 1;
+
+  // 第一段：这一下当场换了什么。三个数一起给，因为旧屏只给了中间那个（「估值增加 4,000」）。
+  const head = `付这笔：现金 -${money(cost)}，标价 +${money(markGain)}，`
+    + (net === 0 ? '总资产不变。' : `总资产 ${signed(net)}。`);
+
+  // 第二段：不付会怎样。翻修卡是免费一级，但它只能在**下个回合的出牌阶段**用
+  // （本回合出牌阶段已过：flow.js 的 playTurn 顺序是 出牌 → 移动 → 落地 → 这个提示）。
+  if (!p.cards?.includes('worker')) {
+    const nextCost = after < max ? Math.round(buildCost(after + 1) * state.priceIndex) : null;
+    return head + (nextCost
+      ? `手上没有翻修卡，下一级还要付 ${money(nextCost)}。`
+      : '手上没有翻修卡，这一下就到顶了。');
+  }
+
+  const others = state.players.filter(q => q.team === p.team)
+    .flatMap(q => q.properties).filter(id => {
+      const q = state.properties[id];
+      return id !== plotId && q && (q.level ?? 0) > 0 && (q.level ?? 0) < max && !(q.closed > 0);
+    });
+  const otherId = others[0];
+  const otherPlot = otherId ? state.map.plots.find(x => x.id === otherId) : null;
+  // 卡打到另一间时升的是**它自己的**下一级，不是这间升完的等级 —— 别把两个数当成一个。
+  // 这一句在 390×844 上是最贵的一段（#3264 已签：这一屏内容不滚），而实测它最弱：
+  // grow 31 局里「卡给这间」与「卡给另一间」相等 24 局（.scratch/3334/three-arms.mjs）。
+  // 所以只留「打到哪、到几级」两个事实，不留那句「两间都往前走一步」的解释。
+  const otherAfter = otherId ? (state.properties[otherId].level ?? 0) + 1 : null;
+  const otherPart = otherPlot ? `卡也可留给${otherPlot.name}（到 ${otherAfter} 级）。` : '';
+  if (after >= max) {
+    // 到顶：不付，卡下回合也能免费送到同一级 —— 差别只剩「早一回合」。
+    return head + `不付，翻修卡下回合也能免费把它送到 ${max} 级：这一下买到的只是「早一回合」。` + otherPart;
+  }
+
+  // 还能再升一级：顺序会改变总价（先付费升级便宜、先免费升级贵）。
+  // 实测（真 buildPlot + 真 useCard）：先付再免费 10,000 到 3 级，先免费再付 15,000 到同一级。
+  const paidThenFree = cost;                                                // 付 + 免费 → after+1
+  const freeThenPaid = Math.round(buildCost(after + 1) * state.priceIndex);  // 免费 + 付 → 同一级
+  const fork = `不付：翻修卡下回合免费升到 ${after} 级。`
+    + `两步到 ${after + 1} 级，先付再免费 ${money(paidThenFree)}`
+    + ` / 先免费再付 ${money(freeThenPaid)}（差 ${money(freeThenPaid - paidThenFree)}）。`;
+  return head + fork + otherPart;
+}
+
 // 结算页这一段。旧标题与「实收 N 次 / 金额」的写法保留（已签收断言钉着），
 // 只把统计口径从整局改成按步，并把「到第几天收回」补上。
 export function stepPaybackSection(state) {

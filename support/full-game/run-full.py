@@ -6,7 +6,7 @@ the way to the results screen.
 Why the tree is built from the lock instead of the worktree
 -----------------------------------------------------------
 The ask is "from a clean checkout, independently play a whole game and know the result".
-docs/evidence/slice-entry-3333.sha256 names 35 files; this script copies ONLY those,
+docs/evidence/slice-entry-3334.sha256 names 35 files; this script copies ONLY those,
 refuses if any is missing or drifted, then serves the tree on a second port and compares
 the RESPONSE BYTES a browser receives with the lock. The repo's test/, tools/, docs/ and
 support/ never enter the tree, so a pass here cannot be propped up by anything the lock
@@ -37,7 +37,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 # #3330：产品字节改了（起手开工现金），所以整局跑在新锁上。旧锁 3278 留在库里作为历史。
-LOCK = ROOT / 'docs/evidence/slice-entry-3333.sha256'
+LOCK = ROOT / 'docs/evidence/slice-entry-3334.sha256'
 # OUT_NAME comes from the environment so one attempt never overwrites the last:
 # single-use means a name that already exists is refused, not reused.
 OUT = HERE / (os.environ.get('OUT_NAME') or 'OUT-clean-full')

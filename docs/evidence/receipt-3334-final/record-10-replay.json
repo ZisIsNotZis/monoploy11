@@ -1,0 +1,39 @@
+{
+ "checks": {
+  "setupShown": true,
+  "seedIsNext": true,
+  "urlSeedIsNext": true,
+  "ctaUsable": true,
+  "stylesOffered": true,
+  "sliceEntry": true,
+  "styleKept": true
+ },
+ "observed": {
+  "playedStyle": "grow",
+  "sliceEntryAfterReplay": true,
+  "stylePreselected": [
+   "grow"
+  ]
+ },
+ "landed": {
+  "seed": 2,
+  "picks": [
+   "grow"
+  ],
+  "url": "?slice=1&style=grow&seed=2",
+  "styles": 3,
+  "sliceEntry": true,
+  "cta": {
+   "x": 90,
+   "y": 540.0078125
+  }
+ },
+ "at": {
+  "x": 195,
+  "y": 758,
+  "usable": true,
+  "why": "itself"
+ },
+ "scroll": 0,
+ "ctaUsable": "itself"
+}
