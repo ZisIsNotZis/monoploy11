@@ -453,7 +453,11 @@ function showSetup() { $('#setup').hidden = false; }
 $('#count').onchange = renderSetupRows;
 $('#start').onclick = startGame;
 // 三种起手强度不同，默认不勾任何一项：必须由玩家选一手再开局。
-$('#sliceStyles').innerHTML=SLICE_STYLES.map(s=>`<label class="style-choice"><input type="radio" name="sliceStyle" value="${s.id}"><strong>${s.name}</strong><span>${s.hook}</span></label>`).join('');
+// #3330：三条起手的开工现金不一样，所以要在这里就写出来 —— 否则玩家选的是「感觉」，
+// 而影响最大的是屏上没写的那个数。定金不写，因为它三家相同（都是 0）。
+// 现金写在**名字同一行**：单独一行在 360×640 上把「开一局」从看得见（bottom 561）
+// 顶到视口外（643）。这一行不加高度，实测两种画幅的底边逐像素不变。
+$('#sliceStyles').innerHTML=SLICE_STYLES.map(s=>`<label class="style-choice"><input type="radio" name="sliceStyle" value="${s.id}"><span class="style-head"><strong>${s.name}</strong><b class="style-cash">开工现金 ${s.cash.toLocaleString()}</b></span><span>${s.hook}</span></label>`).join('');
 function startSlice() {
   clearRollFocus();
   const picked=document.querySelector('[name="sliceStyle"]:checked')?.value;

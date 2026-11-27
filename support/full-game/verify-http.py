@@ -16,7 +16,8 @@ from pathlib import Path
 from urllib.request import build_opener, ProxyHandler
 
 HERE = Path(__file__).resolve().parent
-LOCK = HERE.parent.parent / 'docs/evidence/slice-entry-3278.sha256'
+# #3330：新锁（起手开工现金那一轮）。旧锁 3278 保留在库里作为历史。
+LOCK = HERE.parent.parent / 'docs/evidence/slice-entry-3330.sha256'
 CHECK = ['index.html', 'styles.css', 'src/main.js', 'src/ui/render.js', 'serve.py']
 
 

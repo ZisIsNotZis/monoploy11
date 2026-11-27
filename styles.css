@@ -12,6 +12,12 @@
 .style-choice { display:grid; grid-template-columns:18px 1fr; gap:8px; padding:14px; border:1px solid #464a50; border-radius:10px; cursor:pointer; }
 .style-choice:has(input:checked) { border-color:var(--gold); background:#d8a13f12; }
 .style-choice span { grid-column:2; color:#b3bbc5; font-size:12px; line-height:1.6; }
+/* #3330：开工现金。它比 hook 那句话更重要（三家起手的差别主要在这里），
+   所以用金色、同字号，不加块级间距 —— 入口屏高度已被窄视口卡过。 */
+/* 名字与现金同一行：`.style-head` 接管原来 `<strong>` 占的那个格。
+   为什么不另起一行：实测 360×640 下另起一行会把「开一局」顶出视口（561 → 643）。 */
+.style-choice .style-head { grid-column:2; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.style-choice .style-cash { color:var(--gold); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .advanced-setup { width:min(1000px,94vw); padding:10px; }
 .advanced-setup summary { cursor:pointer; color:#abb2bd; }
 #setup:has(.slice-intro) { justify-content:flex-start; overflow:auto; padding:24px 0; }

@@ -11,10 +11,19 @@ export const SUPPLIES = [
   { id: 'take', name: '找机会接盘', cards: ['buyland', 'remotedice'], desc: '收购 + 定步：买下关键位置，再选择落点。收购要留足现金。' },
   { id: 'cross', name: '穿过危险街', cards: ['close', 'remotedice'], desc: '停业 + 定步：压住一条街的租金，安全穿行或抢落点。' },
 ];
+// 三种起手的第一屏承诺是「三条不同的打算」，不是「一个强、两个陷阱」。
+// 实测（真实入口、同一套 AI、每格 300 局）改前是 grow 49.0% / take 13.7% / cross 14.7%
+// —— 那不是三个选择。归因过程（见 docs/evidence/RESULT-3330.md）：
+//   · 换掉两张卡、现钱不动：take 16.7 / cross 19.8（几乎没动）
+//   · 卡不动、只补现钱：take 45.8 / cross 37.7（这是候选，不是定数）
+//   · 把 grow 定步卡拿掉（以为它是强点）：grow 反而升到 60%
+// 所以弱的是「开局能做的事太少」，不是「卡面文字不对」。补偿放在起始现金上：
+// 它是开局就写在屏上的一个数，不是隐藏天赋，也不是给某个起手开的后门。
+// 起手卡保持原样，`take` 仍是收购线、`cross` 仍是封租线。
 export const SLICE_STYLES = [
-  { id: 'grow', name: '街角店主', charId: 'sunxiaomei', hook: '把小店经营成别人绕不开的招牌。', hand: ['worker', 'inflate', 'remotedice'] },
-  { id: 'take', name: '机会买家', charId: 'atubo', hook: '看准别人养好的店，带着现金入场。', hand: ['buyland', 'remotedice', 'close'] },
-  { id: 'cross', name: '穿街高手', charId: 'tangtang', hook: '封住危险街，再把自己送到好位置。', hand: ['close', 'remotedice', 'worker'] },
+  { id: 'grow', name: '街角店主', charId: 'sunxiaomei', hook: '把小店经营成别人绕不开的招牌。', hand: ['worker', 'inflate', 'remotedice'], cash: 42000 },
+  { id: 'take', name: '机会买家', charId: 'atubo', hook: '看准别人养好的店，带着现金入场。', hand: ['buyland', 'remotedice', 'close'], cash: 45000 },
+  { id: 'cross', name: '穿街高手', charId: 'tangtang', hook: '封住危险街，再把自己送到好位置。', hand: ['close', 'remotedice', 'worker'], cash: 46000 },
 ];
 
 function makeMap() {
@@ -58,6 +67,8 @@ export function initializeSlice(state) {
   state.players.forEach((p,i)=> {
     const style = SLICE_STYLES.find(s=>s.id===state.config.participants?.[i]?.style) ?? SLICE_STYLES[i%3];
     p.style=style.id; p.talents=[]; p.cards=[...style.hand];
+    // 起手自带的开工现金：只覆盖这个起手自己的开局，和别的起手无关。
+    if (style.cash != null) p.cash = style.cash;
     const [position,facing,ids]=starts[i%starts.length]; p.position=position;p.facing=facing;p.lastNode=null;
     for(const id of ids) {state.properties[id].ownerId=p.id;p.properties.push(id);}
     p.sliceStats={rentPaid:0,rentEarned:0,cardsPlayed:0,takeovers:0};

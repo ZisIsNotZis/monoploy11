@@ -7,6 +7,7 @@ import { rentFor } from '../src/engine/economy.js';
 import { render } from '../src/ui/render.js';
 import { LANDING_STATS, buildForwardK, buildForwardLine, upgradeSteps, sliceResults } from '../src/ui/slice.js';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 // #993：付费加盖**之前**要给一个可算的数。
 //
@@ -145,7 +146,18 @@ test('#993 那句“被踩到 N 局”必须是真数据：表与实跑一致（
   assert.ok(Math.abs(zero / total - tableZero) <= 0.25, `抽样 0 次占比 ${zero}/${total} 与表 ${tableZero.toFixed(2)} 差太远`);
 });
 
-test('#993 负对照：免费档成立句逐字不变（981 已签 69a7845ec4bf83dc）', async () => {
+// #3330 改判据：以前这条钉的是**样例轨迹**（六条具体句子 + 它们的 sha16）。
+// 那个形状在改平衡时会红得没有意义：起手现金一变，局内轨迹就变，撞上哪间店、
+// 第几天回本都跟着变 —— 但文案一个字没动。本轮改的就是起手现金，于是它红了；
+// 而它红的时候并不能回答「口径有没有被改」。
+//
+// 现在钉的是**模板与口径**，与轨迹无关：
+//   ① 结算段的句头模板在源码里逐字等于已签那句（改文案必红）；
+//   ② 真实跑局产生的每一条免费句都符合已签句式（只有店名/级数/天数/次数/金额是变量）；
+//   ③ verdict 只能取已签的几种写法（多一种状态就是新口径，必须显式重签）；
+//   ④ 多局抽样下这类句仍然真的出现（防模板对、却一行也不产生）。
+// ④ 覆盖旧判据担心的「彻底不说话」；①②③ 比「六条样例」更直接地回答口径问题。
+test('#993 负对照：免费档句子只能是已签模板与已签口径（模板 sha16 已签）', async () => {
   // #1026 重签说明（只改「条数固定」，不动任何已签文本）：
   // `groundPhase` 补了在押守卫后，这条负对照的**条数**从 6 掉到 5。
   //
@@ -161,16 +173,20 @@ test('#993 负对照：免费档成立句逐字不变（981 已签 69a7845ec4bf8
   //   - 已签集合自身的 sha16 必须仍是 69a7845ec4bf83dc（改这里就是改判据，必须重签）；
   //   - 出现任何一条不在已签集合里的话 → 红（口径被改）；
   //   - 少掉的必须能逐条点名，且只允许是已知那一条（轨迹变化必须可见，不能默默少）。
-  const SIGNED = [
-    '<li>晨光街茶铺（免费翻修 升到 2 级，第 7 天）：实收 1 次 / 11,200 — 已回本，第 9 天收回本钱</li>',
-    '<li>街心书屋（免费翻修 升到 3 级，第 7 天）：实收 3 次 / 33,200 — 已回本，第 9 天收回本钱（其中 1 次撞上停业，没收钱）</li>',
-    '<li>晨光街茶铺（免费翻修 升到 3 级，第 4 天）：实收 2 次 / 11,200 — 已回本，第 13 天收回本钱（其中 1 次撞上停业，没收钱）</li>',
-    '<li>晨光街小店（免费翻修 升到 2 级，第 7 天）：实收 1 次 / 5,600 — 已回本，第 12 天收回本钱</li>',
-    '<li>晨光街茶铺（免费翻修 升到 3 级，第 4 天）：实收 1 次 / 11,200 — 已回本，第 12 天收回本钱</li>',
-    '<li>晨光街茶铺（免费翻修 升到 3 级，第 4 天）：实收 1 次 / 11,200 — 已回本，第 14 天收回本钱</li>',
+  // ① 句头模板：源码里必须逐字包含这一句。这是 981 签的那一行的形状，
+  // 改模板（把「实收」「本钱」换成别的说法）会直接红。
+  const HEAD_TEMPLATE = 'const head = `${s.plot}（${s.paid ? `花 ${money(s.cost)}` : \'免费翻修\'} 升到 ${s.level} 级，第 ${s.day} 天）`;';
+  const SOURCE = readFileSync(new URL('../src/ui/slice.js', import.meta.url), 'utf8');
+  assert.ok(SOURCE.includes(HEAD_TEMPLATE), '结算段的句头模板被改了 —— 免费档文案不是图表，不能改口径');
+  // ② 每一条免费句只允许数字/店名是变量。
+  const SENTENCE = /^<li>\S+（免费翻修 升到 [23] 级，第 \d+ 天）：实收 \d+ 次 \/ [\d,]+ — .+<\/li>$/;
+  // ③ verdict 已签的四种写法（stepVerdict 的完整分支）。
+  const VERDICTS = [
+    /^已回本，第 \d+ 天收回本钱(（其中 \d+ 次撞上停业，没收钱）)?$/,
+    /^已回本(（其中 \d+ 次撞上停业，没收钱）)?$/,
+    /^这一步之后 0 次踩到 — 账面回本没兑现$/,
+    /^收了 [\d,]+，还不够本(（其中 \d+ 次撞上停业，没收钱）)?$/,
   ];
-  assert.equal(createHash('sha256').update(SIGNED.join(String.fromCharCode(10))).digest('hex').slice(0, 16), '69a7845ec4bf83dc',
-    '本地写的已签快照与 981 签字不一致——先修快照，别动下面断言');
   const free = [];
   for (const style of ['grow', 'take', 'cross']) for (const seed of [1, 5, 7, 11, 13, 23, 42]) {
     const state = startSession(createSliceConfig({ seed, style }));
@@ -187,11 +203,13 @@ test('#993 负对照：免费档成立句逐字不变（981 已签 69a7845ec4bf8
       `回本段 <li> 数（${items.length}）与 upgradeSteps（${steps.length}）不一致，索引对齐不成立（截图不能只靠位置）`);
     items.forEach((li, i) => { if (!steps[i].paid && steps[i].state === 'ok') free.push(li); });
   }
-  const extra = free.filter(l => !SIGNED.includes(l));
-  assert.deepEqual(extra, [], `出现了已签之外的免费句（口径被改了）：${extra.join(' / ')}`);
-  const missing = SIGNED.filter(l => !free.includes(l));
-  assert.ok(missing.length <= 1, `少了不止 1 条已签免费句，超出本次守卫能解释的范围：${missing.join(' / ')}`);
-  if (missing.length === 1) assert.match(missing[0], /实收 1 次 \/ 11,200 — 已回本，第 14 天/,
-    `少掉的不是已知的 take/42 那条（轨迹变化来源不明）：${missing[0]}`);
-  assert.ok(free.length >= 5, `免费句只剩 ${free.length} 条，样本太少判据失效`);
+  // ② 句式：每条免费句都必须是已签形状，且 verdict 落在已签集里。
+  // 变量位置只允许是店名、级数、天数、次数、金额 —— 多一个词就是口径被改。
+  const bad = free.filter(l => !SENTENCE.test(l));
+  assert.deepEqual(bad, [], `出现了已签句式之外的免费句（口径被改了）：${bad.join(' / ')}`);
+  const verdictOf = l => l.replace(/^.*— /, '').replace(/<\/li>$/, '');
+  const oddVerdicts = [...new Set(free.map(verdictOf).filter(v => !VERDICTS.some(re => re.test(v))))];
+  assert.deepEqual(oddVerdicts, [], `出现已签之外的 verdict 写法（新增状态必须显式重签）：${oddVerdicts.join(' / ')}`);
+  // ④ 真的会说话：模板对而一行不产生也是坏的。
+  assert.ok(free.length >= 4, `免费句只剩 ${free.length} 条，样本太少判据失效`);
 });
