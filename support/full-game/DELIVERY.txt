@@ -65,6 +65,20 @@ doc  docs/evidence/receipt-3317-390/provenance.json
 doc  docs/evidence/receipt-3317-390/record-10-replay.json
 doc  docs/evidence/receipt-3317-390/record-8-summary.json
 doc  docs/evidence/receipt-3317-390/after.json
+# #3320：原始帧**随回执一起入交付**（raw/*.gz），这样「回到原始记录去反对这次剪裁」
+# 在干净检出里也成立。上一版把 raw 留在不入库的 OUT-*/ 里，例行清理一删，
+# 回执点名的来源就没了（#3319 那份就是这样丢的）。
+#
+# 一份回执必须**整份**入交付，否则在干净检出里 verify-receipt.py 会缺文件 ——
+# 实测过：只登记 record-8-summary.json 的那几个，clean-checkout 的套件直接红在
+# `ENOENT receipt-__tamper_gz__/raw/after.json.gz`（三次都缺 after.json 与 raw/after.json.gz）。
+doc  docs/evidence/receipt-3317-390/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3317-390/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3317-390/raw/after.json.gz
+# #3319 那份的原始记录已被清理删除，无法补回（也不该重跑一局冒充它）。
+# 留在库里是因为它记录了那一轮实际验收过的产品行为；但「不可核对」必须写在明处，
+# 并由 test/receipt-provenance.test.js 咬住：没有 raw/ 就必须有这份文件。
+doc  docs/evidence/receipt-3319-390/UNVERIFIABLE.md
 # #3319 选街屏：整局回执（同一套精简规则，report-full.py 直接可判）+ 那一屏的实测记录。
 # 三个探针都随检出走，因为它们量的是「排序对不对」与「用卡后的数真不真」——
 # 把量具留在 .scratch 里，#3264 已经吃过一次「回执不可重跑」的亏。
@@ -72,6 +86,27 @@ doc  docs/evidence/receipt-3319-390/provenance.json
 doc  docs/evidence/receipt-3319-390/record-10-replay.json
 doc  docs/evidence/receipt-3319-390/record-8-summary.json
 doc  docs/evidence/receipt-3319-390/after.json
+# #3320 新增两份可自证的回执（各自带 raw/*.gz）：
+#   receipt-3319i-tree —— tree-after.sha256 的 35 个产品文件与交付锁逐个相合（实测 NONE 不符），
+#                         证明「交付的那棵树」真的打完了一整局；
+#   receipt-3320-390   —— 本轮新跑的一整局（真 Chrome，423 帧 / 64 按，VERDICT: PASS）。
+doc  docs/evidence/receipt-3319i-tree/provenance.json
+doc  docs/evidence/receipt-3319i-tree/record-8-summary.json
+doc  docs/evidence/receipt-3319i-tree/record-10-replay.json
+doc  docs/evidence/receipt-3319i-tree/after.json
+doc  docs/evidence/receipt-3319i-tree/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3319i-tree/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3319i-tree/raw/after.json.gz
+# #3320 的来源自证工具：只拿回执就能核哈希、核剪裁、复判（离开源目录也成立）。
+tool support/full-game/verify-receipt.py
+doc  docs/evidence/receipt-3320-390/RECEIPT-3320.md
+doc  docs/evidence/receipt-3320-390/provenance.json
+doc  docs/evidence/receipt-3320-390/record-8-summary.json
+doc  docs/evidence/receipt-3320-390/record-10-replay.json
+doc  docs/evidence/receipt-3320-390/after.json
+doc  docs/evidence/receipt-3320-390/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3320-390/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3320-390/raw/after.json.gz
 doc  docs/evidence/receipt-3319/PICKER-3319.md
 tool docs/evidence/receipt-3319/probes/picker-probe.mjs
 tool docs/evidence/receipt-3319/probes/already-probe.mjs

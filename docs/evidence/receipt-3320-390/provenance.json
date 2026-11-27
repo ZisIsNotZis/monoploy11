@@ -1,0 +1,53 @@
+{
+ "source_run": "OUT-3320-final",
+ "cut_by": "support/full-game/make-receipt.py",
+ "judged_same_as_raw": true,
+ "raw": {
+  "record-8-summary.json": {
+   "bytes": 317096,
+   "sha256": "b01972506a4ebc71344a58f40b8d4b7d8a09de90bed0986218ea9be0baa41ad3",
+   "gz": "raw/record-8-summary.json.gz",
+   "gz_bytes": 16431,
+   "gz_sha256": "bc120185c3f4075581165b06a00c58a7886079a5d349537933f6334016b10bc2"
+  },
+  "record-10-replay.json": {
+   "bytes": 656,
+   "sha256": "5c6ec709b292bb3ef04cdd74ef68493495b94677a963fefd5b81c2823374a0ae",
+   "gz": "raw/record-10-replay.json.gz",
+   "gz_bytes": 325,
+   "gz_sha256": "a4902a55a7820bd11ae1b7c3a9effc54ae1c798ddaac5b42ece8bca577900499"
+  },
+  "after.json": {
+   "bytes": 126,
+   "sha256": "5918c36852551cfe86f8ec346ea6931d33800c198e8a3d4c24f0e2615841cf44",
+   "gz": "raw/after.json.gz",
+   "gz_bytes": 115,
+   "gz_sha256": "72cabf4b37241afd9b392bee2a7f43653c62f355b3d12318fa9af6524edb04d2"
+  }
+ },
+ "slim": {
+  "record-8-summary.json": {
+   "bytes": 89829,
+   "sha256": "08c6961daeb50cbfd024b224c3a34f986275df28ad21728b8cc36d35f65d6bf8"
+  },
+  "record-10-replay.json": {
+   "bytes": 588,
+   "sha256": "95c0678b0705c57a8f7866df69d9ef12f45ce1a97a582f82bc2342d494542b4d"
+  },
+  "after.json": {
+   "bytes": 90,
+   "sha256": "19d347e33e3e6c2e1b1ba61e0b8a267916a239bad130e6ee9bba122197b74511"
+  }
+ },
+ "dropped_fields": {
+  "record-8-summary.json": [
+   "hintInserts",
+   "firstFrames",
+   "replay"
+  ],
+  "record-10-replay.json": [],
+  "after.json": [
+   "host_chrome_total"
+  ]
+ }
+}

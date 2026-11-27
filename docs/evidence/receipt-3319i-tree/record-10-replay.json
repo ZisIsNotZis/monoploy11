@@ -1,0 +1,39 @@
+{
+ "checks": {
+  "setupShown": true,
+  "seedIsNext": true,
+  "urlSeedIsNext": true,
+  "ctaUsable": true,
+  "stylesOffered": true,
+  "sliceEntry": true,
+  "styleKept": true
+ },
+ "observed": {
+  "playedStyle": "cross",
+  "sliceEntryAfterReplay": true,
+  "stylePreselected": [
+   "cross"
+  ]
+ },
+ "landed": {
+  "seed": 3,
+  "picks": [
+   "cross"
+  ],
+  "url": "?slice=1&style=cross&seed=3",
+  "styles": 3,
+  "sliceEntry": true,
+  "cta": {
+   "x": 90,
+   "y": 543.3359375
+  }
+ },
+ "at": {
+  "x": 195,
+  "y": 758,
+  "usable": true,
+  "why": "itself"
+ },
+ "scroll": 0,
+ "ctaUsable": "itself"
+}

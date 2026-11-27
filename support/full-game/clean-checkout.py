@@ -26,10 +26,16 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 LIST = HERE / 'DELIVERY.txt'
 # An attempt that fails must not block the next one: the dest is named per attempt, and
-# CLEAN_KEEP=1 preserves a failed checkout for inspection. This script only writes under
-# /tmp -- never into the project tree.
+# CLEAN_KEEP=1 preserves a failed checkout for inspection. This script writes per attempt
+# under a throwaway directory -- never into the project tree.
+#
+# #3320: the root is now `CLEAN_TMPDIR`, not a hardcoded /tmp. On this host /tmp is a tmpfs
+# that other projects filled to 100% (7.7G of unrelated venvs and archives), so the copy
+# died with `No space left on device` and the checkout looked broken when it was only
+# homeless. Space on /tmp is not a property of this delivery. The default is unchanged
+# (still /tmp), so existing callers and docs behave exactly as before.
 NAME = os.environ.get('CLEAN_NAME') or 'cleancheck-3278'
-DEST = Path('/tmp') / NAME
+DEST = Path(os.environ.get('CLEAN_TMPDIR') or '/tmp') / NAME
 KEEP = os.environ.get('CLEAN_KEEP') == '1'
 
 

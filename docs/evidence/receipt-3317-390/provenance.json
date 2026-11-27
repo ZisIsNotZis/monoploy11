@@ -5,15 +5,24 @@
  "raw": {
   "record-8-summary.json": {
    "bytes": 256468,
-   "sha256": "719cf601850c99295027e4355fd6a24a304cb550e15190f021eca7212df32128"
+   "sha256": "719cf601850c99295027e4355fd6a24a304cb550e15190f021eca7212df32128",
+   "gz": "raw/record-8-summary.json.gz",
+   "gz_bytes": 13115,
+   "gz_sha256": "65df80adccef7ee4f68d7da79a22b69bb48c659b3bb3c64cdbc4537efa8bf143"
   },
   "record-10-replay.json": {
    "bytes": 646,
-   "sha256": "8f40b28f33719fe215519c06fd8dacc178a2e5d2d0049ed7e727b6f33cc64dfa"
+   "sha256": "8f40b28f33719fe215519c06fd8dacc178a2e5d2d0049ed7e727b6f33cc64dfa",
+   "gz": "raw/record-10-replay.json.gz",
+   "gz_bytes": 324,
+   "gz_sha256": "ec1880f30673534f8add9ed32b6ca9b32165beceff48e5b92f0c6b957185a671"
   },
   "after.json": {
    "bytes": 126,
-   "sha256": "d043d8f756a376cd7ae0ee4092fcfae58fe505aed357021d56b7468b512b2d77"
+   "sha256": "d043d8f756a376cd7ae0ee4092fcfae58fe505aed357021d56b7468b512b2d77",
+   "gz": "raw/after.json.gz",
+   "gz_bytes": 115,
+   "gz_sha256": "3d4e13631308d6f7d2f2ab44938fa14c5f01ccceb9ec1011710a565ca564295b"
   }
  },
  "slim": {

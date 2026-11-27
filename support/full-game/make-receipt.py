@@ -35,6 +35,7 @@ The receipt names the run it came from, the byte size and sha256 of every raw fi
 cut from, and the fields it dropped. Someone holding only the receipt can still say which
 run it describes and go back to the raw frames to disagree with the cut.
 """
+import gzip
 import hashlib
 import json
 import shutil
@@ -154,13 +155,36 @@ def main(argv=None):
         for name, data in trimmed.items():
             (dest / name).write_text(json.dumps(data, ensure_ascii=False, indent=1) + '\n')
 
+    # #3320: ship the RAW bytes too, compressed, inside the receipt.
+    #
+    # What went wrong without this: `provenance.json` said `source_run: OUT-3319-final` and
+    # gave three raw sha256s -- and that directory did not exist anywhere. `OUT-*/` is
+    # gitignored, so the raw frames live only on the machine that ran them, and the next
+    # cleanup deletes them. The receipt stayed re-judgeable (the slim copy is complete for
+    # the judge) but its provenance became unfalsifiable: nobody could locate the run it
+    # named, let alone check that the cut was faithful. That is exactly the complaint.
+    #
+    # A pointer to a volatile path is not provenance. So the source travels with the receipt:
+    # `raw/<name>.gz` is the byte-for-byte raw record, and `provenance.json` carries both the
+    # gzip sha256 and the sha256 of the DECOMPRESSED bytes (which is the number the old file
+    # claimed and nobody could check). ~317 KB of frames is ~16 KB gzipped, so this costs
+    # about one screen of diff and turns three unfalsifiable hashes into three checkable ones.
+    rawdir = dest / 'raw'
+    rawdir.mkdir(exist_ok=True)
+    for name in RAW_FILES:
+        with open(src / name, 'rb') as f, gzip.open(rawdir / (name + '.gz'), 'wb', compresslevel=9) as g:
+            shutil.copyfileobj(f, g)
+
     # Provenance lives beside the receipt so "which run is this?" is answerable without
     # the OUT dir, and so the cut can be re-derived and disagreed with.
     prov = {
         'source_run': str(src.name),
         'cut_by': 'support/full-game/make-receipt.py',
         'judged_same_as_raw': True,
-        'raw': {name: {'bytes': (src / name).stat().st_size, 'sha256': sha(src / name)}
+        'raw': {name: {'bytes': (src / name).stat().st_size, 'sha256': sha(src / name),
+                       'gz': 'raw/' + name + '.gz',
+                       'gz_bytes': (rawdir / (name + '.gz')).stat().st_size,
+                       'gz_sha256': sha(rawdir / (name + '.gz'))}
                 for name in RAW_FILES},
         'slim': {name: {'bytes': (dest / name).stat().st_size, 'sha256': sha(dest / name)}
                  for name in RAW_FILES},

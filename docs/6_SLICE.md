@@ -302,3 +302,36 @@ B 的 90 条红**不是产品回归**：它们全在 `blocked-*` 的两服务器
 证据与可重跑探针：[receipt-3319/PICKER-3319.md](evidence/receipt-3319/PICKER-3319.md)；
 整局回执：`docs/evidence/receipt-3319-390/`（425 帧 / 64 按 / F7 PASS / VERDICT PASS）。
 可以直接玩到那一屏的入口：`?slice=1&style=cross&seed=2` → 第 1 天点「停业」。
+
+
+## #3320 对照入口的隔离，与「回执从哪来」（本地已复验，未推送）
+
+这一轮不改玩法，改的是**证据**：一次「哪些文件能被发出去」的收口，一次「回执能不能被核对」的收口。
+
+**对照入口（8001）还是前缀白名单。** `SERVABLE_PREFIXES = ('/src/',)` 的形状和黑名单一样：
+之后落进 `src/` 的任何文件都**自动**可下载，不需要任何人再做决定。实测现状：
+`/src/debug/session.js` 200、`/src/sim.js` 200、`/src/debug/` 与 `/src/data/maps/` 200 **且是目录列表**。
+现在 `SERVABLE_MODULES` 逐文件列 29 个产品模块，并重写 `list_directory()` 直接回 404
+（目录列表是另一种泄漏：白名单判的是 URL，目录不在名单里就会一路走到父类的列目录分支）。
+名册不靠手抄 —— `test/serve-variant-allowlist.test.js` 顺着真实 import 图逐条比，
+产品加模块忘登记就红并指名缺哪个；另有一条在 `src/` 下**新写一个文件**再去取它，
+这是唯一能把「逐文件」和「前缀」分开的检查。
+
+**判据自己也修了一处。** 把 `is_servable` 改回前缀放行 → 2 条红；但删掉 `list_directory`
+只让**新增的直接单测**红，HTTP 那几条照样绿 —— 因为 `/src/debug/` 在 `is_servable` 就被拒了，
+根本走不到列目录分支。**HTTP 层咬不住它**，所以补了一条直接考函数的测试。
+
+**回执：能重判 ≠ 能核对。** `receipt-3319-390` 点名的 `OUT-3319-final` 不存在，
+它记的三个 raw sha256 与盘上任何 `OUT-*` 都不合（`OUT-*/` 被 `.gitignore` 挡着，清理一删就没了）。
+它的 PASS 是真的，它「从哪来」不是。改法：`make-receipt.py` 把 raw 字节 gzip **一起发进回执**
+（317 KB → 约 16 KB），新增 `verify-receipt.py` 让人只拿回执就能核哈希、核剪裁（slim 必须
+**正好是** raw 减去声明字段，防「偷偷多剪」）、并复判。这一轮新收三份可自证回执：
+`receipt-3319i-tree`（其 35 个文件与交付锁逐个相合 ⇒ 交付那棵树真的打完了一整局）、
+`receipt-3320-390`（本轮新跑）、`receipt-3317-390`（源还在，重切后与已发 slim 逐字节相同；
+它是一次**真 FAIL**，那正是 #3319 故意判红的那次）。`receipt-3319-390` 保留并加
+`UNVERIFIABLE.md`，由测试要求「没有 raw/ 就必须有这份说明」。
+
+**边界**：`serve.py`（8000）有同样的目录列表泄漏（`/support/`、`/docs/` 200 且是列表），
+但它在 35 项字节锁里，动它要重签整份交付 —— 这一轮没动，是有意的取舍。
+
+证据与复验命令：[receipt-3320-390/RECEIPT-3320.md](evidence/receipt-3320-390/RECEIPT-3320.md)。
