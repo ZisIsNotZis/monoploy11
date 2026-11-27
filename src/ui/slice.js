@@ -1,6 +1,6 @@
 import { SLICE_CARDS } from '../data/slice.js';
 import { assetsOf, rentFor, buyPrice, buildCost, cheapestBuyable } from '../engine/economy.js';
-import { poolShareLine, poolKLine } from '../engine/payback.js';
+import { poolShareLine, poolKLine, paybackAccount, seasonTerms, roundsToRecover } from '../engine/payback.js';
 import { supplyWorth } from '../engine/insight.js';
 import { streetBusinessStatus } from '../engine/flow.js';
 import { MARKET_LEDGER, MARKET_PLOT as LEDGER_MARKET_PLOT, holdLeversFacts, bigBuildCost } from '../engine/market-ledger.js';
@@ -907,8 +907,11 @@ export function buildForwardK(state, plotId, cost) {
     after = rentFor(state, plotId);
   } finally { pr.level = saved; }
   const gain = after - before;
-  if (!(gain > 0)) return { unit: 0, gain: 0, before, after, K: null, closed: (pr.closed ?? 0) > 0 };
-  return { unit: gain, gain, before, after, K: Math.max(1, Math.ceil(cost / gain)), closed: false };
+  if (!(gain > 0)) return { unit: 0, gain: 0, before, after, level: saved, K: null, closed: (pr.closed ?? 0) > 0 };
+  // #3391zp3：level 带出去，让两句季节账用同一个「升级前等级」重新读一遍两种口径。
+  // #3391zp4（复核 #3446 第⑤条）：K 不在这里自己 ceil —— 这个仓的规矩是
+  // 「整个仓库只有一个 ceil 实现」（payback.roundsToRecover）。上一版让这一行又写了一遍。
+  return { unit: gain, gain, before, after, level: saved, K: roundsToRecover(cost, gain), closed: false };
 }
 
 // 屏上那一行。返回 '' 表示“此刻没什么可说”（非切片模式 / 不知道这间店），
@@ -940,7 +943,8 @@ export function buildForwardLine(state, plotId, cost) {
   // #3391zp2：把 cost 传进去 —— 确认框里那句除法（花费 ÷ 每次多收）与流水行同源。
   // 上一版只传 (unit, K, full)，于是屏上有全额、却没有「拿哪个数去除」；
   // supervisor 重走 seed 3 时正是拿 4,000 去除了 10,000。
-  const kLine = poolKLine(info.unit, info.K, info.after, cost);
+  // #3391zp3：把季节那两句也接上 —— 这一笔若是旺季价，读者必须知道旺季结束后要几次。
+  const kLine = poolKLine(info.unit, info.K, info.after, cost, seasonTerms(state, plotId, info.level));
   return `${share}${dist}${kLine}`
     + `这句不是“会有人来”的预测。`;
 }

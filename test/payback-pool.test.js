@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createSliceConfig, SLICE_MAP } from '../src/data/slice.js';
 import { startSession, runGame, buildPlot } from '../src/engine/flow.js';
 import { sliceAnswer } from '../src/engine/slice-ai.js';
 import { rentFor } from '../src/engine/economy.js';
 import { render } from '../src/ui/render.js';
-import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, paybackAccount, POOL_SOURCE } from '../src/engine/payback.js';
+import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, paybackAccount, seasonTerms, POOL_SOURCE } from '../src/engine/payback.js';
 import { buildForwardLine, buildForwardK } from '../src/ui/slice.js';
 
 // n0 是 payback.js 内部的格式化函数；测试只需要一致地把 10000 印成「10,000」。
 const n0 = n => Math.round(n).toLocaleString();
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // #1044：付费加盖/买地那句
 //
@@ -149,7 +153,10 @@ test('#3391zp2 确认框与流水单是同一笔账，且抬价不被说成少�
   const cost = 10000;
   const info = buildForwardK(s, id, cost);
   assert.ok(info.unit > 0 && info.K > 0, '这条判据需要一个能算出的账');
-  const account = paybackAccount(cost, info.unit, info.K, info.after);
+  // #3391zp3：账里多了季节那两句（平常/旺季各一个说法），所以参数也要把季节带进去 ——
+  // 不传的话就等于拿一句“屏上不存在的话”去比对，那比的是测试自己造的句子。
+  const terms = seasonTerms(s, id, info.level);
+  const account = paybackAccount(cost, info.unit, info.K, info.after, terms);
   // ① 两块屏都说同一句
   const confirm = buildForwardLine(s, id, cost);
   assert.ok(confirm.includes(account), `确认框没有那句共用的除法：${confirm}`);
@@ -163,9 +170,11 @@ test('#3391zp2 确认框与流水单是同一笔账，且抬价不被说成少�
   assert.match(account, new RegExp(`${n0(cost)} ÷ [^÷=]{0,12}${n0(info.unit)} = ${info.K} 次`),
     `账里没有除法或次数不对：${account}`);
   assert.match(account, /每次多收/, `账里没点名分母是每次多收：${account}`);
-  // ③ 三种情形分开写：抬价是多收
-  assert.match(account, /旺季那次租金翻倍/, `没写旺季是多收：${account}`);
-  assert.match(account, /不是少付/, `没把抬价与少付区分开：${account}`);
+  // ③ 少付照写；抬价不许**重复计数**。
+  // #3391zp3（supervisor 第五轮）：上一版这条要求出现「旺季那次租金翻倍…算两次」。
+  // 那是错的口径：rentFor 的 inflate 已经乘在 unit 里（economy.js:33），再说一次就把同一笔钱数两遍，
+  // 读者于是把旺季的 2 次又除以 2，得出「1 次就回本」。所以这条改成**反向**：那句话必须不在。
+  assert.equal(/算两次/.test(account), false, `旺季被重复计数（unit 已含翻倍）：${account}`);
   assert.equal(/被抬价那次不足/.test(account), false, `抬价被说成不足（反了）：${account}`);
   assert.match(account, /对手付不出/, `少付那一种没写：${account}`);
   assert.match(account, /停业那次收 0/, `停业那一种没写：${account}`);
@@ -359,4 +368,130 @@ test('#1143 常数句一律不许写「本盘」/「本局」，且必须先报�
   assert.match(htmlC, /本局账本：/, `C 买地框没有本局账：${htmlC}`);
   // 常数（72 局那张表）仍然出现，但必须自己带来源，不许借「本局」二字开口。
   assert.match(htmlC, /同规则 72 局/, `C 买地框引了常数却没报来源：${htmlC}`);
+});
+
+// ⑩ #3391zp3（supervisor 第五轮）：**旺季不许被数两遍**，且旺季现场必须给出更差的数。
+//
+// 他的原话：「我用同一间店复算了已经在旺季的状态：平常增量 2,800、要四次，旺季增量 5,600、
+// 要两次。屏上给出旺季的两次后，仍说旺季每次可算两次，容易读成一次就回本。」
+// 根因在 rentFor：`inflate>0 ? 2 : 1` 乘在 base 之后，所以 unit **本来就已经含翻倍**；
+// 再说「一次算两次」= 同一笔钱数两遍 → 读者把 2 次又除以 2 → 1 次。
+//
+// 这条钉四件事（两个季节各一遍）：
+//   ① unit 与 K 来自现算，且旺季里的 unit 就是平常的两倍（乘二只有 economy.js 一处）；
+//   ② 句子里**不许**出现「算两次」这类重复计数的说法（负对照：把它塞回去必须红）；
+//   ③ 旺季现场必须写出「旺季结束后每次只多收 X，要 M 次」这个更差的数；
+//   ④ 平常现场必须写出「进了旺季会多收多少」，也就是说明会变 —— 而不是默默乘进去。
+test('#3391zp3 旺季不重复计数，且两个季节都说清会变', () => {
+  const cost = 10000;
+  const hot = (() => {
+    const s = slice();
+    const [p] = s.players;
+    const id = p.properties[0];
+    s.properties[id].level = 1;
+    s.properties[id].inflate = 2;            // 这一局这条街正在旺季
+    const info = buildForwardK(s, id, cost);
+    const terms = seasonTerms(s, id, info.level);
+    const line = buildForwardLine(s, id, cost);
+    // ① 现算：旺季的增量必须是平常的两倍，K 是减半后的数
+    assert.ok(terms.inflating, '旺季夹具没造出来（inflate 没生效）');
+    assert.equal(info.unit, terms.hotUnit, '旺季里的 unit 不是旺季口径');
+    assert.equal(terms.hotUnit, terms.plainUnit * 2, '旺季增量不是平常的两倍 —— 乘二的地方不止一处？');
+    assert.equal(info.K, Math.ceil(cost / terms.hotUnit), 'K 不是 ceil(花费/旺季增量)');
+    // ② 不许重复计数
+    assert.equal(/算两次/.test(line), false, `旺季被数了两遍：${line}`);
+    // ③ 必须给出旺季结束后更差的那个数
+    const plainK = Math.ceil(cost / terms.plainUnit);
+    assert.ok(line.includes(`每次只多收 ${n0(terms.plainUnit)}`), `没写旺季结束后的增量：${line}`);
+    assert.ok(line.includes(`就要 ${plainK} 次`), `没写旺季结束后要几次：${line}`);
+    assert.ok(plainK > info.K, '这条判据要的是「结束后更差」，两个数却没拉开');
+    // 夹具里 inflate=2 表示「还剩 2 天」，⑤ 要对着这个数判
+    return { s, id, info, terms };
+  })();
+
+  // ④ 平常现场：说明会变，且不把旺季的数乘进 K
+  const s2 = slice();
+  const [p2] = s2.players;
+  const id2 = p2.properties[0];
+  s2.properties[id2].level = 1;
+  s2.properties[id2].inflate = 0;
+  const info2 = buildForwardK(s2, id2, cost);
+  const terms2 = seasonTerms(s2, id2, info2.level);
+  const line2 = buildForwardLine(s2, id2, cost);
+  assert.equal(terms2.inflating, false, '平常夹具被污染了');
+  assert.equal(info2.unit, terms2.plainUnit, '平常里的 unit 不是平常口径');
+  assert.ok(terms2.hotUnit > terms2.plainUnit, '旺季没有更贵？那这条判据的前提不成立');
+  assert.ok(line2.includes(`每次会多收 ${n0(terms2.hotUnit)}`), `平常现场没说旺季会多收多少：${line2}`);
+  assert.ok(line2.includes(`回到 ${info2.K} 次`), `平常现场没说旺季过去后又变回几次：${line2}`);
+
+  // ⑤ #3446 第②条（复核抓到，真缺陷）：旺季的 K 只在**旺季还开着**时成立，
+  // 「满 2 次」不能写成无条件上界（旺季一共 3 天，2 次踩到一间小店几乎不可能）。
+  // 所以旺季现场必须带上兑现期限，且期限读的是 pr.inflate（不推测）。
+  const hotLine = buildForwardLine(hot.s, hot.id, cost);
+  assert.match(hotLine, /还剩 2 天|今天是最后一天/, `旺季没说还剩几天：${hotLine}`);
+  assert.match(hotLine, /得在旺季结束前踩到/, `旺季没说那几次要在期限前兑现：${hotLine}`);
+  // 负对照：把期限那句删掉，「满 2 次」就会变回一个会过期的许诺 —— 上面两条必须同时红。
+  const noDeadline = hotLine.replace(/得在旺季结束前踩到；/, '');
+  assert.notEqual(noDeadline, hotLine, '负对照没生效：找不到那半句');
+  assert.equal(/得在旺季结束前踩到/.test(noDeadline), false, '负对照没生效');
+
+  // ⑥ #3446 第③条：同一屏上每个关键数只该出现一次（我自己写的「一个数只说一遍」）。
+  // 上一版：2,800 出现 4 次、5,600 3 次，读者得从四个「2,800」里挑哪个是分母。
+  for (const [name, line, nums] of [
+    ['平常', line2, ['2,800']],
+    ['旺季', hotLine, ['5,600', '2,800']],
+  ]) {
+    for (const n of nums) {
+      const c = line.split(n).length - 1;
+      assert.ok(c <= 2, `${name}屏上「${n}」出现了 ${c} 次（每个数最多两处：除法／提醒）：${line}`);
+    }
+  }
+
+  // 负对照：把上一版那句「一次算两次」塞回去，② 必须立刻红（否则这条判据是空跑）
+  assert.equal(/(^|[^算])算两次/.test(`${line2}旺季那次租金翻倍，所以那一次算两次`), true,
+    '负对照没生效：塞进去的旧说法没被这条正则抓到');
+
+  // 现场一致性：两块屏（确认框 / 流水单）都用同一份季节口径
+  hot.s.properties[hot.id].inflate = 0;   // 复原，避免污染同进程后续断言
+});
+
+// ⑦ #3446 第⑤条（复核抓到）：`ceil` 曾经有三份 —— payback.js / ui/slice.js / engine/flow.js。
+// 这个仓自己的规矩写在 payback.roundsToRecover 的上方：「整个仓库只有一个 ceil 实现」。
+// 三份的后果不是风格问题：改一处口径（比如改成「差一点也算一次」）另两处不会跟着改，
+// 于是同一笔加盖在确认框、流水单、结算面板上印出三个不同的次数。
+//
+// 这条判据读源码而不是读行为 —— 行为判据抓不到「两份恰好相等」的情形，
+// 而下一轮改口径时它们才会分开。
+test('#3446 回本次数只有一处 ceil 实现', () => {
+  const SRC = path.join(ROOT, 'src');
+  const hits = [];
+  const walk = dir => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!e.name.endsWith('.js')) continue;
+      readFileSync(p, 'utf8').split(/\r?\n/).forEach((line, i) => {
+        // 注释里提到不算：这一轮的注释本来就一直在说 ceil。
+        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+        // 只认「花费 ÷ 收益」形的回本 ceil：操作数里必须有一个回本口径的名字。
+        // 不按「所有 ceil」收 —— game.js:229 的 `ceil(n / 3)` 是分座位，与回本无关，
+        // 把它算进来会让这条判据变成“改不动别人的代码”，那不叫判据。
+        if (/Math\.ceil\(\s*(cost|spend|price)\s*\//.test(line)) {
+          hits.push(`${path.relative(ROOT, p)}:${i + 1}: ${line.trim()}`);
+        }
+      });
+    }
+  };
+  walk(SRC);
+  assert.deepEqual(hits, [
+    'src/engine/payback.js:204: return Math.max(1, Math.ceil(cost / perRound));',
+  ], '回本次数的 ceil 不止一处 —— 改口径时它们会各自漂开（读到的：\n' + hits.join('\n') + '\n）');
+  // 负对照：上一版那两处（slice.js / flow.js）都用了 cost 作分子，
+  // 所以同一个正则吃得到它们 —— 否则这条判据是空跑。
+  for (const old of [
+    'K: Math.max(1, Math.ceil(cost / gain))',
+    'const k = Math.max(1, Math.ceil(cost / paybackGain));',
+  ]) {
+    assert.equal(/Math\.ceil\(\s*(cost|spend|price)\s*\//.test(old), true, `负对照没生效：${old}`);
+  }
 });

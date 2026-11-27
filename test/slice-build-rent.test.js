@@ -52,7 +52,20 @@ test('付费加盖写出租金，且是升级后的 rentFor', () => {
   const line = logText(s).find(t => t.includes('升到 Lv.'));
   assert.ok(line, '没有加盖日志');
   assert.ok(line.includes(after.toLocaleString()), `加盖日志里不是升级后的租金 ${after}：${line}`);
-  assert.equal(line.includes(before.toLocaleString()), false, `加盖日志写的是升级前的租金：${line}`);
+  // #3391zp3：这条断言的原意是「『租 N』那个字段必须是升级后的 rentFor」，
+  // 但旧写法是「整行不许出现升级前的租金」—— 太宽：升级行现在自带回本除法
+  // （「花 10,000 ÷ 每次多收 2,800 = 4 次」），而小店 1→2 级时**增量恰好等于升级前的租金**，
+  // 于是正确的句子被这条判据判红。判据继承旧口径（#3391z 已记过一次）：改口径后先看它在守什么。
+  // 现在只钉那个字段：取「租 N」这一处。
+  // 取「租」后面那个千分位金额，不吃逗号（`[\d,]+` 会把分隔逗号也吃进数字里）。
+  const MONEY = /租 (\d{1,3}(?:,\d{3})*)/;
+  const rentField = MONEY.exec(line)?.[1];
+  assert.equal(rentField, after.toLocaleString(), `「租」那个字段不是升级后的租金 ${after}：${line}`);
+  // 负对照：把那一处换成升级前的值，必须读成 before —— 否则这条判据是空跑。
+  const broken = line.replace(`租 ${after.toLocaleString()}`, `租 ${before.toLocaleString()}`);
+  assert.notEqual(broken, line, '负对照没生效：整行里找不到「租 N」那一处');
+  assert.equal(MONEY.exec(broken)?.[1], before.toLocaleString(),
+    '负对照没生效：换成升级前租金后没被读出来');
 });
 
 test('满级后再加盖不产生日志（否则玩家会以为自己升级成功）', () => {

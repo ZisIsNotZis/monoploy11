@@ -16,6 +16,10 @@
 //
 // 这张表随 AI 策略/棋盘/数值变化而失效；改了一律要重新生成，由 test/payback-pool.test.js 守着。
 
+// #3391zp3：旺季的两个数只能从 rentFor 现读，不能在这里乘二 ——
+// 乘二只该有 economy.js 一处（`inflate>0 ? 2 : 1`）。这里只负责把两种口径各读一遍。
+import { rentFor } from './economy.js';
+
 export const RENT_POOL = {
   games: 72,
   seeds: 'grow/take/cross × seed 1–24',
@@ -89,60 +93,110 @@ export function poolShareLine(cost, plotName) {
     + `${f.games} 局里有 ${f.gamesBelow} 局的整局租金还不够这一笔。${hitsPart}`;
 }
 
-// #3391z：`unit` 现在是**本笔的增量**（升级后 − 升级前），不是升级后的全额。
+// #3391z：`unit` 是**本笔的增量**（升级后 − 升级前），不是升级后的全额。
 // 两种账必须分开写，因为读者拿全额去算会得出「3 次就够本」，而真账是 5 次。
 //
-// #3391zp（屏幕检查抓到的）：这里是三个**句子**的拼接，上一版只拼串、不写句号，
-// 屏上读成「满 4 次一定回本升级后全额租金 5,600/次」—— 一句话里塞了两件事。
-// 现在每一句自带句末标点，拼接处不再需要调用方补。
+// #3391zp2：确认框与流水单**各说各的**，读者拿全额当分母，得出的次数比真账少。
+// 所以两处必须共用同一份数：`paybackAccount(cost, unit, K, full, terms)` 是唯一实现。
 //
-// #3391zp2（supervisor 第四轮，本片的主改动）：他重走 seed 3 后说——
-//   「我是在加盖前做决定，而且拿流水单看仍会用 4,000 去除成本。」
-// 也就是：确认框与流水单**各说各的**，读者拿全额当分母，得出的次数比真账少。
-// 所以这一版不是再加形容词，而是让两处打印点**共用同一句账**：
-//   `paybackAccount(cost, unit, K, full)` 是唯一实现，poolKLine 与 roundsLine 都调它。
-//   「同一笔账」在代码里成立，才能在两块屏上都成立。
+// #3391zp3（supervisor 第五轮，本片的主改动）：他拿同一间店复算了**已经在旺季**的那一局——
+//   「平常增量 2,800、要四次，旺季增量 5,600、要两次。屏上给出旺季的两次后，
+//    仍说旺季每次可算两次，容易读成一次就回本。」
+// 这一条是真缺陷，根因在 `rentFor`：`inflate>0 ? 2 : 1` 乘在 base 之后（economy.js:33），
+// 所以升级前/升级后两个数**本来就已经含翻倍**，算出的 unit 与 K 已经是旺季的账。
+// 上一版在这之外又写「旺季那次算两次」——同一笔钱被数了两遍，读者自然得出 1 次。
+//
+// 现在：旺季只作为**这条账属于哪个季节**写出来，并说清它**会变**：
+//   · 账在旺季里 → 说「旺季结束后每次只多收 X，要 M 次」（数字变差，先说）；
+//   · 账在平常   → 说「它进旺季时每次多收 Y，N 次就够；旺季过后回到这个数」。
+// 两句都不再乘一次，也不再写「一次算两次」。
 //
 // 句子里必须出现：花费、每次多收（增量）、除法本身、以及「别拿全额去除」。
-export function paybackAccount(cost, unit, K, full) {
-  // 一个数只说一遍：全额那句（含「不盖也有」）由 poolKLine 出，这里只出除法。
-  const div = `费用 ${n0(cost)} ÷ 每次多收 ${n0(unit)} = ${K} 次`
-    + `（除不尽时向上取整，差一点也算一次）`;
-  const notFull = full > 0
-    ? `。别拿 ${n0(full)} 去除 —— 那 ${n0(full)} 里有 ${n0(full - unit)} 是你不加盖也照收的`
+export function paybackAccount(cost, unit, K, full, terms) {
+  // #3391zp4（复核 #3446 第③条）：这一屏 461 字、12 句，2,800 出现 4 次、5,600 3 次。
+  // 那正是我自己写的「一个数只说一遍」被违反了 —— 不是措辞问题，是读者要在手机上
+  // 从四个「2,800」里挑出哪一个是分母。所以每个数现在只在一个地方出现：
+  //   2,800 只出现在除法里（分母只能有一个来源）；5,600 只出现在「别拿全额去除」那句；
+  //   次数只出现在「满 K 次」与除法结果里。
+  const div = `费用 ${n0(cost)} ÷ 每次多收 ${n0(unit)} = ${K} 次（除不尽向上取整）`;
+  // 只有 full 真的大于 unit 时才有「原本就有的那部分」。相等时（0 级起盖）谈「不盖也有」是假话，
+  // 「别拿 2,000 去除」更是劝人去用错分母（复核 #3446 第④条）。
+  const notFull = full > unit
+    ? `。别拿 ${n0(full)} 去除 —— 其中 ${n0(full - unit)} 是你不加盖也照收的`
     : '';
-  // 三种情形也并进这段账里，不留在调用方：这一轮的两条失败都是因为它们只挂在确认框
-  // 那一句上，而流水单的另一行没有 —— 那样「同一笔账」只在代码里成立、不在屏上成立。
-  return `${div}${notFull}。${paybackOutcomes()}`;
+  return `${div}${notFull}。${seasonLine(cost, unit, K, terms)}${paybackConditions()}`;
 }
 
-// 一次到手的钱为什么会变。三种情形**分开写**，因为它们的含义不同，混成一句会教错东西：
+// 旺季口径的两种读法。**这里不乘任何东西**：两个数都从 rentFor 现读，
+// 差别只是把 inflate 打开/关掉各读一遍。乘二的实现只有 economy.js 一处。
+export function seasonTerms(state, plotId, savedLevel) {
+  const pr = state?.properties?.[plotId];
+  if (!pr || typeof rentFor !== 'function') return null;
+  const lvl = savedLevel ?? pr.level;
+  const levelNow = pr.level, inflateNow = pr.inflate ?? 0;
+  const at = (level, inflate) => { pr.level = level; pr.inflate = inflate; return rentFor(state, plotId); };
+  try {
+    const plainBefore = at(lvl, 0), plainFull = at(lvl + 1, 0);
+    const hotBefore = at(lvl, 1), hotFull = at(lvl + 1, 1);
+    return {
+      inflating: inflateNow > 0,
+      // 还剩几天旺季：`inflate` 就是剩余天数（applyCard 设值，advanceDay 里的 tickTimers 每天减一，
+      // rentFor 在它 >0 时乘二）。不推测就不写这个数；这里读的正是产品字段本身。
+      daysLeft: inflateNow,
+      plainUnit: plainFull - plainBefore, plainFull, plainBefore,
+      hotUnit: hotFull - hotBefore, hotFull, hotBefore,
+    };
+  } finally {
+    pr.level = levelNow; pr.inflate = inflateNow;   // 抛错也要复原：这两个字段是产品状态
+  }
+}
+
+// 「这条账属于哪个季节」+「它什么时候会变」。返回 '' 表示两种口径同价（没什么可说）。
+function seasonLine(cost, unit, K, terms) {
+  if (!terms) return '';
+  if (terms.inflating && terms.plainUnit > 0 && terms.plainUnit < unit) {
+    const after = roundsToRecover(cost, terms.plainUnit);   // 唯一的 ceil 在下面那个函数里
+    // #3446 第②条（复核抓到，真缺陷）：K=2 只在**旺季还开着**时成立。
+    // 上一版把「满 2 次」写成无条件的上界，而旺季一共就 3 天 —— 2 次踩到一间小店
+    // 在 3 天内几乎不可能（整局平均 2.66 次/16 天）。所以这句话必须带上**兑现期限**，
+    // 否则它许诺的是一个会过期的条件。剩余天数读 pr.inflate，不推测。
+    const days = terms.daysLeft > 1 ? `（还剩 ${terms.daysLeft} 天）` : '（今天是最后一天）';
+    return `这条街现在在旺季${days}：上面的数已经是翻倍后的，那几次得在旺季结束前踩到；`
+      + `一结束每次只多收 ${n0(terms.plainUnit)}，就要 ${after} 次。`;
+  }
+  if (!terms.inflating && terms.hotUnit > unit) {
+    const inHot = roundsToRecover(cost, terms.hotUnit);
+    return `这条街现在不在旺季，上面是平常的数。它进了旺季每次会多收 ${n0(terms.hotUnit)}，${inHot} 次就够；旺季过去又回到 ${K} 次。`;
+  }
+  return '';
+}
+
+// 一次到手的钱为什么会变。两种情形**分开写**，因为它们的含义不同：
 //   · 停业 → 收 0：那次什么也没收到；
 //   · 对手付不出 → 只收到他剩下的那部分（engine：pay() 里 available < amount 时
-//     收款方拿到的是 available，不是 rent）；按实收折算，不算满一次；
-//   · 旺季（inflate）→ rentFor 翻倍：那一次**多**收，一次顶两次。
-// 上一版把这三种写成「停业那次收 0、被抬价那次不足，都不算」—— 把「抬价」说成不足是**反的**。
-// 这一条是自查抓到的：抬价那次的到手价是双倍，不是少付。
-function paybackOutcomes() {
-  // 不写具体金额：「按 5,600 全额」与下一句「旺季收双倍」并排会读成矛盾（那两次不是 5,600）。
+//     收款方拿到的是 available，不是 rent）；按实收折算，不算满一次。
+// 旺季不在这里：它已经算进 unit 了（见上面的注释），在这里再说一遍就是重复计数。
+export function paybackConditions() {
   return `次数数的是对手停在你这块地上、真的收到全额的那几次，不是回合：`
-    + `停业那次收 0，不算；对手付不出、只收到他剩下的那部分，按实收折算；`
-    + `旺季那次租金翻倍，所以那一次算两次 —— 它比全额还多，不是少付。`;
+    + `停业那次收 0，不算；对手付不出、只收到他剩下的那部分，按实收折算。`;
 }
 
-export function poolKLine(unit, K, full, cost) {
+export function poolKLine(unit, K, full, cost, terms) {
   if (!(unit > 0) || !(K > 0)) return '';
-  // #3391z（supervisor 第二轮）：不能把增量叫成「升级后每次足额」—— 那读起来像总租。
-  // 三个数必须用三个名字分开写：全额租金 / 不盖也有的那部分 / 这笔新增。
-  // 同一个数不在两句里各说一遍（上一版把 2,800 写成「不盖也有」又说成「这笔新增」，
-  // 读起来像两笔钱）。
-  const head = `本笔每次多收 ${n0(unit)}，满 ${K} 次一定回本。`
-    + (full > 0 ? `升级后全额租金 ${n0(full)}/次，其中 ${n0(full - unit)} 是原本就有的、不算回本。` : '');
-  // cost 缺省时（老调用点）仍给出全额那句，但不编一个不存在的除法。
-  return cost > 0 ? head + paybackAccount(cost, unit, K, full) : head + paybackOutcomes();
+  // #993 已签的不变量：「满 K 次一定回本」，不写成「才够本/至少要」。
+  // 这里只说次数、不报增量 —— 增量归除法句（上面 paybackAccount 的唯一来源）。
+  const head = `满 ${K} 次一定回本。`;
+  // cost 缺省时（老调用点）没有除法可出，这时才把「全额 / 不盖也有」单独说一遍，
+  // 否则那两个数会和除法句重复（复核 #3446 第③条）。
+  if (!(cost > 0)) {
+    return head
+      + (full > unit ? `升级后全额租金 ${n0(full)}/次，其中 ${n0(full - unit)} 是原本就有的、不算回本。` : '')
+      + seasonLine(cost, unit, K, terms) + paybackConditions();
+  }
+  return head + paybackAccount(cost, unit, K, full, terms);
 }
 
-// 回合回本：整个仓库只有一个 ceil 实现。
+// 回本次数：整个仓库只有一个 ceil 实现。
 // 买地用「每回合整笔租金」，加盖用「升级带来的租金增量」—— 那是两个不同的每回合收益，
 // 但「花多少钱 ÷ 每回合收益 ⇒ 几个回合」这一步不许各写一遍。
 export function roundsToRecover(cost, perRound) {
@@ -150,20 +204,17 @@ export function roundsToRecover(cost, perRound) {
   return Math.max(1, Math.ceil(cost / perRound));
 }
 
-// #3391z（supervisor 两轮抓到）：这句话必须能**单独读懂**。
+// 升级行尾部那句。
 //
-// #3391zp2（第四轮）：它也不再自己编句子 —— 除法与三种情形都来自同一段账。
-// 但它**不重复三种情形**：那一行紧挨着上面那条账，同一句在一屏上说两遍反而更难读
-// （第一版就这样，屏上出现两遍「停业那次收 0」）。
+// #3391zp2 上一版写的是「按上一条那句除法 —— 分母是每次多收的那部分」：它指路而不给数，
+// 单独翻到这一行就读不出来（supervisor 第五轮）：「流水的『按上一条』单独翻看也找不到那笔除法」。
+// #3391zp3：现在它自己带**分母那个数**。花费本来就在同一行（`（花费 10000）`），
+// 两个数并列 ⇒ 这一行单看就能做那道除法，不必回头找上一行，也不把单位重复成两句。
 //
-// 两条已签约束把「增量」排除在这一行之外：
-//   ① test/slice-build-rent.test.js:55 断言加盖日志里**不得出现升级前的租金**；
-//   ② 而增量经常正好等于升级前的租金（小店 2→3 级：升级前 4,000、增量 4,000）。
-// 所以这一行只点明「分母不是这一行印的那个数」，把带数字的除法留给紧邻的上一条。
+// 两条已签约束仍守着：① 加盖日志里「租 N」那个字段必须是升级后的 rentFor；
+// ② 不许出现「回合回本」（引擎没有每回合收租）。这里的「每次多收」是分母，不是租金字段。
 export function roundsLine(cost, perRound, tail = '') {
   const r = roundsToRecover(cost, perRound);
   if (r == null) return '';
-  // 这一行印的是**加盖后**的租金，而分母是「每次多收」—— 用户读错的地方就是这里
-  // （拿 10,000 ÷ 5,600 得出 2 次）。所以句中直接说「分母不是这一行印的那个数」。
-  return `${r} 次回本：按上一条那句除法 —— 分母是每次多收的那部分，不是这一行印的全额租金${tail}`;
+  return `${r} 次回本（花 ${n0(cost)} ÷ 每次多收 ${n0(perRound)} = ${r} 次）${tail}`;
 }
