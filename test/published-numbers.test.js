@@ -31,8 +31,29 @@ const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
 const sha256 = rel => createHash('sha256')
   .update(readFileSync(path.join(ROOT, rel))).digest('hex');
 
-const ARTIFACT = 'docs/evidence/balance-3331-300.json';
+// #3332：产品字节变了（收购卡只收别人已开张的小店），所以入库的是新量出来的那份表。
+// 旧表 balance-3331-300.json 留着当历史：它记的是改前的字节，删掉就无法回答「改了什么」。
+// 两张表的胜率数字碰巧一样 —— 这正是这次要证明的事：修的是「目标合法性」，不是数值。
+const ARTIFACT = 'docs/evidence/balance-3332-300.json';
+const PREVIOUS_ARTIFACT = 'docs/evidence/balance-3331-300.json';
 const artifact = () => JSON.parse(read(ARTIFACT));
+
+test('上一张表仍然能读出它量的是改前的字节（历史不能被新表顶掉）', () => {
+  // #3331 的病是「表没有字节链路」。#3332 换了产品字节，于是必须有两张表：
+  // 一张证明改前是什么，一张证明改后是什么。只留新的那张，读者就无法核对「修了什么」。
+  const old = JSON.parse(read(PREVIOUS_ARTIFACT));
+  const now = artifact();
+  assert.notEqual(old.product['src/data/slice.js'], now.product['src/data/slice.js'],
+    '两张表量的是同一版字节 —— 那旧表就没在记录历史');
+  // 余额不变本身就是本轮的结论：改的是合法性，不是力度。
+  for (const b of now.byStyle) {
+    const prev = old.byStyle.find(x => x.id === b.id);
+    assert.ok(prev, `旧表缺 ${b.id}`);
+    assert.equal(b.winRatePct, prev.winRatePct,
+      `${b.id} 的胜率变了（${prev.winRatePct} → ${b.winRatePct}）：`
+      + '本轮只改「收购只能收别人的店」，不应改变三条起手的强弱');
+  }
+});
 
 test('入库的胜率表是当前产品字节跑出来的，不是哪一版留在文件里的', () => {
   const a = artifact();

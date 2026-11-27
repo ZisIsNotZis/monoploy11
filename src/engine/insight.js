@@ -1,6 +1,7 @@
 import { buildAdj, edgeUsable } from './board-v2.js';
-import { rentFor, buyPrice } from './economy.js';
+import { rentFor, buyPrice, acquisitionPrice, takeoverEligible } from './economy.js';
 import { TUNING } from '../data/tuning.js';
+import { RENT_POOL } from './payback.js';
 
 // 对切片的无障碍路网枚举准确落点；只读，不读取未来随机数。
 export function reachableLandings(state, player, steps) {
@@ -146,7 +147,9 @@ export function sliceTargetIds(state, player, cardId) {
   return state.map.plots.filter(plot=>{
     const pr=state.properties[plot.id],owner=state.players.find(p=>p.id===pr?.ownerId);
     if(cardId==='worker')return owner?.team===player.team&&pr.level>0&&pr.level<(state.config.maxLevel??3);
-    if(cardId==='buyland')return !plot.big&&owner?.team!==player.team&&player.cash>=Math.round(buyPrice(state,plot.id)*1.25);
+    // #3332：只收**别人已经开着的店**。空地不是「别人的小店」，而这张卡要付 125%
+    // —— 把空地列进来就是拿溢价买一块走过去就能买的地（实测 240/240 个无主目标凭空烧钱）。
+    if(cardId==='buyland')return takeoverEligible(state,plot.id)&&owner?.team!==player.team&&player.cash>=acquisitionPrice(state,plot.id);
     if(cardId==='inflate')return Object.values(state.properties).some(pr=>pr.street===plot.street&&pr.ownerId&&pr.level>0);
     return true;
   }).map(plot=>plot.id);
@@ -265,9 +268,14 @@ export function supplyWorth(state, viewer, cardId) {
   }
   if (cardId === 'buyland') {
     const ids = sliceTargetIds(state, viewer, 'buyland');
-    const prices = ids.map(id => Math.round(buyPrice(state, id) * buylandMul));
+    const prices = ids.map(id => acquisitionPrice(state, id));
+  if (cardId === 'buyland') {
+    const ids = sliceTargetIds(state, viewer, 'buyland');
+    // #3332：合法目标现在只有「别人已开张的小店」。卡面给的数只此一种，不必再分类。
+    const prices = ids.map(id => acquisitionPrice(state, id));
     return { kind: 'certain', count: ids.length,
       cheapest: prices.length ? Math.min(...prices) : 0, dearest: prices.length ? Math.max(...prices) : 0 };
+  }
   }
   if (cardId === 'inflate' || cardId === 'close') {
     // 方向必须按引擎的真实结算写（flow.js:599：踩到的人付给地主）。
@@ -301,4 +309,75 @@ export function supplyWorth(state, viewer, cardId) {
       best: best ? { street: best.street, myGain: best.myGain, myCost: best.myCost, net: best.net } : null };
   }
   return null;   // 定步不产生金额
+}
+
+// #3332：收购选目标时，这四个候选**真的不一样**，而屏上四个都写「收 10,000」。
+//
+// 实测（take，seed 1–300，同样是第一回合出收购卡，只改买哪一间）：
+//   晚风街 8,1 / 9,1 → 胜率 5.0% / 5.3%
+//   灯火街 3,9 / 4,9 → 胜率 19.3% / 19.3%
+// 价一样、等级一样、租金标称一样（都是 Lv.1 · 2,800），差别全在**这条街有没有人走**。
+// 同 120 局按真实收租行统计（每次踩到付一次）：
+//   灯火街两间合计 5,250/局   晚风街两间合计 677/局  ← 差 7.7 倍
+// 所以「买哪一间」是第一回合真正有后果的决定，而当时屏上没有任何东西能区分它们。
+//
+// 这里只回答一个问题：**买下这一块之后，这条街每局大概能收多少**。
+// 取数只用两件都已存在的东西：
+//   ① rentFor（引擎同一个函数）—— 买下后我这块每次收多少；
+//   ② RENT_POOL.meansPerPlot（72 局实测的「每间店每局被踩到几次」）—— 走得多不多。
+// 不用「距离我多远」之类的猜测，也不读随机数、不写 state。
+//
+// 为什么必须带上「同街另一间」：买下 8,1 之后 9,1 还在对手手里，而引擎的
+// 连锁乘数是「同街每多一块己方地乘一次」。实测买下 8,1 的同一帧：
+//   我的 8,1 收 2,000；对手剩下的 9,1 从 2,800 掉到 2,000。
+// 这就是「接盘」真正的收益 —— 不只多一间，还把他那条街的另一半压下去。
+export function takeoverModel(state, viewer) {
+  if (!state?.slice || !viewer) return null;
+  const ids = sliceTargetIds(state, viewer, 'buyland');
+  if (!ids.length) return null;
+  const means = RENT_POOL.meansPerPlot;
+  const rows = ids.map(id => {
+    const plot = state.map.plots.find(p => p.id === id);
+    const pr = state.properties[id];
+    const seller = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
+    const cost = acquisitionPrice(state, id);
+    // 买下之后我这块每次收多少：照引擎的做法临时换主读一次 rentFor，读完恢复。
+    // 与 upgradeAfterLine / rentAfterStreetCard 同一套只读夹具，不另写公式。
+    let rentMine = 0;
+    const savedOwner = pr?.ownerId;
+    try {
+      pr.ownerId = viewer.id;
+      rentMine = rentFor(state, id);
+    } finally {
+      pr.ownerId = savedOwner;
+    }
+    const hits = means[plot?.name] ?? 0;
+    const perGame = Math.round(rentMine * hits);
+    // 对手那条街剩下的那块会掉多少（同街连锁乘数断掉）。
+    const siblings = state.map.plots.filter(p => p.street === plot?.street && p.id !== id);
+    let siblingLoss = 0;
+    for (const s of siblings) {
+      const sp = state.properties[s.id];
+      const owner = sp?.ownerId ? state.players.find(q => q.id === sp.ownerId) : null;
+      if (!owner || owner.id === viewer.id) continue;
+      const before = rentFor(state, s.id);
+      const savedSib = sp.ownerId;
+      try {
+        sp.ownerId = viewer.id;             // 假设整条街都归我 —— 断链后的真实值
+        siblingLoss += before - rentFor(state, s.id);
+      } finally {
+        sp.ownerId = savedSib;
+      }
+    }
+    return {
+      id, name: plot?.name ?? id, street: plot?.street ?? '',
+      seller: seller?.name ?? null, cost,
+      rentMine, hits, perGame,
+      siblingLoss: Math.round(siblingLoss),
+    };
+  });
+  // 排序键 = 我这块每局能收多少 + 断掉对手连锁省下的。两者都是「一次踩到」的钱。
+  for (const r of rows) r.net = r.perGame + r.siblingLoss;
+  rows.sort((a, b) => b.net - a.net);
+  return { rows, best: rows[0] ?? null, worst: rows[rows.length - 1] ?? null };
 }

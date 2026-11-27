@@ -9,7 +9,7 @@ import { EXPERIENCE, aiPauseMs, CSS_TIMINGS } from './data/experience.js';
 import { say, flushSpeech } from './ui/speech.js?v=150';
 import { avatarSvg } from './ui/icons.js?v=150';
 import { createSliceConfig, SLICE_STYLES, SLICE_CARDS } from './data/slice.js';
-import { reachableLandings } from './engine/insight.js';
+import { reachableLandings, takeoverModel } from './engine/insight.js';
 
 const $ = s => document.querySelector(s);
 // 右侧栏可拖动：宽度写进 CSS 变量，棋盘随之缩放。
@@ -251,7 +251,10 @@ function applyPromptToState(p) {
       const cells = p.max ? [...reachableWithin(state.map, p.player.position, p.max)] : null;
       state.mapPick = { max: p.max, cells, cardId: p.cardId };
     } else if (p.kind === 'street' || p.kind === 'plot') {
-      state.mapPick = { plot: true, value: p.kind, filter: p.plotFilter, playerId: p.player?.id, cardId:p.cardId, plotIds:p.plotIds };
+      // #3332：收购的四个候选价一样/等级一样，玩家要在拍板前看到「买哪一间更值」。
+      // 模型与卡面、角标、面板同源（takeoverModel → rentFor × 72 局实测被踩频率）。
+      state.mapPick = { plot: true, value: p.kind, filter: p.plotFilter, playerId: p.player?.id, cardId:p.cardId, plotIds:p.plotIds,
+        takeover: p.cardId === 'buyland' ? takeoverModel(state, p.player) : null };
     }
     state.pending = { type: 'target', kind: p.kind, cardId: p.cardId, label: p.label, players: p.players };
     return;

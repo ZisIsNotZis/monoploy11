@@ -20,9 +20,10 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-// #3330 重签：起手开工现金 42000/45000/46000，切片数据文件改了字节。
+// #3332 重签：收购卡改为只收「别人已开张的小店」（空地不再是合法目标），
+// 因为 125% 是付给原主人的溢价，空地上没有卖家。
 // 这里只验「301 后拿到的是我这份文件」，不验内容 —— 指纹跟着产品走。
-const SLICE_FP = '2e0036fd429792f1';
+const SLICE_FP = 'c27f89d9658233de';
 
 // 全量 `node --test` 会为每个测试文件开独立子进程，两份 HTTP 测试可能同时到位。
 // 曾用 listen(0) 申请瞬时端口：并发下两边拿到同一个号，后起的 serve.py 绑不上

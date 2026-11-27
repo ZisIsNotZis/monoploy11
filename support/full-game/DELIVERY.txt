@@ -4,7 +4,7 @@
 # 而 .scratch 不入库 —— 从干净检出根本跑不起来。"可复取"必须能被点名，否则只是说法。
 #
 # 格式：
-#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3331.sha256 里钉死
+#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3332.sha256 里钉死
 #                （#3330 起手开工现金那一轮重签；多34 个文件未变，只有下列三个变了）
 #   doc  <path>   —— 说明与证据文字
 #   tool <path>   —— 量具（跑一局、判一局、核字节目录）
@@ -48,6 +48,9 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
+doc  docs/evidence/slice-entry-3332.sha256
+# #3331 签的锁。它现在不是**当前**产品的描述（#3332 改了收购卡的目标规则），
+# 但 receipt-3331-final 跑在它身上，所以必须留在库里让那份回执可核。
 doc  docs/evidence/slice-entry-3331.sha256
 # #3330 改产品字节前签名的那把锁。它仍在库里，因为 #3317/#3320 的回执跑在它身上；
 # 但它不再描述现在的产品 —— 该对照由 docs/evidence/RECEIPTS-VS-PRODUCT.md 写明。
@@ -185,7 +188,10 @@ doc  docs/evidence/RESULT-3331.md
 # `src/data/slice.js`。test/published-numbers.test.js 三条一起咬：表的产品指纹 =
 # 现在的字节、公布的百分比 = 表里的值、README 不出现已收回的 42.0/39.0/42.7。
 # 重跑：node tools/balance-slice.mjs --seeds 150 --json > docs/evidence/balance-3331-300.json
+# #3332 重跑（改「收购只能收别人的店」之后的产品字节）。两张表都在库里：
+# 旧表记的是改前的字节，新表记的是改后的 —— 只留一张就无法回答「修了什么」。
 doc  docs/evidence/balance-3331-300.json
+doc  docs/evidence/balance-3332-300.json
 # receipt-3330-final 跑在这把锁上（它的 slice.js 与现在只差注释，但字节不同）。
 # 之前这把锁只活在 git 历史 b8bc9cb 里 ⇒ 回执表点名的锁在干净检出中不存在，
 # 读者无从核对。收进来是为了让 RECEIPTS-VS-PRODUCT.md 的每一行都可核。
@@ -205,6 +211,19 @@ doc  docs/evidence/receipt-3331-final/after.json
 doc  docs/evidence/receipt-3331-final/raw/record-8-summary.json.gz
 doc  docs/evidence/receipt-3331-final/raw/record-10-replay.json.gz
 doc  docs/evidence/receipt-3331-final/raw/after.json.gz
+# #3332 的整局回执：跑在新锁 slice-entry-3332 上（provenance.product.lock_sha256 对上）。
+# 判定：VERDICT PASS；416 帧 / 62 按 / 人类获胜。
+doc  docs/evidence/receipt-3332-final/provenance.json
+doc  docs/evidence/receipt-3332-final/record-8-summary.json
+doc  docs/evidence/receipt-3332-final/record-10-replay.json
+doc  docs/evidence/receipt-3332-final/after.json
+doc  docs/evidence/receipt-3332-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3332-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3332-final/raw/after.json.gz
+# #3332：修了「收购卡对空地也收 125% 溢价」，产品字节变了，所以重签了锁。
+# 旧锁 3331 仍在库里（它记的是 #3331 那版字节），新锁记的是现在这棵树。
+doc  docs/evidence/RESULT-3332.md
+# 重跑：node tools/balance-slice.mjs --seeds 150 --json > docs/evidence/balance-3332-300.json
 # 跑一次会在这个目录里产出 OUT-*/、chrome-profile-*/、trees/。这几条 ignore 规则必须一起走：
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
 tool support/full-game/.gitignore

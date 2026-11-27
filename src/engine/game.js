@@ -7,7 +7,7 @@ import { MAPS as PRODUCT_MAPS } from '../data/maps/index.js';
 import { createMapRuntime } from './map-runtime.js';
 import { SLICE_MAP, SLICE_CARDS, initializeSlice } from '../data/slice.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
-import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet, incomeBonus } from './economy.js';
+import { rentFor, buyPrice, acquisitionPrice, takeoverEligible, buildCost, assetsOf, pay, log, ownsStreet, incomeBonus } from './economy.js';
 
 const GENDER = {
   sunxiaomei:'女', atubo:'男', qianfuren:'女', shalongbasi:'男', jinbeibei:'女', rentaro:'男',
@@ -465,7 +465,12 @@ export function applyCard(state, p, id, target) {
       if(state.slice&&plot.big)return false;
       const pr = state.properties[key];
       if (pr?.ownerId === p.id) return false;
-      const price = Math.round(buyPrice(state, key)*(state.slice?1.25:1));
+      // #3332：slice 里只收别人已经开着的店（与卡面同义）。空地走过去就能买，不该吃 125% 溢价。
+      if (state.slice && !takeoverEligible(state, key)) return false;
+      // #3332：价钱只有一处算法（economy.acquisitionPrice）。无主地不等于「有原主人要说服」，
+      // 那种情况不加 125% 溢价 —— 否则每个合法目标都凭空烧钱，实测 240/240 个无主目标
+      // 我方 -2,000、对方 0，AI 在 40/40 局里因此一次都不肯用这张卡。
+      const price = acquisitionPrice(state, key);
       if (p.cash < price) return false;
       p.cash -= price;
       if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) { old.properties = old.properties.filter(x => x !== key); if(state.config.mode==='slice') {old.cash+=price; p.sliceStats.takeovers++; log(state, `${p.name} 向 ${old.name} 支付 ${price} 收购 ${plot.name}`);} } }

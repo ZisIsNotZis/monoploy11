@@ -295,12 +295,42 @@ test('#759 停业必须把自己的损失一起写出来（整街归零不只归
   assert.match(text, /每次[+-][\d,]+（你每次也少收[\d,]+/, '没写自己也少收（自损被藏起来了）');
 });
 
-test('#759 收购溢价常量与 game.js 的实现是同一个数', () => {
-  // 我第一版在这里手写 1.25 却在注释里说「读一份常量不要两处写」—— 注释在撒谎。
-  // 现在真抽成常量，并且要求它与 game.js:454 的字面量同时变。
+test('#3332 收购价只有一处实现：引擎与卡面都走 acquisitionPrice', () => {
+  // 这条以前是「insight 的常量和 game.js 的字面量相等」—— 那是拿一条断言去钉两份实现。
+  // #3332 把它变成一份：引擎扣款、卡面报价、地图角标、AI 估值全部调 acquisitionPrice。
+  // 现在断言的是更真的那件事：**没有第二处**再做这个乘法。
   const game = readFileSync(new URL('../src/engine/game.js', import.meta.url), 'utf8');
-  assert.match(game, /buyPrice\(state, key\)\*\(state\.slice\?1\.25:1\)/, 'game.js 的收购溢价变了');
+  assert.doesNotMatch(game, /buyPrice\(state, key\)\s*\*/, 'game.js 又自己算收购价了');
+  assert.match(game, /acquisitionPrice\(state, key\)/, 'game.js 没有走 acquisitionPrice');
+  for (const rel of ['../src/engine/insight.js', '../src/engine/slice-ai.js', '../src/ui/render.js']) {
+    const text = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /buyPrice\([^)]*\)\s*\*\s*[\d.]/, `${rel} 又自己乘了一遍收购溢价`);
+  }
+  // 常量本身仍是 1.25，而且只在 economy.js 里出现一次。
   assert.equal(BUYLAND_PREMIUM, 1.25, '常量与 game.js 不一致');
+});
+
+test('#3332 收购卡的合法目标只有「别人已开张的小店」，不包括空地', () => {
+  // 根因：空地被列进合法目标，而这张卡对**任何**目标都收 125% —— 但那 25% 是付给
+  // 原主人的溢价，空地上没有原主人，于是每买一块空地就凭空烧掉 2,000。
+  // 实测（take，seed 1–40）：240/240 个无主目标我方 -2,000、对方 0 变动；
+  // 而 AI 因此在 40/40 局里一次都不肯用这张卡（配对 n=400 与「不用卡」逐位相同）。
+  const state = startSession(createSliceConfig({ seed: 1, style: 'take' }));
+  const human = state.players.find(p => p.controller === 'human');
+  const ids = sliceTargetIds(state, human, 'buyland');
+  assert.ok(ids.length, '夹具失效：一个合法目标都没有');
+  for (const id of ids) {
+    const pr = state.properties[id];
+    assert.ok(pr.ownerId, `${id} 是无主地却被列为收购目标`);
+    assert.ok(pr.level > 0, `${id} 还没开张却被列为收购目标`);
+    assert.equal(pr.ownerId === human.id, false, `${id} 是自己的店却被列为收购目标`);
+  }
+  // 反过来：所有无主小店都不在名单里（不是只漏了一个）。
+  for (const plot of state.map.plots) {
+    if (plot.big) continue;
+    if (state.properties[plot.id]?.ownerId) continue;
+    assert.ok(!ids.includes(plot.id), `${plot.id} 是无主地却出现在名单里`);
+  }
 });
 
 test('#759 supplyWorth 只读：不写 state、不消耗随机数', () => {

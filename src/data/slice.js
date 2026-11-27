@@ -4,7 +4,7 @@ export const SLICE_CARDS = {
   inflate: { name: '旺季', desc: '一整条街租金翻倍，持续 3 天。对手可以封租，或改走另一条路。' },
   close: { name: '停业', desc: '一整条街停租 2 天，旺季计时仍继续。先封租，再穿过危险街区。' },
   remotedice: { name: '定步', desc: '本回合走 1–6 步，由你选。选点数时会列出可能落点；岔路仍可选路。' },
-  buyland: { name: '收购', desc: '花标价的 125% 收购任意非己方小店；原主人拿到全款。保留等级和状态，书屋必须亲自到场购买。' },
+  buyland: { name: '收购', desc: '花标价的 125% 买下别人已开张的小店，原主人拿全款，等级与状态照旧。空地不走这张卡，走过去按标价买；书屋必须到场。' },
 };
 export const SUPPLIES = [
   { id: 'grow', name: '把生意做大', cards: ['worker', 'inflate'], desc: '翻修 + 旺季：升级自己的店，抓住几天收租窗口。' },

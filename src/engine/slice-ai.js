@@ -1,4 +1,4 @@
-import { buyPrice, rentFor } from './economy.js';
+import { buyPrice, acquisitionPrice, rentFor } from './economy.js';
 import { reachableLandings } from './insight.js';
 
 // Only public board information is scored. No RNG draws or future dice are read.
@@ -39,7 +39,9 @@ function plotTargets(state, player, cardId) {
       return [{ value: plot.id, score: pr.level * 3 + frontage(state, plot.id) + (pr.inflate > 0 ? 5 : 0) }];
     }
     if (cardId === 'buyland') {
-      const price = Math.round(buyPrice(state, plot.id) * 1.25);
+      // #3332：与引擎同一处算价。无主地不加溢价，否则 AI 会把「空地的真价」当成 1.25 倍，
+      // 于是每个目标都算成亏 —— 它 40/40 局都不出这张卡就是这么来的。
+      const price = acquisitionPrice(state, plot.id);
       if (plot.big || own || player.cash < price + reserve(state) || state.day > state.config.dayLimit - 3) return [];
       enemyExposure ??= landingExposure(state, enemies);
       selfExposure ??= landingExposure(state, [player]);

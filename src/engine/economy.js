@@ -46,6 +46,46 @@ export function buyPrice(state, ref) {
   return Math.round(base * state.priceIndex);
 }
 
+// #3332：收购卡要花多少钱 —— 全仓唯一一处算这个数的地方。
+//
+// 为什么必须只有一处：这个数被印在五处（引擎扣款、手牌卡面、选目标时的地图角标、
+// 「最便宜一块多少」那句、AI 的估值）。五份各自乘 1.25，就是五份会漂的公式；
+// insight.js 的 BUYLAND_PREMIUM 与 game.js 的 1.25 现在只能靠一条测试钉住相等，
+// 那就是「同一件事有两份实现」的化石。
+//
+// 而 125% 是**付给原主人**的溢价，所以它只在**真有原主人**时成立。
+// 空地（ownerId == null）没有原主人可说服：乘 1.25 等于把一笔钱凭空烧掉。
+// 实测（take，seed 1–40，240 个无主目标全数）：我方资产 -2,000、对方 0 变动，
+// 那 2,000 不存在于任何人账上（buyPrice 8,000 却被扣 10,000）。
+// 后果是「每个合法目标都亏 2,000」：AI 在 40/40 局里一次都没用这张卡，
+// 配对实测（n=400）与「完全不用卡」逐位相同 —— 一张牌等于不存在。
+// 同一块地两条路还互相打脸：走过去买 8,000，拿卡远程买同一块空地 10,000。
+//
+// 所以 slice 里这张卡的合法目标改成**只收有主的店**（与卡面「收购别人的小店」同义），
+// 价仍然是标价 × 1.25、原主人拿全款 —— 这个溢价是设计好的代价（test/slice.test.js
+// 「the premium is a real asset cost」钉着它），只该付给真卖家。
+// 完整模式不变（那边没有溢价）。
+const TAKEOVER_PREMIUM = 1.25;
+
+export function acquisitionPrice(state, ref) {
+  const cellId = plotIdOf(state, ref);
+  const mark = buyPrice(state, cellId);
+  return Math.round(mark * (state.config?.mode === 'slice' ? TAKEOVER_PREMIUM : 1));
+}
+
+// slice 的收购卡只对「别人已经开着的店」出手：空地上没有生意可收，
+// 把空地放进可选目标就是拿溢价买一块走过去就能买的地。
+export function takeoverEligible(state, ref) {
+  const cellId = plotIdOf(state, ref);
+  const pr = state.properties?.[cellId];
+  const plot = state.map.plots.find(p => p.id === cellId);
+  if (!pr || !plot) return false;
+  if (plot.big) return false;              // 书屋只能到场买
+  if (!pr.ownerId) return false;           // 空地不是「别人的店」
+  if (!(pr.level > 0)) return false;       // 还没盖起来的空地同理
+  if (state.config?.mode !== 'slice') return true;
+  return true;
+}
 export function buildCost(level) {
   return Math.max(1, level) * 5_000;
 }
@@ -91,7 +131,8 @@ export function cheapestAcquirable(state, viewer) {
     if (pr?.ownerId === viewer.id) continue;                    // 自己的店不用收
     const mark = buyPrice(state, plot.id);
     if (!Number.isFinite(mark) || mark <= 0) continue;
-    const price = Math.round(mark * 1.25);
+    // #3332：与引擎同价。这里是「收购 X 要多少钱」，必须真的是那张卡会扣的钱。
+    const price = acquisitionPrice(state, plot.id);
     if (best === null || price < best.price) best = { price, mark, name: plot.name, id: plot.id };
   }
   return best;

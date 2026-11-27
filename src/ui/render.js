@@ -1,7 +1,7 @@
 import { TUNING } from '../data/tuning.js';
 import { CHARACTER_BY_ID } from '../data/characters.js';
 import { CARD_DEFS, current, PASSIVE } from '../engine/game.js?v=150';
-import { assetsOf, buyPrice, rentFor } from '../engine/economy.js';
+import { assetsOf, buyPrice, acquisitionPrice, rentFor } from '../engine/economy.js';
 import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
 import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=150';
@@ -205,7 +205,15 @@ function renderBoard(el, state, currentP, actions) {
       pr?.closed > 0 ? `<b class="mark stop">停${pr.closed}</b>` : '',
       pr?.inflate > 0 ? `<b class="mark inflate">涨${pr.inflate}</b>` : '',
     ].join('');
-    const captionValue=state.slice&&!owner&&state.day<(plot.availableFromDay??1)?`第 ${plot.availableFromDay} 天开售`:state.mapPick?.cardId==='buyland'?`收 ${money(Math.round(buyPrice(state,plot.id)*1.25))}`:owner?pr.closed?'停租':`租 ${money(rentFor(state,plot.id))}`:`购 ${money(buyPrice(state,plot.id))}`;
+    // #3332：收购候选四个都是 10,000，价一样 —— 只写着价就等于什么也没区分。
+    // 实测这四个的平均结局是 5.0% / 5.3% / 19.3% / 19.3%（n=300，同种子）；
+    // 差别全在「这条街有人走吗」。所以角标改成「价 · 每局大概能收多少」，
+    // 数与卡面/面板同源（takeoverModel → rentFor × 实测被踩频率）。
+    const takeRow = state.mapPick?.cardId === 'buyland' && state.mapPick?.takeover
+      ? state.mapPick.takeover.rows.find(r => r.id === plot.id) : null;
+    // 收购候选的价全都一样（都是 10,000），所以这里印价等于没印；印**每局大概能收多少**
+    // —— 那才是这四个候选真正不同的地方。价在面板里逐条列着。
+    const captionValue=state.slice&&!owner&&state.day<(plot.availableFromDay??1)?`第 ${plot.availableFromDay} 天开售`:takeRow?`约 +${money(takeRow.net)}`:state.mapPick?.cardId==='buyland'?`收 ${money(acquisitionPrice(state,plot.id))}`:owner?pr.closed?'停租':`租 ${money(rentFor(state,plot.id))}`:`购 ${money(buyPrice(state,plot.id))}`;
     const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
     return `<div class="prop ${plot.big ? 'bigprop' : ''} ${plot.name === '中央大酒店' ? 'grand' : ''} ${pr && !owner ? 'unowned' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${h - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
@@ -595,6 +603,19 @@ function renderChoice(el, state, p, actions) {
       return;
     }
     const hint = state.mapPick?.plot ? '直接点地图上的地产选择目标' : '直接点地图上高亮的路面';
+    // #3332：收购的四个候选**价一样、等级一样、标称租一样**，只写着价就等于什么也没说。
+    // 实测（take，seed 1–300，只改买哪一间）：晚风街 5.0%/5.3%，灯火街 19.3%/19.3%。
+    // 差别是「这条街有没有人走」。这里把那个差别摆成一行可比的数。
+    const take = state.slice && state.mapPick?.cardId === 'buyland' && state.mapPick?.takeover
+      ? state.mapPick.takeover : null;
+    const takeLines = take ? take.rows.map(r => {
+      const who = r.seller ? `从${r.seller}` : '收购';
+      // 「每局约」是 RENT_POOL 的 72 局实测均值，不是本局预言 —— 必须写「约」。
+      // 断链那一项分开写，因为它不是我这块的租金，是对手少收的。
+      const chain = r.siblingLoss > 0 ? `，另压对手 ${money(r.siblingLoss)}` : '';
+      // 店名自己已经含街名（「灯火街茶铺」），不再前缀一次街名，否则一行里写两遍。
+      return `<li>${r.name} ${money(r.cost)}（${who}）<b>每局约 +${money(r.net)}</b>${chain}</li>`;
+    }).join('') : '';
     // #1398：翻修选目标要写「升完多少」。原先只说「升 1 级」，地图角标只说**当前**租，
     // 两个候选都写「租 2,800」，玩家看不出升完差多少。
     // 实测（同一帧 A/B）：加这一行面板长 31px、取消键仍可命中、角标被盖 0 / 地产块点不到 0。
@@ -602,6 +623,7 @@ function renderChoice(el, state, p, actions) {
       ? upgradeAfterLine(state, p, state.mapPick.plotIds ?? [])
       : '';
     el.innerHTML = `<h3>${name}</h3><p class="hint">${state.slice?sliceCardDescription(state.mapPick.cardId)+'<br>':''}${hint}</p>`
+      + (takeLines ? `<ul class="street-card">${takeLines}</ul>` : '')
       + (upg ? `<p class="hint" data-upgrade-after>${upg}</p>` : '')
       + `<button data-act="cancel-pick">取消</button>`;
     el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
