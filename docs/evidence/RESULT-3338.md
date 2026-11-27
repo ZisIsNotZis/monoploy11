@@ -120,7 +120,7 @@ sticky 条，任何长度都带在按钮上方。
 
 | 判据 | 命令 | 读数 |
 |---|---|---|
-| 这份账是真的（真 buyPlot / 真 assetsOf） | `node --test test/market-ledger.test.js` | A/D 两支，10/10 过 |
+| 这份账是真的（真 buyPlot / 真 assetsOf） | `node --test test/market-ledger.test.js` | 12/12 过（A / A2 / A3 / B / C / D / D2 / D3 / E / E2） |
 | 两屏同源、逐字可对 | 同上 B 支 + `node support/probe-3338/settlement.mjs` | `bothCiteGames` / `bothCiteMean` 均 true |
 | 180 局审计：句子里的数都能回算 | `node --test test/next-game-numbers.test.js` | 新增「常数必须自报来源」一条，180 局 0 例外 |
 | 买不起时无负数、停业时不印「0 变 0」 | `node --test test/market-ledger.test.js` | A2 / A3 / D3 三支；A2 明写「不许出现任何负数」 |
@@ -129,7 +129,7 @@ sticky 条，任何长度都带在按钮上方。
 | 整局真鼠标（锁建干净树） | `OUT_NAME=OUT-3338-final python3 -B support/full-game/run-full.py` | `VERDICT: PASS`，416 帧 / 62 按 |
 | 回执自证 | `python3 -B support/full-game/verify-receipt.py docs/evidence/receipt-3338-final` | A–F 全过；36 个响应逐一 SEALED（含新模块） |
 | 全套 | `node --test` | 645/645 |
-| 交付集 | `python3 support/full-game/check-delivery.py` | PASS（216 项 / 36 锁） |
+| 交付集 | `python3 support/full-game/check-delivery.py` | PASS（226 项 / 36 锁） |
 | 干净检出 | `python3 support/full-game/clean-checkout.py` | PASS |
 
 复现 supervisor 那两局：`node .scratch/3338/screens.mjs grow 9`（绕晕的那一局）、

@@ -849,8 +849,16 @@ function renderChoice(el, state, p, actions) {
         // 它把这笔钱当**花掉的钱**；而买地是资产换手（真 buyPlot 前后 assetsOf 差 0）。
         // 结果是买地屏劝退、结算屏劝买，同一局里前后两句打脸。改成 market-ledger 的三行：
         // 记分（总资产不变）/ 现金压力（买完剩多少、够付对手最贵的一次租几次）/ 对手走位（72 局分布）。
-        const turns = roundsToRecover(pending.price, rent);
-        return `<p class="hint">此刻这条街 租 ${money(rent)}；账面约 ${turns} 回合回本（对手不走过来就不兑现）。</p>${ledgerRows}`;
+        //
+        // #3339：单位错了，而且是我的三行账把它照出来的。引擎按**停到这块地上**收租
+        // （flow.js:659 的「实付租金」行只在 landingPhase 写），从来没有「每回合收租」这回事。
+        // 「约 7 回合回本」= 价格 ÷ 每次满租，把「收几次」叫成了「几回合」；同一屏下面那张表
+        // 说这间书屋整局平均实收 11,948（26,000 的约 46%）。两句都是真数，却是两本账 ——
+        // 正是 #3358 让我修的那个病，只是这次两句话在同一屏上。
+        // 改成说清单位：按此刻满租要**收几次**才够本，并明写租金只在对手停过来时收。
+        const payouts = roundsToRecover(pending.price, rent);
+        return `<p class="hint">此刻这条街 租 ${money(rent)}；账面：按这个价收到 ${payouts} 次才够本`
+          + `（租金只在对手停到这块地上时收，不是每回合收；对手不走过来就不兑现）。</p>${ledgerRows}`;
       })():''}
       <button data-act="buy" ${poor ? 'disabled' : ''}>买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {

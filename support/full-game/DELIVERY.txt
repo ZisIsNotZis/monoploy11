@@ -51,7 +51,16 @@ lock src/ui/voice.js
 
 doc  README.md
 lock src/engine/market-ledger.js
-# #3338 的锁 = **当前**产品的描述（36 个产品文件）。
+# #3339 的锁 = **当前**产品的描述（36 个产品文件）。
+doc  docs/evidence/slice-entry-3339.sha256
+# 相对 3338 只改一个文件 src/ui/render.js，只改一句：买地屏「账面约 7 回合回本」→
+# 「按这个价收到 7 次才够本（租金只在对手停到这块地上时收，不是每回合收）」。
+# 为什么：引擎按**停到这块地**收租（flow.js:659 只在 landingPhase 写「实付租金」行），
+# 从来没有「每回合收租」。旧句把「要收几次」叫成「几回合」，而同一屏下面那张 72 局表
+# 说这间书屋整局平均实收 11,948（26,000 的 46%）——两句都是真数、两本账，
+# 正是 #3358 让我修的病。判据改成钉「次」并禁止「回合回本」（test/midgame-buy.test.js）。
+# 引擎与平衡未动：只改一句话与它的判据，故平衡表不重跑。
+# #3338 的锁（仍可核，已不是当前产品）。
 doc  docs/evidence/slice-entry-3338.sha256
 # 相对 3337 改了四个文件，都围绕同一件事：让买地屏与结算屏说同一份账。
 #   src/engine/market-ledger.js  新增：这一笔的整局账（本局三行 + 72 局走位表）
@@ -297,7 +306,16 @@ doc  support/probe-3335/geom-lastday.mjs
 doc  support/probe-3335/serve.mjs
 doc  support/probe-3335/fixture.html
 doc  support/probe-3335/geom-lastday.json
-# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3338，
+# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3339，
+# 并带 seal（36 个响应逐一比对，verify-receipt.py F 项可重算）。
+doc  docs/evidence/receipt-3339-final/provenance.json
+doc  docs/evidence/receipt-3339-final/record-8-summary.json
+doc  docs/evidence/receipt-3339-final/record-10-replay.json
+doc  docs/evidence/receipt-3339-final/after.json
+doc  docs/evidence/receipt-3339-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3339-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3339-final/raw/after.json.gz
+# 整局回执（曾为当前，仍可核）：绑定 slice-entry-3338，
 # 并带 seal（36 个响应逐一比对，verify-receipt.py F 项可重算）。
 doc  docs/evidence/receipt-3338-final/provenance.json
 doc  docs/evidence/receipt-3338-final/record-8-summary.json
@@ -352,6 +370,7 @@ doc  docs/evidence/receipt-3333-final/raw/after.json.gz
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
 tool support/full-game/.gitignore
 # test/no-edge-profiles.test.js reads .scratch directly too; it tolerates absence.
+doc  docs/evidence/RESULT-3339.md
 doc  docs/evidence/RESULT-3338.md
 tool support/probe-3338/ledger-table.mjs
 tool support/probe-3338/geom.mjs
