@@ -91,11 +91,25 @@ node tools/balance-slice.mjs --seeds 500 --json > report.json
 重算 `tree_sha256`。`receipt-3331-final` 是第一份真绑定的回执：
 
 ```
-E  product  ran exactly docs/evidence/slice-entry-3330.sha256 (35 files, tree 21ec407b16fa2359), and that lock is unchanged on disk
+$ python3 support/full-game/verify-receipt.py docs/evidence/receipt-3331-final
+...
+E  product  ran exactly docs/evidence/slice-entry-3331.sha256 (35 files, tree 1bd62f7c50d2faf6), and that lock is unchanged on disk
 ```
 
-老回执 `receipt-3330-final` 现在如实报 `NOT BOUND` —— 它的 `OUT-*/` 已经被清掉，
-盘上没有任何东西能把它连到某一版字节上。这不再是「读的人自己去信」，而是**回执自己说的**。
+（上面这段是**跑出来的**，不是抄的：`test/published-numbers.test.js` 会把 RESULT-3331 里每个
+`E  product` 示例行拿去和 `verify-receipt.py` 对那份回执的真实输出比，不一致就红。
+前一版这里写的是 `slice-entry-3330` / `tree 21ec407…` —— 那份锁从来没被 E 项核过，
+是照着设计意图手写的示例。这就是「示例也会过期」的那一类错。
+注意 `tree` 只印前 16 位：`provenance.json` 里存的是完整的 64 位
+`1bd62f7c50d2faf66b21b25e5dbf2879e7c8d820f0ce44de6a809c3842c6a88d`。）
+
+老回执 `receipt-3330-final` 现在如实报 `NOT BOUND`。原因**不是**「`OUT-*/` 被清掉」——
+它自带 `raw/*.gz`，A/B/C/D 四项都过；原因是它由**还没有 `product.json` 那一步的**
+`make-receipt.py` 剪出来，`provenance.json` 里根本没有 `product` 字段，所以没有任何字节
+能证明它跑在哪把锁上。表里给它写一把锁是**后人的判断**（那一版的 `src/data/slice.js`
+与 `slice-entry-3330.sha256` 逐字节相符，见 `verify-receipt.py` 的 E 项原理），
+不是回执自己的声明 —— 两者要分开说。
+这不再是「读的人自己去信」，而是**回执自己说的**。
 
 ### 3. 判据不再豁免新回执
 
@@ -132,6 +146,33 @@ python3 support/full-game/check-delivery.py
 `protocol-probe.mjs` / `tune.mjs` 是这一轮的**一次性探针**，不入交付集：
 它们回答的是「公布的数是怎么来的」「再加钱会不会更好」这两个**已经答完**的问题。
 结论在上面，量具是 `tools/balance-slice.mjs`。
+
+## 补记（同日，入口文案对齐）
+
+上面那张表交出去之后，主管指出入口还不对：README 仍链 `RESULT-3330` 并写着「它们一样能赢」。
+查下去发现不止一处 —— **收回一个结论却没改掉引用它的地方**，比不收回更糟。补了四件事，
+每一件都配了一条会变红的判据（`test/published-numbers.test.js`）：
+
+1. `README.md`、`docs/6_SLICE.md` 改成实测的 45.7 / 32.0 / 34.7 与「差距 13.7 个百分点」，
+   并明写「不是三条一样强」。判据：入口里的百分比必须**逐位等于**入库的那张表。
+2. 胜率表本身入库：`docs/evidence/balance-3331-300.json`，带 `src/data/slice.js` 的 sha256。
+   判据：表的指纹必须等于**现在**的 `slice.js` —— 产品改过而表没重跑，就红。
+3. 上面那段 `E  product` 示例原本写的是 `slice-entry-3330` / `tree 21ec407…`，是从没跑过的
+   手写示例。已换成真实输出（`slice-entry-3331` / `tree 1bd62f7c…`）。判据：报告里每一行
+   `E  product` 都要等于 `verify-receipt.py` **现在**的输出。
+4. 「老回执为什么 `NOT BOUND`」原本写的是「`OUT-*/` 已被清掉」，**这是错的** —— 它自带
+   `raw/*.gz`，A–D 全过；真实原因是它剪的时候还没有 `product.json` 这一步。
+   同时发现表里把它记在 `slice-entry-3331` 名下也不对：它跑在 `slice-entry-3330` 上
+   （两者 `slice.js` 只差注释，但**字节不同**）。那把锁已从 git 历史取回并入交付集。
+
+自查时又犯了一个同型的错：我在 README 里写「起手牌 翻修+旺季 / 收购+定步 / 停业+定步」，
+而产品里是 **翻修+旺季+定步**（三条起手都是三张牌）。一段文案里可以一半是核过的数、
+一半是回忆 —— 所以起手牌现在也从 `SLICE_STYLES` 读着比，不靠我记。
+
+本轮**没有改产品字节**（35 个锁文件全部未变），所以锁仍是 `slice-entry-3331.sha256`，
+整局回执 `receipt-3331-final` 继续有效（A–E 全过，见上）。入口自查：360×640 与 390×844
+各看三条起手，第一屏三张卡的现金与「开一局街角生意」都在视口内且可点。
+**只看了第一屏**：后续窄屏行为以 `RESULT-3278` §5.1 为准（360×640 每回合要先整页滚一次）。
 
 ## 边界（这一轮没变的那些）
 

@@ -181,6 +181,15 @@ doc  docs/evidence/RESULT-3322.md
 doc  docs/evidence/RESULT-3330.md
 doc  docs/evidence/RECEIPTS-VS-PRODUCT.md
 doc  docs/evidence/RESULT-3331.md
+# #3331：README 与 6_SLICE 公布的胜率**必须来自这份表**，而这份表必须记着它量的是哪版
+# `src/data/slice.js`。test/published-numbers.test.js 三条一起咬：表的产品指纹 =
+# 现在的字节、公布的百分比 = 表里的值、README 不出现已收回的 42.0/39.0/42.7。
+# 重跑：node tools/balance-slice.mjs --seeds 150 --json > docs/evidence/balance-3331-300.json
+doc  docs/evidence/balance-3331-300.json
+# receipt-3330-final 跑在这把锁上（它的 slice.js 与现在只差注释，但字节不同）。
+# 之前这把锁只活在 git 历史 b8bc9cb 里 ⇒ 回执表点名的锁在干净检出中不存在，
+# 读者无从核对。收进来是为了让 RECEIPTS-VS-PRODUCT.md 的每一行都可核。
+doc  docs/evidence/slice-entry-3330.sha256
 doc  docs/evidence/receipt-3330-final/provenance.json
 doc  docs/evidence/receipt-3330-final/record-8-summary.json
 doc  docs/evidence/receipt-3330-final/record-10-replay.json

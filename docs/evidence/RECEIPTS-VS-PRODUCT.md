@@ -10,12 +10,18 @@
 | `receipt-3319-390` | `slice-entry-3278.sha256` 之前 | 无 raw/，已在 `UNVERIFIABLE.md` 登记为不可核对 |
 | `receipt-3319i-tree` | `slice-entry-3278.sha256` | 当时用 `tree-after.sha256` 逐项核过 35 个产品文件，那份核对表未随交付发出 |
 | `receipt-3320-390` | `slice-entry-3278.sha256` | 真 Chrome 423 帧 / 64 按，`VERDICT: PASS` |
-| `receipt-3330-final` | `slice-entry-3331.sha256` | 起手开工现金改动后的一整局：415 帧 / 62 按，`VERDICT: PASS`（人类获胜），见 `RESULT-3330.md` |
+| `receipt-3330-final` | `slice-entry-3330.sha256` | 起手开工现金改动后的一整局：415 帧 / 62 按，`VERDICT: PASS`（人类获胜），见 `RESULT-3330.md`。回执自己报 `NOT BOUND`（剪的时候还没有 `product` 字段）；这一行的锁是**对着那一版的字节核出来的**，不是它自报的 |
 | `receipt-3331-final` | `slice-entry-3331.sha256` | **第一份真正绑定产品的回执**：`provenance.json` 带 `product.lock` / `product.lock_sha256` / `product.tree_sha256`，`verify-receipt.py` 的 E 项可从库里的锁文件重算；415 帧 / 62 按，`VERDICT: PASS`（人类获胜） |
 
 判据由 `test/receipt-product-binding.test.js` 咬住：
 **每一份在库回执都必须在这张表里出现**，而且点名的那把锁必须是库里真实存在的文件。
 新加一份回执却不登记它对应哪版产品 → 红。
+
+两张历史锁因此必须随检出走：`slice-entry-3278.sha256` 与 `slice-entry-3330.sha256`。
+之前 3330 那份只活在 git 历史（`b8bc9cb`）里，于是这一行的锁在干净检出中**不存在**，
+读者无从核对——而那正是这张表存在的意义。#3331 把它作为 `doc` 收进交付集。
+（3328→3330 之间 `slice.js` 只改了注释，所以两把锁下的对局行为相同；但**字节不同**，
+所以 `receipt-3330-final` 不能记在 3331 名下。）
 
 ## 这张表原本有个洞，`#3331` 补上了
 
