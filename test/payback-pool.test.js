@@ -100,7 +100,14 @@ test('#1044 三个打印点的池子句与回合数来自同一个实现', () =>
   const gain = rent - prev;
   assert.equal(roundsToRecover(cost, gain), Math.max(1, Math.ceil(cost / gain)));
   // #3391z：单位从「回合」改成「次」—— 数的是被踩到的次数，引擎没有「每回合收租」。
-  assert.equal(roundsLine(cost, gain), `${Math.max(1, Math.ceil(cost / gain))} 次回本`);
+  // #3391z：这句现在必须能**单独读懂**：写清「满额收到 N 次」，且
+  // 停业那次收 0、被抬价那次不足都不算。所以不再是精确等值，
+  // 而是「开头是那个次数 + 条件被写出来了」。
+  const rline = roundsLine(cost, gain);
+  const n = Math.max(1, Math.ceil(cost / gain));
+  assert.ok(rline.startsWith(`${n} 次回本`), `回本次数不对：${rline}`);
+  assert.ok(/收到全额/.test(rline) && /停业/.test(rline) && /不算/.test(rline),
+    `没写清什么条件下才算回本：${rline}`);
 });
 
 // ③ 日志里「；」之后仍然只有 rentFor 一个金额（#807 已签，不许被新句撞坏）。
