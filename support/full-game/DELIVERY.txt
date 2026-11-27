@@ -67,6 +67,17 @@ doc  docs/evidence/receipt-3343-ship/after.json
 doc  docs/evidence/receipt-3343-ship/raw/record-8-summary.json.gz
 doc  docs/evidence/receipt-3343-ship/raw/record-10-replay.json.gz
 doc  docs/evidence/receipt-3343-ship/raw/after.json.gz
+# 同一片的对照回执：产品字节 revert 之后跑的那一局，点名的锁与 #3342 是同一把。
+# 它必须随交付走 —— RECEIPTS-VS-PRODUCT.md 里点了它的名，而 clean-checkout 的
+# 「表里不能点名不存在的回执」判据正是靠这条清单定义「干净检出有什么」的。
+# #3343 收尾时漏了这一截：本机 node --test 全绿（文件在工作树里），干净检出判红。
+doc  docs/evidence/receipt-3343-final/provenance.json
+doc  docs/evidence/receipt-3343-final/record-8-summary.json
+doc  docs/evidence/receipt-3343-final/record-10-replay.json
+doc  docs/evidence/receipt-3343-final/after.json
+doc  docs/evidence/receipt-3343-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3343-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3343-final/raw/after.json.gz
 # #3343 的量具：每一支都在结果里被引用，所以必须随交付走得动。
 tool support/probe-3343/plan-or-ledger.mjs
 tool support/probe-3343/which-plan.mjs
@@ -101,6 +112,10 @@ doc  docs/evidence/receipt-3342-final/raw/record-8-summary.json.gz
 doc  docs/evidence/receipt-3342-final/raw/record-10-replay.json.gz
 doc  docs/evidence/receipt-3342-final/raw/after.json.gz
 # 上一把锁（保留在库里，已不是当前产品）。
+# 它必须随交付走：RECEIPTS-VS-PRODUCT.md 的表里有三行点它的名
+# （receipt-3342-final / receipt-3343-final），而 clean-checkout 的
+# 「表里点名的锁真实存在」判据只认交付清单。
+doc  docs/evidence/slice-entry-3342.sha256
 doc  docs/evidence/slice-entry-3341.sha256
 # 相对 3340 只改一个文件 src/engine/insight.js：选落点那一屏不再报「此刻做不起」的金额 ——
 # 做不到的那一行自己写「还差 N」/「会破产」，做得到的不加字。
