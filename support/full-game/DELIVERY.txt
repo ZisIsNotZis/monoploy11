@@ -4,7 +4,7 @@
 # 而 .scratch 不入库 —— 从干净检出根本跑不起来。"可复取"必须能被点名，否则只是说法。
 #
 # 格式：
-#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3330.sha256 里钉死
+#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3331.sha256 里钉死
 #                （#3330 起手开工现金那一轮重签；多34 个文件未变，只有下列三个变了）
 #   doc  <path>   —— 说明与证据文字
 #   tool <path>   —— 量具（跑一局、判一局、核字节目录）
@@ -48,7 +48,7 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
-doc  docs/evidence/slice-entry-3330.sha256
+doc  docs/evidence/slice-entry-3331.sha256
 # #3330 改产品字节前签名的那把锁。它仍在库里，因为 #3317/#3320 的回执跑在它身上；
 # 但它不再描述现在的产品 —— 该对照由 docs/evidence/RECEIPTS-VS-PRODUCT.md 写明。
 doc  docs/evidence/slice-entry-3278.sha256
@@ -156,6 +156,7 @@ tool support/full-game/DELIVERY.txt
 # Edge 安装路径与 .scratch profile，不入交付集。
 tool tools/play.mjs
 tool tools/evaluate-slice.mjs
+tool tools/balance-slice.mjs
 
 # 测试套件（不进播放树，但属于检出的一部分：干净检出要能自查）
 test test/*.test.js
@@ -179,6 +180,7 @@ doc  docs/evidence/RESULT-3322.md
 # 回执跑在重签后的字节上（415 帧 / 62 按 / VERDICT: PASS），并自带 raw/ 以便复核。
 doc  docs/evidence/RESULT-3330.md
 doc  docs/evidence/RECEIPTS-VS-PRODUCT.md
+doc  docs/evidence/RESULT-3331.md
 doc  docs/evidence/receipt-3330-final/provenance.json
 doc  docs/evidence/receipt-3330-final/record-8-summary.json
 doc  docs/evidence/receipt-3330-final/record-10-replay.json
@@ -186,6 +188,14 @@ doc  docs/evidence/receipt-3330-final/after.json
 doc  docs/evidence/receipt-3330-final/raw/record-8-summary.json.gz
 doc  docs/evidence/receipt-3330-final/raw/record-10-replay.json.gz
 doc  docs/evidence/receipt-3330-final/raw/after.json.gz
+# #3331：第一份带 product 绑定的回执（verify-receipt.py E 项）。
+doc  docs/evidence/receipt-3331-final/provenance.json
+doc  docs/evidence/receipt-3331-final/record-8-summary.json
+doc  docs/evidence/receipt-3331-final/record-10-replay.json
+doc  docs/evidence/receipt-3331-final/after.json
+doc  docs/evidence/receipt-3331-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3331-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3331-final/raw/after.json.gz
 # 跑一次会在这个目录里产出 OUT-*/、chrome-profile-*/、trees/。这几条 ignore 规则必须一起走：
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
 tool support/full-game/.gitignore

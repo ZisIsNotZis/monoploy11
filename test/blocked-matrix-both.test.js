@@ -47,7 +47,7 @@ const INDEX_FP = '6f320608f37f1e9d';
 // 字节只是身份标记。
 const CSS_FP = '1389660bd64b86c1';
 // #3330 重签：起手开工现金改为 42000/45000/46000（见 src/data/slice.js 顶部说明）。
-const SLICE_FP = 'b09cd15921412803';
+const SLICE_FP = '2e0036fd429792f1';
 const PAGE_FP = '3d51b9d013370a81';
 const INJECT_FP = 'e8b1148546523c6b';
 

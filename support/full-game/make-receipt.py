@@ -177,8 +177,16 @@ def main(argv=None):
 
     # Provenance lives beside the receipt so "which run is this?" is answerable without
     # the OUT dir, and so the cut can be re-derived and disagreed with.
+    # #3331: the run recorded which product lock it built from; carry it verbatim. Copied,
+    # never re-derived -- a cutter that recomputes the binding cannot tell you the run's
+    # own record changed. A run that predates product.json simply has none, and
+    # verify-receipt.py says so out loud instead of passing quietly.
+    product = None
+    if (src / 'product.json').is_file():
+        product = json.loads((src / 'product.json').read_text())
     prov = {
         'source_run': str(src.name),
+        'product': product,
         'cut_by': 'support/full-game/make-receipt.py',
         'judged_same_as_raw': True,
         'raw': {name: {'bytes': (src / name).stat().st_size, 'sha256': sha(src / name),

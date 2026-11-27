@@ -6,7 +6,7 @@ the way to the results screen.
 Why the tree is built from the lock instead of the worktree
 -----------------------------------------------------------
 The ask is "from a clean checkout, independently play a whole game and know the result".
-docs/evidence/slice-entry-3330.sha256 names 35 files; this script copies ONLY those,
+docs/evidence/slice-entry-3331.sha256 names 35 files; this script copies ONLY those,
 refuses if any is missing or drifted, then serves the tree on a second port and compares
 the RESPONSE BYTES a browser receives with the lock. The repo's test/, tools/, docs/ and
 support/ never enter the tree, so a pass here cannot be propped up by anything the lock
@@ -37,7 +37,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 # #3330：产品字节改了（起手开工现金），所以整局跑在新锁上。旧锁 3278 留在库里作为历史。
-LOCK = ROOT / 'docs/evidence/slice-entry-3330.sha256'
+LOCK = ROOT / 'docs/evidence/slice-entry-3331.sha256'
 # OUT_NAME comes from the environment so one attempt never overwrites the last:
 # single-use means a name that already exists is refused, not reused.
 OUT = HERE / (os.environ.get('OUT_NAME') or 'OUT-clean-full')
@@ -232,6 +232,22 @@ def lock_entries():
     return out
 
 
+def tree_digest(pairs):
+    """Canonical digest of (path, sha256) pairs: independent of how the lock file is laid out.
+
+    Why a prefix and length-prefixed fields: the naive ''.join(f'{d}  {p}\n' for ...) over a
+    byte-sorted lock file reproduces that file's OWN sha256, which made the check compare a
+    number to itself (#3331 caught this by running it, not by reading it).
+    """
+    import hashlib
+    h = hashlib.sha256(b'monoploy11/tree-v1\0')
+    for rel, digest in sorted(pairs):
+        row = f'{rel}\0{digest}\n'.encode()
+        h.update(len(row).to_bytes(8, 'big'))
+        h.update(row)
+    return h.hexdigest()
+
+
 def build_lock_tree(dest):
     """Copy exactly the lock's files; a missing or drifted source refuses the run."""
     entries = lock_entries()
@@ -413,6 +429,16 @@ def main():
         need(check.returncode == 0, 'HTTP byte verification failed; see verify-http.txt')
         after = {rel: sha(tree / rel) for rel, _ in entries}
         (OUT / 'tree-after.sha256').write_text(''.join(f'{v}  {k}\n' for k, v in sorted(after.items())))
+        # #3331: WHICH product did this run serve? tree-after.sha256 says the bytes did not
+        # move during the run; it does not say which lock they came from, so a receipt cut
+        # from this run could not name a version. `product.json` carries the lock name, the
+        # lock's own sha256, and one digest over the served (path, sha256) pairs -- enough
+        # for a reader with the repo to recompute the same number from the lock file alone.
+        (OUT / 'product.json').write_text(json.dumps({
+            'lock': str(LOCK.relative_to(ROOT)),
+            'lock_sha256': sha(LOCK),
+            'tree_sha256': tree_digest(after.items()),
+            'files': len(after)}, indent=2) + '\n')
     finally:
         remove_dir(TREES)
         need(not PROFILE.exists(), 'profile left behind')

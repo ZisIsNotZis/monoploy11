@@ -4,7 +4,7 @@
 Two independent questions, both answered here:
 
   1. DOES THE LIST EXIST?  Every file named by DELIVERY.txt is present, and every `lock`
-     line still matches the sha256 written in docs/evidence/slice-entry-3330.sha256.
+     line still matches the sha256 written in docs/evidence/slice-entry-3331.sha256.
      This is what stops "replayable" from being a claim about files nobody committed.
 
   2. DOES THE LIST COVER WHAT IS SHIPPED?  Walk the repo's product dirs and report any
@@ -21,7 +21,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 LIST = HERE / 'DELIVERY.txt'
 # #3330：起手开工现金改动后重签的那把锁。旧锁 3278 仍在库里，但产品已不是它的字节。
-LOCK = ROOT / 'docs/evidence/slice-entry-3330.sha256'
+LOCK = ROOT / 'docs/evidence/slice-entry-3331.sha256'
 
 # Product bytes a player loads. Anything here that the list forgets is a real gap.
 PRODUCT_DIRS = ['src']

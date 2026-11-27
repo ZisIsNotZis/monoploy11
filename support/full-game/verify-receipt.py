@@ -52,6 +52,22 @@ def fail(msg):
     return 1
 
 
+def tree_digest(pairs):
+    """Canonical digest of (path, sha256) pairs: independent of how the lock file is laid out.
+
+    Why a prefix and length-prefixed fields: the naive ''.join(f'{d}  {p}\n' for ...) over a
+    byte-sorted lock file reproduces that file's OWN sha256, which made the check compare a
+    number to itself (#3331 caught this by running it, not by reading it).
+    """
+    import hashlib
+    h = hashlib.sha256(b'monoploy11/tree-v1\0')
+    for rel, digest in sorted(pairs):
+        row = f'{rel}\0{digest}\n'.encode()
+        h.update(len(row).to_bytes(8, 'big'))
+        h.update(row)
+    return h.hexdigest()
+
+
 def judge(dirpath):
     """The last VERDICT line report-full.py prints for this directory, or None."""
     r = subprocess.run([sys.executable, '-B', str(REPORT), str(dirpath)],
@@ -167,6 +183,41 @@ def main(argv=None):
     if got_slim != got_raw:
         return fail(f'the cut changed the verdict\n  receipt: {got_slim}\n  raw:     {got_raw}')
     print(f'D  judge    {got_slim} -- same verdict from the receipt and from its shipped raw bytes')
+
+    # ---- E. which product bytes did it run? --------------------------------------
+    #
+    # A/B/C/D prove the record is intact and internally consistent. None of them says which
+    # VERSION of the game produced it, so a PASS from before a product change reads exactly
+    # like a PASS for the current bytes. This check closes that: the receipt names a lock,
+    # the lock is in the repo, its sha256 is unchanged, and the tree digest the run recorded
+    # equals the one recomputed from the lock file on disk.
+    #
+    # Absent `product` is NOT a pass. A receipt that cannot name its product is a weaker
+    # claim, and the honest report is to say which claim you got.
+    prod = prov.get('product')
+    if not prod:
+        print('E  product  NOT BOUND -- this receipt does not record which product bytes it ran '
+              '(cut before product.json existed). A/B/C/D still hold; the version does not.')
+    else:
+        lock_rel = prod.get('lock')
+        lock_path = (HERE.parent.parent / lock_rel) if lock_rel else None
+        if not lock_path or not lock_path.is_file():
+            return fail(f'E  product  names a lock that is not in the repo: {lock_rel!r}')
+        if sha256_bytes(lock_path.read_bytes()) != prod.get('lock_sha256'):
+            return fail(f'E  product  {lock_rel} has changed since this receipt ran '
+                        f'(lock sha256 on disk != recorded)')
+        pairs = []
+        for line in lock_path.read_text().splitlines():
+            if not line.strip():
+                continue
+            digest, rel = line.split('  ', 1)
+            pairs.append((rel, digest))
+        want = tree_digest(pairs)
+        if want != prod.get('tree_sha256'):
+            return fail('E  product  the tree digest recorded by the run does not match the '
+                        'lock on disk; this receipt describes different bytes than the lock names')
+        print(f'E  product  ran exactly {lock_rel} ({prod.get("files")} files, '
+              f'tree {prod["tree_sha256"][:16]}), and that lock is unchanged on disk')
 
     print()
     print('PROVENANCE: PASS -- this receipt locates its own source and can be checked '
