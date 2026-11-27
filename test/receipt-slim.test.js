@@ -25,7 +25,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const REPORT = path.join(ROOT, 'support/full-game/report-full.py');
 const SLIM = path.join(ROOT, 'support/full-game/make-receipt.py');
-const RECEIPT = path.join(ROOT, 'docs/evidence/receipt-3317-390');
+// #3319d：改指**这一轮**的回执。3317 那份是上一版的运行记录，它的 pressLog 里就带着
+// 当时那批「按下后仍 enabled」的点击（F6 那时只对动作屏发言，所以留着也能过）。
+// F6 收紧到所有屏之后，那份记录如实变红 —— 证据必须来自当前这一版的代码。
+const RECEIPT = path.join(ROOT, 'docs/evidence/receipt-3319-390');
 
 function judge(dir) {
   const r = spawnSync('python3', ['-B', REPORT, dir], { encoding: 'utf8' });
@@ -73,7 +76,14 @@ test('交付里的整局回执现在就能判成 PASS（无浏览器）', () => 
   const { code, out } = judge(RECEIPT);
   assert.equal(code, 0, out);
   assert.match(out, /VERDICT: PASS/);
-  assert.ok(!/NOT JUDGED/.test(out), '交付回执不应留未判项');
+  // #3319b：这条原来写「交付回执不应留未判项」。加上 F7（选街屏的取消必须真被接住）之后，
+  // 「零 SKIP」不再是正确的门槛：交付的那局恰好没走到选街屏，于是 F7 诚实地打 SKIP ——
+  // 那正是三态判据要的东西（没走到就不声称判过）。要求的不是「没有 SKIP」，而是
+  // 「凡是这一局真走到的屏，都必须被判过且判成 PASS」：
+  //   · 走到选街屏 ⇒ F7 必须 PASS；没走 ⇒ 只有 F7 允许 SKIP。
+  const skipped = [...out.matchAll(/^SKIP\s+(.*)$/gm)].map(m => m[1]);
+  const notF7 = skipped.filter(s => !/^F7 /.test(s));
+  assert.deepEqual(notF7, [], '除了「这一局没走到」的 F7，交付回执不许留别的未判项');
 });
 
 test('交付回执的 summary 只含判据读的字段（不允许长回未读字段）', () => {

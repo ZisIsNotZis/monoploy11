@@ -65,6 +65,19 @@ doc  docs/evidence/receipt-3317-390/provenance.json
 doc  docs/evidence/receipt-3317-390/record-10-replay.json
 doc  docs/evidence/receipt-3317-390/record-8-summary.json
 doc  docs/evidence/receipt-3317-390/after.json
+# #3319 选街屏：整局回执（同一套精简规则，report-full.py 直接可判）+ 那一屏的实测记录。
+# 三个探针都随检出走，因为它们量的是「排序对不对」与「用卡后的数真不真」——
+# 把量具留在 .scratch 里，#3264 已经吃过一次「回执不可重跑」的亏。
+doc  docs/evidence/receipt-3319-390/provenance.json
+doc  docs/evidence/receipt-3319-390/record-10-replay.json
+doc  docs/evidence/receipt-3319-390/record-8-summary.json
+doc  docs/evidence/receipt-3319-390/after.json
+doc  docs/evidence/receipt-3319/PICKER-3319.md
+tool docs/evidence/receipt-3319/probes/picker-probe.mjs
+tool docs/evidence/receipt-3319/probes/already-probe.mjs
+tool docs/evidence/receipt-3319/probes/ab-picker.mjs
+tool docs/evidence/receipt-3319/probes/live-picker.mjs
+tool docs/evidence/receipt-3319/probes/hint-budget2.mjs
 # README 第一行就链 [目标](docs/2_GOAL.md)。此前它在清单外，于是「从干净检出打开首页说明」
 # 的第一步就是死链——而交付集自检只看产品字节，不会发现这一点。
 # 下面这些是被链到的文档再链到的下一跳（2_GOAL → 0_ROADMAP、3_REQUIREMENT → 5_PRODUCT、

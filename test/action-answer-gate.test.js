@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { createSliceConfig } from '../src/data/slice.js';
 import { startSession } from '../src/engine/flow.js';
 import { render } from '../src/ui/render.js';
@@ -101,4 +102,17 @@ test('B 契约：rerender 传 answerable=!!active；answer() 清槽后、resolve
   assert.ok(repaint < resolve, '重画必须在 resolve 之前：resolve 之后引擎可能已经换了屏');
   assert.match(code, /prompt\?\.type === 'action'/,
     '重画只对动作屏做（其它屏会在引擎换屏前先被翻成动作屏）');
+});
+
+// #3319c：非动作屏作答后必须**立刻**看得出「这一下收下了」。
+// 实测（OUT-3319h-cross）：D4 补给屏被连点 13 次、每次 hit=itself、logLen 恒 1314，
+// 直到气泡播完才关 —— 后面 12 次点击全被 answer() 的 `if (!active) return` 静默丢掉。
+// 判据不是「按钮变灰好看」，而是「可点 ⇔ 能被接住」这条产品规则对每一屏都成立。
+test('#3319c 补给屏作答后，面板上的按钮立刻全部不可点', () => {
+  const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('function answer(value)'), src.indexOf('function applyPromptToState'));
+  assert.match(body, /if \(prompt\?\.type === 'action'\) rerender\(\);/,
+    'action 屏原来的重画还在');
+  assert.match(body, /querySelectorAll\('button'\)\.forEach\(b => \{ b\.disabled = true; \}\)/,
+    '非动作屏作答后没有把按钮置灰（点击仍会被静默丢掉）');
 });

@@ -24,8 +24,17 @@ const OUT = process.env.OUT_DIR;
 const LABEL = process.env.LABEL || 'run';
 const CDP = Number(process.env.CDP_PORT || 19529);
 const HTTP = Number(process.env.HTTP_PORT || 8041);
-const ENTRY = `http://127.0.0.1:${HTTP}/index.html?slice=1&style=grow&seed=1`;
-const HUMAN = '街角店主';       // style=grow seat 1; src/data/slice.js:15/50-53
+// #3319b: the entry is a parameter for the same reason the viewport is. The default pair
+// (grow/seed 1) is kept so every earlier receipt stays reproducible; a run that needs to
+// exercise the street picker asks for a starter that reaches it (cross/seed 2 does on day 1).
+const ENTRY_STYLE = process.env.ENTRY_STYLE || 'grow';
+// Number(): the env var arrives as a string, and '2' + 1 is '21' — which made the
+// replay expectation ('seed + 1') unreachable while looking like a product defect.
+const ENTRY_SEED = Number(process.env.ENTRY_SEED || 1);
+const ENTRY = `http://127.0.0.1:${HTTP}/index.html?slice=1&style=${ENTRY_STYLE}&seed=${ENTRY_SEED}`;
+// The human seat's name is whatever the chosen starter hands to participant #0.
+const HUMAN = ({grow: '街角店主', take: '机会买家', cross: '穿街高手'})[ENTRY_STYLE];
+if (!HUMAN) throw Error(`UNKNOWN-ENTRY-STYLE ${ENTRY_STYLE}`);
 // The viewport is a parameter, not a constant: a narrower screen is the claim most likely
 // to break (a control that only fits at 390 would fail at 360), so it must be runnable
 // without editing this file. Defaults keep every existing receipt reproducible.
@@ -158,10 +167,17 @@ const pressControl = async (page, c, tag) => {
   await delay(80);
   const after = await ev(`(() => { const b = document.querySelectorAll(${JSON.stringify(sel[0])})[${sel[1]}];
     const roll = document.querySelector('#dice [data-roll]');
+    const choice = document.querySelector('#choice');
+    const cardsEl = document.querySelector('#cards');
     return {stillEnabled: b ? !b.disabled : null,
       rollDisabled: roll ? !!roll.disabled : null,
       logLen: (document.querySelector('#log')?.textContent ?? '').length,
       day: (document.querySelector('#system .pill')?.textContent ?? '').trim(),
+      // #3319b：取消这类键的销账方式不是「变灰」，而是**这一屏没了**。
+      // 所以除了 stillEnabled，还要记「面板是否已隐藏 + 手牌是否回来」，
+      // F7 用这两项判断点击真被接住，而不是只看按键自己的 disabled 属性。
+      panelHidden: choice ? !!choice.hidden : null,
+      cardsVisible: cardsEl ? !cardsEl.hidden : null,
       bubble: (() => { const s = document.querySelector('.speech-bubble');
         return s ? (s.querySelector('.speech-text')?.textContent ?? '').trim().slice(0, 40) : null; })()};
     })()`, 'press-after').catch(() => null);
@@ -223,7 +239,21 @@ const choose = (m, st) => {
     const list = m.panelButtons.filter(b => b.what === 'target/player' && ok(b));
     return list[0] ? {...list[0], where: 'panel'} : null;
   }
-  if (m.kind === 'target/board' || m.kind === 'mapPick/street') {
+  if (m.kind === 'mapPick/street') {
+    // #3319b：选街屏的「取消」必须真的点得到、真的关屏。
+    // 每个选街屏只先取消一次（st.streetCancels 计数），之后照常选街。
+    // 取消只回到动作屏：手牌与骰子都还在，不改变游戏进程。
+    // 判据 F7 只认两件结果事实：按下时中心命中自己、按下后屏关且手牌回来。
+    const cancel = m.panelButtons.find(b => b.what === 'cancel-pick');
+    st.streetCancels = st.streetCancels ?? 0;
+    if (cancel && st.streetCancels < 1) {
+      st.streetCancels += 1;
+      return {...cancel, where: 'panel', tag: 'street:cancel-pick'};
+    }
+    const list = m.mapButtons.filter(x => ok(x));
+    return list[0] ? {...list[0], where: 'map'} : null;
+  }
+  if (m.kind === 'target/board') {
     const list = m.mapButtons.filter(x => ok(x));
     return list[0] ? {...list[0], where: 'map'} : null;
   }
@@ -280,7 +310,11 @@ async function main() {
   })();
   if (!setup) throw Error('SLICE-ENTRY-NEVER-READY');
   save('record-0-setup', setup);
-  if (setup.style !== 'grow') throw Error(`STYLE-NOT-SELECTED: ${setup.style}`);
+  // #3319b: the URL's style= must have preselected the requested starter. This used to
+  // compare against the literal 'grow'; with the entry parameterised it must compare
+  // against what was asked for, or the check would pass for the wrong reason (or, as it
+  // did, refuse a legitimate run).
+  if (setup.style !== ENTRY_STYLE) throw Error(`STYLE-NOT-SELECTED: want ${ENTRY_STYLE}, got ${setup.style}`);
   await page.press(setup.x, setup.y);
   const started = await (async () => {
     const end = performance.now() + 8000;
@@ -435,7 +469,7 @@ async function main() {
               if (!setup || setup.hidden) return null;
               if (!document.querySelector('#startSlice')) return null;
               const seed = document.querySelector('#seed')?.valueAsNumber ?? null;
-              if (seed !== 2) return null;
+              if (seed !== ${ENTRY_SEED + 1}) return null;
               const picks = [...document.querySelectorAll('[name=sliceStyle]:checked')].map(r => r.value);
               return {seed, picks, url: location.search, styles: document.querySelectorAll('#sliceStyles input').length,
                 // body.slice-entry is what the entry screen sets to collapse the page to
@@ -464,8 +498,10 @@ async function main() {
         } catch (e) { ctaUsable = 'probe:' + String(e.message ?? e).slice(0, 120); }
       }
       results.replay = {at: rp, scroll: replayScroll, landed, ctaUsable,
-        checks: {setupShown: !!landed, seedIs2: landed?.seed === 2,
-          urlSeedIs2: /[?&]seed=2(&|$)/.test(landed?.url ?? ''), ctaUsable: ctaUsable === 'itself',
+        // #3319b: replay is 'seed + 1' relative to whatever this run started on, so the
+        // expectation is derived, not the literal 2 that was hardcoded for grow/1.
+        checks: {setupShown: !!landed, seedIsNext: landed?.seed === ENTRY_SEED + 1,
+          urlSeedIsNext: new RegExp('[?&]seed=' + (ENTRY_SEED + 1) + '(&|$)').test(landed?.url ?? ''), ctaUsable: ctaUsable === 'itself',
           stylesOffered: (landed?.styles ?? 0) === 3,
           // Graded from now on: replay must come back to the slice entry WITH the starter
           // it was played with. Old records have no `sliceEntry` evidence and read as SKIP

@@ -264,7 +264,11 @@ def one_run(tree, out, profile, http_port, cdp_port, label, driver=DRIVER):
     try:
         line = serve.stdout.readline().strip()
         need(line == f'LISTENING {http_port}', f'server did not announce: {line!r}')
-        r = opened.open(f'http://127.0.0.1:{http_port}/index.html?slice=1&style=grow&seed=1', timeout=5)
+        # #3319b: same entry as the driver uses (the driver holds the truth; this is just
+        # the pre-flight reachability check). Keep the grow/1 default so old receipts replay.
+        style = os.environ.get('ENTRY_STYLE') or 'grow'
+        seed = os.environ.get('ENTRY_SEED') or '1'
+        r = opened.open(f'http://127.0.0.1:{http_port}/index.html?slice=1&style={style}&seed={seed}', timeout=5)
         body = r.read()
         need(r.status == 200 and b'Monopoly 11' in body, 'index.html not served')
         (out / 'served-styles.css.sha256').write_text(sha(tree / 'styles.css') + '  served\n')

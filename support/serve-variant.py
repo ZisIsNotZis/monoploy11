@@ -69,6 +69,36 @@ def is_blocked(norm):
     return _blocked_segments(norm)
 
 
+# #3319d：这条入口原来是一份**黑名单** —— 除了点名的几个目录，仓库里任何文件都能被取走。
+# 先前的证据是 /.git/config 能读到；同样的形状对任何「将来才出现的」文件也成立：
+# 一次误留的浏览器资料（Cookies / Login Data）、一份本地 notes、一个 .env，都会 200。
+# 清空当前目录只能让这一次的检查变绿，管不住下一个文件。
+#
+# 所以改成**白名单**：只发出对照页真的会加载的东西。
+#   · 两个夹具（URL 仍是 /.scratch/...，见 ALIASES / compare_fallback）
+#   · 它们相对引用的 ../styles.css 与 ../src/**（对照页 import 的是同一份产品模块）
+# 其余一律 404 —— 不管它在不在黑名单里、也不管它是不是今天才被创建。
+SERVABLE_EXACT = frozenset({
+    # 对照页与它的注入脚本（URL 仍是 /.scratch/...，见 ALIASES / compare_fallback）
+    '/.scratch/af-variant.html',
+    '/.scratch/af-variant-inject.js',
+    '/.scratch/af-variant-inject.js'.replace('af-variant-inject', 'af-variant.html'),
+    # 原版首页与它的样式：8001 的 `/` 一直是「打开原版」的入口，这一轮不拿走它。
+    # 它只需要 styles.css 与 /src/**，两样都已在白名单里，所以发它不会把仓库打开。
+    '/',
+    '/index.html',
+    '/styles.css',
+})
+SERVABLE_PREFIXES = ('/src/',)
+
+
+def is_servable(norm):
+    """这个路径该不该由 8001 发出去。白名单，不猜。"""
+    if norm in SERVABLE_EXACT:
+        return True
+    return any(norm.startswith(pref) for pref in SERVABLE_PREFIXES)
+
+
 # 尾斜杠：/x.html/ 直接回 200 会让浏览器把最后一段当目录，
 # 相对子资源（./af-variant-inject.js、../styles.css）全部解析错位 ——
 # 页面看似打开、实际没有注入。所以「尾斜杠 + 指向真实文件」一律 301 到规范路径；
@@ -115,6 +145,8 @@ class Handler(SimpleHTTPRequestHandler):
         norm = normalize_url_path(path)
         if is_blocked(norm):
             return INVALID  # 交给 SimpleHTTPRequestHandler 走正常 404
+        if not is_servable(norm):
+            return INVALID   # 白名单之外：一律 404（不依赖它是否在黑名单里）
         fallback = compare_fallback(norm)
         if fallback:
             return fallback
@@ -138,8 +170,8 @@ class Handler(SimpleHTTPRequestHandler):
         if not bare:
             return False  # 根路径 '/' 不动
         target = normalize_url_path(bare)
-        if is_blocked(target):
-            return False  # 被拦前缀不做 301，否则 Location 会把 404 变可见跳转
+        if is_blocked(target) or not is_servable(target):
+            return False  # 被拦/不在白名单的路径不做 301，否则 Location 会把 404 变可见跳转
         if not (os.path.isfile(os.path.join(ROOT, target.lstrip('/')))
                 or compare_fallback(target)):
             return False  # 目录或不存在：交给正常流程，保持目录/404 语义
@@ -154,7 +186,10 @@ class Handler(SimpleHTTPRequestHandler):
         # translate_path 把被拦路径换成 INVALID 哨兵，靠的是「那个文件名不存在」
         # 才落到 404 —— 只要有人在仓库根写个同名文件，被拦路径就会变成它的 200。
         # 所以这里在 handler 层直接拒，不依赖文件系统状态。
-        if is_blocked(normalize_url_path(self.path)):
+        norm = normalize_url_path(self.path)
+        # 白名单也在这里再判一次（不是只靠 translate_path 换 INVALID 哨兵）：
+        # 哨兵靠「那个名字在盘上不存在」才落到 404，而白名单之外的名字将来可能有文件。
+        if is_blocked(norm) or not is_servable(norm):
             self.send_error(404, 'File not found')
             return True
         return False

@@ -161,12 +161,49 @@ export function sliceTargetIds(state, player, cardId) {
 // 只读：不改 state、不读随机数、不算金额以外的任何东西。
 // 数字一律走 rentFor（引擎同一个函数），所以与真实结算一致；
 // 但它随等级/旺季/停业变，调用方必须写「现在」，不能当固定值（#554 的规矩）。
+// #3319：用卡后是多少，**不能**用「现在 ×2 / 归零」的公式推。
+// 引擎在 game.js:543/500 只是把计时器**重设**成 3 / 2 天，不叠加；
+// 而 rentFor 只要 inflate>0 就已经翻倍、closed>0 就已经归零。
+// 所以对一条「已在旺季」的街，用卡后的租金和现在**一模一样**，变的是还能持续几天。
+// 旧公式在这处会说谎（实测 2,668 行可见行里 58 行是假的，例如已翻倍的 22,400 被写成 44,800），
+// 而且这些假行恰好变化量最大、被排序顶到最上面。
+//
+// 现在改成真的照引擎的做法改一次计时器、再读同一个 rentFor，读完立刻恢复 ——
+// 与 upgradeAfterLine / buildOpportunityLine 同一套只读夹具，公式不再有第二份。
+const CARD_TIMER = { inflate: 3, close: 2 };   // slice 档；完整模式 6 / 5
+export function rentAfterStreetCard(state, street, cardId, mode = state?.config?.mode) {
+  if (!CARD_TIMER[cardId]) return null;
+  const plots = state.map.plots.filter(p => p.street === street);
+  const saved = plots.map(p => ({ id: p.id, pr: state.properties[p.id],
+    closed: state.properties[p.id]?.closed, inflate: state.properties[p.id]?.inflate }));
+  const out = new Map();
+  try {
+    for (const p of plots) {
+      const pr = state.properties[p.id];
+      if (!pr) continue;
+      if (cardId === 'inflate') pr.inflate = mode === 'slice' ? 3 : 6;
+      if (cardId === 'close') pr.closed = mode === 'slice' ? 2 : 5;
+    }
+    for (const p of plots) out.set(p.id, rentFor(state, p.id));
+  } finally {
+    for (const s of saved) {
+      if (!s.pr) continue;
+      if (s.closed === undefined) delete s.pr.closed; else s.pr.closed = s.closed;
+      if (s.inflate === undefined) delete s.pr.inflate; else s.pr.inflate = s.inflate;
+    }
+  }
+  return out;
+}
+
 export function streetCardModel(state, viewer, cardId) {
   const viewerId = viewer?.id ?? null;
   const streets = [...new Set(state.map.plots.map(p => p.street))];
   const rows = streets.map(street => {
     const plots = state.map.plots.filter(p => p.street === street);
+    // 用卡后的单块租金由引擎自己给出（照计时器改一次再读 rentFor），不在这里乘。
+    const postRent = rentAfterStreetCard(state, street, cardId);
     let mineCount = 0, oppCount = 0, unowned = 0, mine = 0, opponent = 0;
+    let afterMine = 0, afterOpponent = 0;
     let closed = 0, inflate = 0;
     // 单块租金也一并带出来：判据要能区分「街级合计」与「地图上本来就有的一块租」。
     const plotRents = [];
@@ -176,17 +213,28 @@ export function streetCardModel(state, viewer, cardId) {
       const rent = rentFor(state, plot.id);
       if (rent) plotRents.push(rent);
       if (!owner) { unowned += 1; continue; }
-      if (owner.id === viewerId) { mineCount += 1; mine += rent; }
-      else { oppCount += 1; opponent += rent; }
+      // 用卡后归属不会变（旺季/停业都不换主人），所以按同一个 owner 分两边加。
+      const after = postRent?.get(plot.id) ?? rent;
+      if (owner.id === viewerId) { mineCount += 1; mine += rent; afterMine += after; }
+      else { oppCount += 1; opponent += rent; afterOpponent += after; }
       // 只要有一块还在计时，这条街就还没恢复 —— 取最大值，别用「任意一块」冒充整条街。
       if ((pr?.closed ?? 0) > closed) closed = pr.closed;
       if ((pr?.inflate ?? 0) > inflate) inflate = pr.inflate;
     }
-    // 用卡后：旺季租金翻倍，停业是 0。只算有主地产 —— 无主空地本来就不收租。
-    const after = cardId === 'inflate' ? { mine: mine * 2, opponent: opponent * 2 }
-      : cardId === 'close' ? { mine: 0, opponent: 0 }
-      : { mine, opponent };
-    return { street, mineCount, oppCount, unowned, mine, opponent, after,
+    // #3319：
+    //   旺季 —— 我方由 mine→after.mine（多收），对方由 opponent→after.opponent（我踩到就多付）
+    //   停业 —— 对方收不到（我踩到不用付，好事），我方也收不到（我少赚，坏事）
+    // 方向按真实付款方写（flow.js:599：踩到的人付给地主）。
+    //
+    // 这个数是这一屏**唯一**的排序/点名依据：
+    // 卡面（supplyWorth）、选街屏的排序、标题里点名的那条街，都从这里取。
+    // 上一版是在 insight.js 与 render.js 各写一份公式 —— 两份公式一定会漂，
+    // 而漂出来的正是「两屏互相打脸」这种最难当场发现的错。
+    const net = cardId === 'inflate' ? (afterMine - mine) - (afterOpponent - opponent)
+      : cardId === 'close' ? (opponent - afterOpponent) - (mine - afterMine)
+      : null;
+    return { street, mineCount, oppCount, unowned, mine, opponent,
+      after: { mine: afterMine, opponent: afterOpponent }, net,
       closed, inflate, owned: mineCount + oppCount, plotRents };
   });
   // 只留「用卡会影响谁」的街：全无主的街放上去只是噪声。
@@ -239,9 +287,12 @@ export function supplyWorth(state, viewer, cardId) {
         street: r.street,
         // 我在这条街上每次踩到自己地盘收多少 / 踩到对手地盘付多少
         myGain: r.mine, myCost: r.opponent,
-        // 用卡后对我的净效果（每次踩到的量）
-        net: cardId === 'inflate' ? (r.mine * 2 - r.mine) - (r.opponent * 2 - r.opponent)
-                                 : (0 - r.mine) + r.opponent,
+        // 用卡后分别会变成多少（渲染层要写「对手 X→Y」时用同一个数）
+        myGainAfter: r.after.mine, myCostAfter: r.after.opponent,
+        // 用卡后对我的净效果（每次踩到的量）—— 由 streetCardModel 算一次，这里不重写公式。
+        // #3319：它基于 r.after（引擎照计时器重设后读出的 rentFor），不是「现在×2 / 归零」。
+        // 已在旺季的街再开旺季，租金不变（计时器重设），旧公式会报一个不存在的翻倍。
+        net: r.net ?? 0,
       }))
       .filter(r => r.myGain > 0 || r.myCost > 0);
     // 选「对我最有利」的那条，而不是「对手最大」的那条。

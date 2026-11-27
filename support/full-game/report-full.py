@@ -98,7 +98,14 @@ def main():
     # F5: replay lands somewhere a human can start again from.
     replay = load('record-10-replay.json')
     checks['F5 replay landed on setup'] = replay['checks']['setupShown']
-    checks['F5 replay advanced the seed'] = replay['checks']['seedIs2'] and replay['checks']['urlSeedIs2']
+    # #3319b: the driver used to hardcode "seed 2" because every run started on seed 1
+    # (replay writes seed+1). With the entry seed parameterised the expectation is derived
+    # (`seedIsNext`), so read the new key when present and fall back to the old name -
+    # receipts produced before this change still say `seedIs2` and must stay judgeable.
+    rc = replay['checks']
+    seed_ok = rc.get('seedIsNext', rc.get('seedIs2'))
+    url_ok = rc.get('urlSeedIsNext', rc.get('urlSeedIs2'))
+    checks['F5 replay advanced the seed'] = bool(seed_ok and url_ok)
     checks['F5 replay offered all three styles'] = replay['checks']['stylesOffered']
     checks['F5 replay button pressable'] = replay['checks']['ctaUsable']
     # 三态，与 F2/F6 同一条规矩：旧记录（本条判据存在之前跑的）没有这两项证据，
@@ -137,8 +144,27 @@ def main():
     eaten = [p for p in swallowed if str(p.get('tag', '')).startswith(('action:roll', 'action:card'))]
     probes = [p for p in plog if isinstance(p.get('after'), dict)]
     # 进判决：缺陷记录必须**红**，干净记录绿或 SKIP —— 只在某一版上出色的判据不算判据。
+    # #3319c: 这条以前只对 action:* 发言（非动作屏作答后不重画，量具问不出所以然）。
+    # 现在非动作屏作答后也会把按钮置灰，所以判据扩到**所有**按下的控件：
+    # 「按下的控件 80ms 后仍 enabled」在任何一屏上都是「点击没被接住」。
     checks['F6 no press on a control that had already stopped accepting'] = (
-        None if not probes else (not eaten))
+        None if not probes else (not swallowed))
+
+    # #3319b：选街屏的「取消」必须**真的关掉这一屏**。
+    # 为什么需要单独一条：这一屏在 390×844 上曾经整块落在 #hand 的裁切线以下
+    # （面板下沿 857.5 / 裁切 837，取消键中心 838），而 F6 只问「按下的控件有没有销账」，
+    # 它回答不了「手根本没伸到那颗键上」。判据必须是「按到了 + 屏真的关了」两件事：
+    #   · 按下时 elementFromPoint 中心命中的是它自己（hit == 'itself'）；
+    #   · 按下后屏消失（after.panelHidden == True）且手牌回来（after.cardsVisible == True）。
+    # 只认这种**结果**证据：没有 cancel 按压的旧记录一律 SKIP，不拿几何数字冒充“点到了”。
+    cancels = [p for p in plog if str(p.get('tag', '')).endswith(':cancel-pick')]
+    cancel_ok = None if not cancels else all(
+        p.get('hit') == 'itself'
+        and isinstance(p.get('after'), dict)
+        and p['after'].get('panelHidden') is True
+        and p['after'].get('cardsVisible') is True
+        for p in cancels)
+    checks['F7 street-picker cancel press actually dismissed the panel'] = cancel_ok
 
     for k, v in checks.items():
         print(f'{"SKIP" if v is None else "PASS" if v else "FAIL"}  {k}'
@@ -163,10 +189,12 @@ def main():
     else:
         acts = [p for p in probes if str(p.get('tag', '')).startswith(('action:roll', 'action:card'))]
         bub = [p for p in acts if p.get('bubble')]
-        print(f'gate: OK -- {len(acts)} action-control press(es) carried acknowledgement evidence; '
-              f'{len(bub)} of them landed while a bubble was live and were still taken '
-              '(the control went disabled within 80ms). Non-action screens are NOT claimed: '
-              'answer() only repaints the action screen.')
+        # #3319c：这一句以前写「Non-action screens are NOT claimed」——那时非动作屏作答后不重画，
+        # 量具确实问不出所以然。现在它们也会置灰，F6 已覆盖所有屏，这句话反过来会误导读回执的人。
+        print(f'gate: OK -- {len(probes)} press(es) carried acknowledgement evidence on any screen; '
+              f'{len(acts)} of them were action controls, {len(bub)} landed while a bubble was live and '
+              'were still taken (the control went disabled within 80ms). Non-action screens ARE claimed '
+              'now: answer() greys their panel buttons before the engine advances.')
     bad = [k for k, v in checks.items() if v is False]
     skipped = [k for k, v in checks.items() if v is None]
     print()

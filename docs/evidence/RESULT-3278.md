@@ -238,12 +238,29 @@ F6 也明确只对动作屏发言，报告里那句 `Non-action screens are NOT 
   | 根提交 `git archive \| tar -x` 到空目录 | 文件数与 `FILES` 逐一相等；套件全绿、整局 **23 PASS / 0 SKIP** + `SEALED` + `VERDICT: PASS`（**不需要任何手工暂存**，见下） |
   | 快进提交 `git worktree add --detach … release/3278-narrow-slice` | 同左；且 `git rev-list --count origin/master..HEAD` = 1、父提交就是 `origin/master` —— 这是「`git pull --ff-only` 会成功」的实测替身 |
 
-  合入者只关心三件事，都已经量过：**只多一个提交**（`git rev-list --count origin/master..HEAD` = 1）、
-  **一个文件都不删**（`git diff --name-status origin/master <提交> | grep -c '^D'` = 0）、
-  **父提交就是 `origin/master`**（`git rev-parse <提交>^` = `origin/master`）。
-  另有 6 个 `origin/master` 上存在、清单没点名的文件（`.gitignore`、`.nojekyll`、`docs/0_STAGING.md`、
+  合入者只关心三件事，都已经量过：**只多一个提交**（`git rev-list --count <基线>..HEAD` = 1）、
+  **一个文件都不删**（`git diff --name-status <基线> <提交> | grep -c '^D'` = 0）、
+  **父提交就是基线**（`git rev-parse <提交>^` = 基线）。
+  另有 6 个线上版本存在、清单没点名的文件（`.gitignore`、`.nojekyll`、`docs/0_STAGING.md`、
   `docs/1_PROBLEM.md`、`docs/4_USECASE.md`、`tools/tts.py`）在快进提交里**原样保留**；
   根提交里没有它们——这是两种形状唯一实质差别，不要把它读成“交付少东西”。
+
+  **基线不是 `origin/master`，而是线上那一版。** 这一段原先写「父提交就是 `origin/master`」，
+  那是拿远端默认分支当“用户手上那一版”，而这两者在这里并不是同一个东西，实测：
+  `origin/master` = `7ad1f8a`，它的父提交是 `a79c1af`（更早发布的那一版），两者都是从 `a79c1af` 分出去的兄弟。
+  `a873a66` 是 `a79c1af` 的另一个子，**不能**沿 `7ad1f8a` 快进。
+  这一轮（#3319）因此把基线改成 **`7ad1f8a`（当前线上版本）**：
+
+  ```bash
+  python3 support/full-game/make-candidate.py --onto 7ad1f8a --branch release/3319-picker
+  ```
+
+  实测：父提交 = `7ad1f8a`、`git rev-list --count 7ad1f8a..HEAD` = 1、删除 0。
+  教训写在这里而不是留在记忆里：**发布基线永远是“用户手上那一版”，不是远端默认分支**——
+  这条上一轮已经被指出过一次，而同一份报告里又把它写回去了（因为文档抄了旧结论）。
+
+  线上版那两份文档（本文件与 `6_SLICE.md`）里也还留着同一句旧话，本轮一并改正；
+  它们本来就在清单里，所以交付集带的就是改正后的版本。
 
   两种形状下，390×844 整局都是 **44 按 / 买地 2 / 差 27,800**，与 §2 的 `OUT-W` 逐字相同；
   360×640 在候选上重跑仍是 **差异 5,400、先整页滚一次**，即 §5.1 的边界没有被这次交付改动。
@@ -253,7 +270,8 @@ F6 也明确只对动作屏发言，报告里那句 `Non-action screens are NOT 
   `blocked-*`，第一句是「端口上没有正常的 serve-variant.py」——看起来像服务坏了。
   现在 URL → 文件的映射在 [serve-variant.py](../../support/serve-variant.py) 里：
   `.scratch/<名>` 不存在时取 `support/compare/<名>`，`clean-checkout.py` 也不再手工暂存。
-  已验证：把发布提交抽到**完全没有 `.scratch` 的目录**里，532/532 全绿。
+  已验证：把发布提交抽到**完全没有 `.scratch` 的目录**里，套件 545/545 全绿、整局 `VERDICT: PASS`
+  （个数随测试文件变化，以自己那次运行的输出为准，不要抄这里的数字）。
 
   **未做的部分**：没有推送、没有在远端重建。两个分支都只在做了这次提交的这台机器上；
   跨机器分发要么主管推一次，要么用 `git bundle`（未做，属于「发布」而不是「交付」）。

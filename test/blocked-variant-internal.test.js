@@ -178,7 +178,9 @@ test('8001 的 .scratch 仍可达（不能为了安全把对照页一起堵掉�
   assert.equal(inject.sha16, INJECT_FP);
 });
 
-test('8001 根路径仍发原版首页（拦截没误杀）', async () => {
+// #3319d：白名单之后 8001 仍然发原版首页（它是玩家入口，不拿走），
+// 但「发首页」不再等于「整个仓库都可取」—— 首页只需要 styles.css 与 /src/**。
+test('8001 根路径仍发原版首页（白名单没误杀玩家入口）', async () => {
   const res = await get(port, '/');
   assert.equal(res.status, 200);
   assert.equal(res.len, 5108);
@@ -198,7 +200,7 @@ test('8001 的 HEAD 对内部目录同样 404，对 .scratch 同样 200', async 
   assert.equal((await get(port, '/.git/config', 'HEAD')).status, 404, 'HEAD /.git/config 期望 404');
   assert.equal((await get(port, '/.praxis2/', 'HEAD')).status, 404, 'HEAD /.praxis2/ 期望 404');
   assert.equal((await get(port, '/.scratch/af-variant.html', 'HEAD')).status, 200, 'HEAD 对照页被误杀');
-  assert.equal((await get(port, '/', 'HEAD')).status, 200, 'HEAD / 被误杀');
+  assert.equal((await get(port, '/', 'HEAD')).status, 200, 'HEAD / 被误杀（原版入口）');
 });
 
 // 被拦前缀的尾斜杠不该发 301（否则 404 变成一次可见跳转）。
@@ -347,5 +349,50 @@ test('`.scratch` 下不能残留浏览器 profile（否则登录库/Cookies 会�
     }
   };
   walk(SCRATCH);
-  assert.deepEqual(offenders, [], '.scratch 里残留了浏览器 profile 或凭据文件，8001 会把它们发出去: ' + offenders.join(' | '));
+  // #3319d：这条以前是**唯一**的防线 —— 它要求 `.scratch` 里从不留东西，
+  // 因为 8001 的静态根是仓库根，只要留了就发得出去。白名单接管之后，问题变了：
+  // 「留了也发不出去」。所以这里不再要求磁盘干净（那靠人记得清，靠不住），
+  // 而是把这条守卫的真问题**用同一个名字去问 8001**：这些残留能不能被取走。
+  // 保留 offenders 的列表只作为语境（它可能非空，且**不算失败**）。
+  const leaky = offenders.filter(rel => {
+    // 名字 → 8001 会不会发。走服务器自己的判定，不在这里重写一份路径规则。
+    const url = '/' + rel.split(path.sep).join('/');
+    const m = runPy(IMPORT_PRELUDE + `
+print('servable', m.is_servable(m.normalize_url_path(${JSON.stringify(url)})))
+`);
+    return /servable True/.test(m);
+  });
+  assert.deepEqual(leaky, [], '这些残留会被 8001 发出去（白名单没盖住）: ' + leaky.join(' | '));
+});
+
+// #3319d：8001 的边界必须是**白名单**，不能是「点名的几个目录不许」。
+// 黑名单只能管住今天想得到的路径：/.git/config 曾经能读，一次误留的浏览器资料
+// 或明天新增的任何文件同样会 200。这三条验的是「未来文件也拦得住」这件事本身。
+test('白名单：只发对照页真的会加载的东西，别的名字一律不发', () => {
+  const out = runPy(IMPORT_PRELUDE + `
+served = ['/.scratch/af-variant.html', '/.scratch/af-variant-inject.js', '/styles.css',
+          '/src/main.js', '/src/ui/render.js', '/src/data/slice.js']
+# served: / and /index.html are the plain entry; they need only styles.css + /src/**,
+# both allowed above. Everything else in the repo is refused, including future names.
+blocked = ['/.scratch/anything-else', '/.scratch/sub/dir/file', '/README.md',
+           '/support/serve-variant.py', '/tools/play.mjs', '/docs/evidence/x.json',
+           '/.scratch/newfile.txt', '/brand-new-file.txt', '/package.json']
+missed = [p for p in served if not m.is_servable(m.normalize_url_path(p))]
+leaked = [p for p in blocked if m.is_servable(m.normalize_url_path(p))]
+print('SERVED-MISSED', missed)
+print('LEAKED', leaked)
+`);
+  assert.match(out, /SERVED-MISSED \[\]/, `对照页真的会加载的资源被白名单挡了：\n${out}`);
+  assert.match(out, /LEAKED \[\]/, `白名单之外的文件仍会被发出：\n${out}`);
+});
+
+test('白名单对「今天还不存在的文件」同样成立（不是按文件名碰运气）', () => {
+  // 这条故意问的是两个**必然还不存在**的名字：规则的形状若退化成黑名单，
+  // 它们就会变成 is_servable True，而这与文件是否存在无关 —— 正是要的那种独立性。
+  const out = runPy(IMPORT_PRELUDE + `
+print('future', m.is_servable('/.scratch/zz-future-cookies'),
+      m.is_servable('/zz-future-notes.txt'),
+      m.is_servable('/.scratch/zz-future-cookies/Default/Cookies'))
+`);
+  assert.match(out, /future False False False/, `将来新增的文件会被发出：\n${out}`);
 });

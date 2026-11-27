@@ -788,9 +788,15 @@ button { font: inherit; }
   /* #3264c：补给屏与加盖屏同根因 —— #choice 被 #hand 裁到 837.5，实测 4 个补给里只有第 1 个
      hit=true，后三个 partial/none（读数见 docs/6_SLICE.md 的 #3264 节）。
      两条选择器并排：哪一屏出现就把哪一屏提上来，互不影响。 */
+  /* #3319b：选街屏（旺季/停业点开后的那张）与上面几屏同一个病：面板挂在 #choice 里，
+     #choice 被 #hand 裁到 837 一带，实测面板下沿 857.5、「取消」中心落在 838 附近 ⇒ 点不到。
+     这屏的形状与加盖/买地完全一样（正文 + 一个提交键），所以用同一条规则把它提成底部固定板，
+     而不是另起一套样式。只多一个选择器：:has(.street-card) 就是选街屏独有的那个列表。
+     「取消」本身不需要 sticky：它就在正文下面，面板提上来之后整块都在窗里。 */
   #choice:not([hidden]):has([data-act="build"]),
   #choice:not([hidden]):has([data-act="buy"]),
   #choice:not([hidden]):has([data-replay]),
+  #choice:not([hidden]):has(.street-card),
   #choice:not([hidden]):has(.supply-options) {
     position: fixed;
     left: 0;
@@ -832,7 +838,9 @@ button { font: inherit; }
   #choice:not([hidden]):has([data-act="build"]) [data-act="build"],
   #choice:not([hidden]):has([data-act="build"]) [data-act="skip"],
   #choice:not([hidden]):has([data-act="buy"]) [data-act="buy"],
-  #choice:not([hidden]):has([data-act="buy"]) [data-act="skip"] {
+  #choice:not([hidden]):has([data-act="buy"]) [data-act="skip"],
+  /* #3319b：窄屏上「取消」也要拇指点得到，与上面两组提交键同规格（≥48px）。 */
+  #choice:not([hidden]):has(.street-card) [data-act="cancel-pick"] {
     display: inline-block;
     width: calc(50% - 4px);
     min-height: 48px;
@@ -844,5 +852,36 @@ button { font: inherit; }
     z-index: 2;
     background: var(--panel);
     box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
+  }
+}
+
+/* #3319b：窄屏动作屏上三张手牌一张都点不到（实测 reachable 0/3）。
+
+   根因：`#hand{flex:0 1 auto; min-height:0; overflow:visible}` 在 390×844 被压成 60px，
+   而内容 259px（#cards 两列 213 + 骰 46）。压小 + 不滚 ⇒ #cards 从 823 画到 1036，
+   越过 #hand 的 837 边界，落进窗口外（窄屏页面本身不可滚），elementFromPoint 全不是自己。
+   这不是本片引入的：线上 7ad1f8a 同视口同走法实测 reachable 0/3（receipt-3319 里有原始读数）。
+
+   修法（三件事，都沿用本文件已有的、已验收的形态，不另造一套）：
+     ① 手牌在窄屏排成**单行横向滚动**（与 ≤795px 桌面那条 #cards{display:flex;overflow-x:auto} 同形），
+        手牌高度从此与牌数无关：259px → 约 160px；
+     ② #hand 不再被压：flex:0 0 auto，按内容高占位；
+     ③ 剩下的空间给 #insight（它是 flex 列里唯一可收缩的），并让它自己滚 ——
+        这样「你上回合资金变化」仍在，只是要滚/展开，而不是把整块删掉。
+
+   代价写在明处：窄屏动作屏上 #insight 不再是 151px 的常驻大块，会被压进剩余高度里滚动。
+   这是这一档为了「手牌能点」付的价。桌面（≥761px）与决策屏完全不受影响。 */
+@media (max-width: 760px) {
+  .slice-mode #side:has(#hand:not(.choice)) { display: flex; flex-direction: column; min-height: 0; }
+  .slice-mode #hand:not(.choice) { flex: 0 0 auto; min-height: 0; }
+  .slice-mode #hand:not(.choice) #cards {
+    display: flex; flex-direction: row; flex-wrap: nowrap; grid-template-columns: none;
+    overflow-x: auto; overflow-y: hidden; max-height: none; min-height: 0; gap: 6px;
+  }
+  .slice-mode #hand:not(.choice) #cards .slice-card {
+    flex: 0 0 104px; min-height: 0; height: 96px; overflow: hidden;
+  }
+  .slice-mode #side:has(#hand:not(.choice)) > #insight {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   }
 }

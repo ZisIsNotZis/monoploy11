@@ -1,0 +1,44 @@
+{
+ "source_run": "OUT-3319-final",
+ "cut_by": "support/full-game/make-receipt.py",
+ "judged_same_as_raw": true,
+ "raw": {
+  "record-8-summary.json": {
+   "bytes": 317097,
+   "sha256": "23aa1b32becbba9caf6928b6cff035c68d73e54d05ddda009f2c4b4b9e7e2772"
+  },
+  "record-10-replay.json": {
+   "bytes": 656,
+   "sha256": "5c6ec709b292bb3ef04cdd74ef68493495b94677a963fefd5b81c2823374a0ae"
+  },
+  "after.json": {
+   "bytes": 126,
+   "sha256": "bdf1c0a1a98d133763097a68c112650a3b95d18673beb61813a52b40fc3d5738"
+  }
+ },
+ "slim": {
+  "record-8-summary.json": {
+   "bytes": 89830,
+   "sha256": "a2b06c4160a651a8bfa63fcd5089c73214308265df643bff50eb8a67bdc2ee96"
+  },
+  "record-10-replay.json": {
+   "bytes": 588,
+   "sha256": "95c0678b0705c57a8f7866df69d9ef12f45ce1a97a582f82bc2342d494542b4d"
+  },
+  "after.json": {
+   "bytes": 90,
+   "sha256": "19d347e33e3e6c2e1b1ba61e0b8a267916a239bad130e6ee9bba122197b74511"
+  }
+ },
+ "dropped_fields": {
+  "record-8-summary.json": [
+   "hintInserts",
+   "firstFrames",
+   "replay"
+  ],
+  "record-10-replay.json": [],
+  "after.json": [
+   "host_chrome_total"
+  ]
+ }
+}

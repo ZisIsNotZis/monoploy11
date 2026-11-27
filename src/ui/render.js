@@ -531,9 +531,16 @@ function renderChoice(el, state, p, actions) {
     // 街级数字全走 streetCardModel（内部 rentFor），与真实结算同源。
     if (state.slice && state.mapPick?.value === 'street') {
       const rows = streetCardModel(state, p, state.mapPick.cardId);
-      // 按「对手每次踩到的钱变化」降序：玩家要判的就是这条。
-      const delta = r => Math.abs(r.after.opponent - r.opponent);
-      const sorted = rows.slice().sort((a, b) => delta(b) - delta(a));
+      // #3319：排序键必须与卡面/补给屏的「对你值多少」是同一个数。
+      // 旧键是 |对手每次踩到的钱变化| —— 那会把「帮对手最多的街」排到第一。
+      // 实测 142 帧：45 帧里对你最优的街根本不在 4 条可见行里；63 帧旺季屏的第一行就是亏钱的选择。
+      // 卡面写「对你最值 +14,000 · 晨光街」，同一张卡点开后头四行全是负数的街，那是两屏互相打脸。
+      //
+      // net 不在这里算：streetCardModel 每一行自带（insight.js），supplyWorth 用的也是它。
+      // 本函数上一版自己写了一份公式，于是「同一件事有两份实现」——
+      // 那正是这一轮要修的病，不在新代码里重新种一遍。
+      const netOf = r => r.net ?? 0;
+      const sorted = rows.slice().sort((a, b) => netOf(b) - netOf(a));
       const MAX = 4;
       const shown = sorted.slice(0, MAX);
       const rest = sorted.slice(MAX);
@@ -542,19 +549,47 @@ function renderChoice(el, state, p, actions) {
         // 用词不能省：「已停业」「已在旺季」是玩家判 0 元的唯一依据（S4）。
         const mark = r.closed > 0 ? `·已停业${r.closed}天`
           : r.inflate > 0 ? `·已在旺季${r.inflate}天` : '';
-        const own = r.mineCount ? ` 你${money(r.mine)}→${money(r.after.mine)}` : '';
-        // #683 同类规矩：只写会变的东西。对手 0 元的街写「对手 0→0」是噪声，
-        // 它还会白占一个名额、把真有代价的街挤进「还有 N 条」。
-        const oppPart = r.oppCount > 0 ? `：对手${money(r.opponent)}→${money(r.after.opponent)}` : '';
+        // #683 规矩「只写会变的东西」在这里要读对：**不写的应该是箭头，不是金额**。
+        // 已在旺季的街再开旺季，租金不变（计时器重设），
+        //   「对手5,600→5,600」浪费一行宽度，还让这行折成 2 行 ——
+        //   390×844 实测正是这个折行把「取消」顶出 #hand（行 44.8px vs 22.4px，下沿 865 > 837）。
+        // 但把金额整个删掉更坏：玩家仍然要看这个数才能比较，只是不需要看第二次。
+        // 所以不变时写一次（「对手5,600」），变时照旧写两下（「对手5,600→11,200」）。
+        const pair = (label, before, after) => {
+          if (!before && !after) return '';
+          return before === after ? `${label}${money(before)}` : `${label}${money(before)}→${money(after)}`;
+        };
+        const own = r.mineCount ? ` ${pair('你', r.mine, r.after.mine)}` : '';
+        const oppPart = r.oppCount ? `：${pair('对手', r.opponent, r.after.opponent)}` : '';
         // 单条目标点：≤40 字（S6）。空格只省字不省信息，所以计数与金额之间不空。
         return `<li>${r.street} 你${r.mineCount}间/对手${r.oppCount}间${mark}${oppPart}${own}</li>`;
       };
-      const more = rest.length
-        ? `<li>还有 ${rest.length} 条，最高 ${rest.slice().sort((a, b) => b.opponent - a.opponent)[0].street}</li>`
-        : '';
+      // 被截断的街不是消失：点出剩下的里仅次于已列出的那条（同 net 键）。
+      const more = rest.length ? `<li>还有 ${rest.length} 条，对你最值 ${rest[0].street}</li>` : '';
       // 字数：卡牌长描述在本帧重复无益（地图上同一张卡已高亮），换成一句动作指令。
-      // 单条 ≤40 字，整框 ≤200 字（判据 S6）；超出的街用「还有 N 条」概括并点出最大一条。
-      el.innerHTML = `<h3>${name}</h3><p class="hint">点这条街的地产即可 · 数字是现在每次踩到的租 → 用卡后</p>` +
+      // 单条 ≤40 字，整框 ≤200 字（判据 S6）；超出的街用「还有 N 条」概括并点出对你最值的那条。
+      //
+      // #3319：把「这次该点哪条」直接写在标题下那一行。旧文案只说「数字是现在→用卡后」，
+      // 五行数要玩家自己横向比较；现在直接给出 net 最高的街（与上面排序同一个数）。
+      //
+      // 四种局面必须四句话，尤其 bestNet===0 的两种不能合并：
+      //   ① 所有街都是 0（都已在本卡的状态里）：开哪条都一样，那确实「不动账」。
+      //   ② 最好的那条是 0，但其他街对你是负的（开在对手街上只会帮他）：
+      //      这时说「对你都不动账」是假话。实测 grow/1 D4 就是这一种：
+      //      晨光街（已在旺季）0，而晚风街/灯火街各 -5,600。
+      // 每一句都在真页面上量过 390×844 与 1280×800 都是 1 行、
+      // 「取消」中心命中 itself（见证据 receipt-3319/picker-live.md）；
+      // 这个上限不是审美：2 行时 choice 下沿 865 越过 #hand 的 837，取消键真的点不到 ——
+      // 旧文案里那条不变的「你22,400→22,400」折行就是这个后果（已一并去掉）。
+      const bestRow = sorted[0] ?? null;
+      const bestNet = bestRow ? netOf(bestRow) : 0;
+      const worstNet = bestRow ? netOf(sorted[sorted.length - 1]) : 0;
+      const bestPart = !bestRow ? ''
+        : bestNet > 0 ? `对你最值 +${money(bestNet)} · ${bestRow.street}`
+        : bestNet < 0 ? `最好也亏 ${money(-bestNet)}（${bestRow.street}）`
+        : worstNet < 0 ? `${bestRow.street} 不动账，其余帮对手`
+        : `全都不动账`;
+      el.innerHTML = `<h3>${name}</h3><p class="hint">数字是现在每次踩到的租 → 用卡后${bestPart ? `；${bestPart}` : ''}</p>` +
         `<ul class="street-card">${shown.map(line).join('')}${more}</ul><button data-act="cancel-pick">取消</button>`;
       el.querySelector('[data-act="cancel-pick"]').onclick = () => actions.act('cancel-pick');
       return;

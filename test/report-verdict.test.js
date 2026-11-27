@@ -85,7 +85,12 @@ test('见过买地屏：F2 如实判定，不是 SKIP', () => {
   assert.equal(out.code, 0, out.out);
   assert.match(line(out.out, 'F2 buy screen usable at first frame'), /^PASS /);
   assert.match(line(out.out, 'F2 a land purchase happened'), /^PASS /);
-  assert.ok(!/NOT JUDGED/.test(out.out), '全部判过的时候不应出现「没判」一行');
+  // #3319b: 「全部判过的时候不应出现未判行」原本写成「输出里不许有 NOT JUDGED」。
+  // 现在有一条判据（F7 选街屏取消）只在线下走到那张屏时才能判，所以这句话的正确形式是：
+  // **本夹具关心的那几项**都与 SKIP 无关。全局禁令会把「另一屏这局没走到」误判成回归。
+  for (const label of ['F2 buy screen usable at first frame', 'F2 a land purchase happened']) {
+    assert.doesNotMatch(line(out.out, label), /^SKIP /, `${label} 不应因为没样本而 SKIP`);
+  }
 });
 
 test('见过买地屏但首帧不可用：必须 FAIL', () => {

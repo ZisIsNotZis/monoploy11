@@ -12,6 +12,7 @@ import { aiAnswer } from '../src/engine/ai.js';
 import { render } from '../src/ui/render.js';
 import { streetCardModel } from '../src/engine/insight.js';
 import { reachableWithin } from '../src/engine/board-v2.js';
+import { readFileSync } from 'node:fs';
 
 class Element {
   constructor() {
@@ -239,16 +240,111 @@ test('#741 两种卡的语义不能反：旺季让对手多收，停业让对手
   const close = HUMAN.filter(f => f.cardId === 'close');
   assert.ok(inflate.length > 0 && close.length > 0,
     '样本缺卡型：inflate ' + inflate.length + ' / close ' + close.length);
+  // #3319：旧断言写的是「旺季后 = 现在 ×2」。那只在街上**还没在旺季**时成立。
+  // 引擎（game.js:543）是把计时器重设成 3 天，不叠加；rentFor 只要 inflate>0 就已经翻倍，
+  // 所以对一条已在旺季的街，用卡后 = 现在。旧断言把这条错写成了规则，
+  // 于是 58 行假数字（已翻倍的 22,400 被写成 44,800）永远绿着。
+  // 正确规则只有一条：**用卡后 = 引擎照计时器重设一次后读出的 rentFor**。
   for (const f of inflate) {
-    for (const r of f.model) assert.equal(r.after.opponent, r.opponent * 2, '旺季后对手租应为两倍');
+    for (const r of f.model) {
+      if (r.inflate > 0) assert.equal(r.after.opponent, r.opponent, '已在旺季的街再开旺季，租不变（只重置天数）');
+      else assert.equal(r.after.opponent, r.opponent * 2, '不在旺季的街开旺季，对手租应为两倍');
+    }
   }
   for (const f of close) {
-    for (const r of f.model) assert.equal(r.after.opponent, 0, '停业后对手租应为 0');
+    for (const r of f.model) assert.equal(r.after.opponent, 0, '停业后对手租应为 0（停业不叠加，本来就 0 也是 0）');
   }
-  // 屏幕上必须把这两种后果写出来，而不是只写街名
+  // 屏幕上必须把这两种后果写出来，而不是只写街名。
+  // #3319：一条街已经在本卡的状态里时，用卡后**不变**，那一行不再写「0→0」式的假变化，
+  // 而是用行首的「已停业N天 / 已在旺季N天」交代。所以放行两种写法之一，
+  // 但两个都不许：既没有箭头，又没有状态词 —— 那才是真的没写后果。
   for (const f of [...inflate, ...close]) {
     assert.ok(CARD_NAME[f.cardId], '卡名缺失');
-    assert.match(f.text, /对手[\d,]+→[\d,]+/, CARD_NAME[f.cardId] + ' 帧没写对手会变成多少');
+    assert.match(f.text, /对手[\d,]+→[\d,]+|对手\d+间·已(停业|在旺季)\d+天/,
+      CARD_NAME[f.cardId] + ' 帧没写对手会变成多少，也没写这条街已在本卡的状态里');
+  }
+});
+
+// #3319：屏幕上的排序必须与「对你值多少」同一个键，否则卡面与面板互相打脸。
+// 旧排序键是 |对手变化|，实测 142 帧里 53 帧把你最优的街挤出 4 条可见行，
+// 63 帧旺季屏第一行就是亏钱的选择。这里用真渲染的 HTML 验证顺序。
+test('#3319 选街屏按「对你最值」排序，且第一行就是标题里点名的那条', () => {
+  const bad = [];
+  for (const f of HUMAN) {
+    const net = r => f.cardId === 'inflate'
+      ? (r.after.mine - r.mine) - (r.after.opponent - r.opponent)
+      : (r.opponent - r.after.opponent) - (r.mine - r.after.mine);
+    // 屏上行序 = <li> 顺序；第一行是「对你最值」那条（net 降序）。
+    const shown = [...f.html.matchAll(/<li>(\S+?) 你/g)].map(m => m[1]);
+    if (!shown.length) continue;
+    const byNet = f.model.slice().sort((a, b) => net(b) - net(a)).map(r => r.street);
+    if (shown[0] !== byNet[0]) bad.push(`${f.style}/${f.seed} D${f.day} 第一行 ${shown[0]} 应为 ${byNet[0]}`);
+    const best = f.model.find(r => r.street === byNet[0]);
+    if (!f.text.includes(best.street)) bad.push(`${f.style}/${f.seed} D${f.day} 标题没点名 ${best.street}`);
+  }
+  assert.deepEqual(bad.slice(0, 8), [], '选街屏的排序/点名与 net 不一致');
+});
+
+// #3319：不变的数字不许占行。已在旺季的街再开旺季，租金不变 ——
+// 写「你22,400→22,400」既无信息，又让那一行从 22.4px 折成 44.8px；
+// 390×844 实测正是这个折行把「取消」顶出 #hand 可视区（cancel 中心命中 covered-by:side）。
+test('#3319 不变的数字不进行；行高在真页面上保持单行档', () => {
+  // 直接用记录下来的真实面板：任何一行的「A→A」都是可以用行首状态词代替的噪声。
+  const noise = [];
+  for (const f of HUMAN) {
+    for (const m of f.html.matchAll(/<li>([\s\S]*?)<\/li>/g)) {
+      const t = strip(m[1]);
+      // 必须是**整个**金额相等，不是后缀相等：`14,000→0` 里也能回溯出 `0→0`，
+      // 第一版就是被这个回溯骗出 8 条假阳性（数字对，判据错）。
+      const same = /(?:^|[^\d,])(\d[\d,]*)→\1(?![\d,])/g;
+      if (same.test(t)) noise.push(f.style + '/' + f.seed + ' D' + f.day + '「' + t + '」');
+    }
+  }
+  assert.deepEqual(noise.slice(0, 8), [], '这些行写了「X→X」，而它只占宽度不传达信息');
+});
+
+test('#3319 标题的四种局面各说各的话（尤其「都不动账」不能用来掩盖帮对手）', async () => {
+  // 真 state、真 render、真 rentFor；只摆一副「自己的街已在旺季」的局，
+  // 这正是 grow/1 D4 的形状：晨光街 0，而对手两条街各 -5,600。
+  const state = startSession(createSliceConfig({ seed: 1, style: 'grow' }));
+  const human = state.players.find(q => q.controller === 'human');
+  for (const id of ['3,1', '4,1']) { state.properties[id].level = 2; state.properties[id].inflate = 2; }
+  state.day = 4;
+  state.pending = { type: 'target', kind: 'street', cardId: 'inflate' };
+  state.mapPick = { plot: true, value: 'street', cardId: 'inflate', playerId: human.id };
+  const root = { system: new Element(), players: new Element(), board: new Element(), log: new Element(),
+    insight: new Element(), dice: new Element(), cards: new Element(), hand: new Element(), choice: new Element() };
+  render(root, state, new Proxy({}, { get: () => () => {} }));
+  const text = strip(root.choice.innerHTML);
+  const hint = /<p class="hint">([\s\S]*?)<\/p>/.exec(root.choice.innerHTML)?.[1] ?? '';
+  assert.match(text, /不动账，其余帮对手/, '最好那条为 0 而其他街在帮对手时，不许说「都不动账」');
+  assert.doesNotMatch(text, /都对你不动账|全都不动账/, '有街在帮对手时说了「都不动账」');
+  // 同一副局，把自己的街从旺季里拿出来：应当变成正数那句。
+  for (const id of ['3,1', '4,1']) state.properties[id].inflate = 0;
+  const root2 = { system: new Element(), players: new Element(), board: new Element(), log: new Element(),
+    insight: new Element(), dice: new Element(), cards: new Element(), hand: new Element(), choice: new Element() };
+  render(root2, state, new Proxy({}, { get: () => () => {} }));
+  assert.match(strip(root2.choice.innerHTML), /对你最值 \+[\d,]+ · /, '有正收益时必须直接点名最值的那条街');
+});
+
+// #3319：净收益只能有一份实现。
+// 卡面（supplyWorth）与选街屏（streetCardModel/渲染层排序）曾经各写一份公式，
+// 一份用「现在×2」、一份照引擎改计时器，结果两屏对同一条街给出不同的数。
+// 现在行自带 net，渲染层只读不算。如果谁在渲染层里重新写一遍公式，这条会红。
+test('#3319 净收益只有一份来源：渲染层不许自带公式', () => {
+  const src = readFileSync(new URL('../src/ui/render.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('street-card') - 4000, src.indexOf('street-card') + 200);
+  // 渲染层只允许读 r.net，不允许再乘 2 / 相减拼出第二个 net。
+  assert.doesNotMatch(body, /after\.mine\s*-\s*r\.mine|r\.opponent\s*-\s*r\.after\.opponent/,
+    '渲染层又自己算了一份 net（应与 streetCardModel 共用 r.net）');
+  // 模型侧必须真的把 net 放在每一行上，而不是只给 best。
+  const state = startSession(createSliceConfig({ seed: 1, style: 'grow' }));
+  const human = state.players.find(q => q.controller === 'human');
+  for (const r of streetCardModel(state, human, 'inflate')) {
+    assert.equal(typeof r.net, 'number', r.street + ' 行上没有 net');
+  }
+  for (const r of streetCardModel(state, human, 'close')) {
+    assert.equal(typeof r.net, 'number', r.street + ' 行上没有 net');
   }
 });
 

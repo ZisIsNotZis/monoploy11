@@ -223,6 +223,19 @@ function answer(value) {
   // 只对 action 屏这么做：其它屏（direction/buy/...）若在这里抢先重画，会先把它们翻成
   // 动作屏再被引擎换掉，那是另一种闪烁，记在 RESULT 的残余里而不是顺手改。
   if (prompt?.type === 'action') rerender();
+  // #3319c：上面的「只对 action」在补给/选街这类屏上留下同一个洞 —— 实测 D4 补给屏
+  // 被连点 13 次、每次 hit=itself、logLen 恒 1314，直到气泡播完才关。原因不是节奏：
+  // 点中的是**真的那颗按钮**，answer() 已经清了槽，但屏还画在那里，后面 12 次点击
+  // 全部被 `if (!active) return;` 静默丢掉，玩家看不出「这一下已经收下了」。
+  //
+  // 修法与 action 屏同一条规矩（「画出来可点」必须等于「点了会被接住」）：
+  // 作答后立刻把这一屏的按钮全部置灰。不改 DOM 结构、不换屏、不等引擎，
+  // 引擎随后画出的屏会照常覆盖它。`disabled` 同时也让驱动器的 F6 判据
+  // （「按下的控件自己有没有销账」）对非动作屏成立，那条判据此前只对动作屏发言。
+  else if (prompt && prompt.type) {
+    const panel = document.querySelector('#choice');
+    panel?.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  }
   resolve(value);
 }
 
