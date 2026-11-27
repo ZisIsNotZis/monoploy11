@@ -1,5 +1,5 @@
 import { buildAdj, edgeUsable } from './board-v2.js';
-import { rentFor, buyPrice, acquisitionPrice, takeoverEligible } from './economy.js';
+import { rentFor, buyPrice, buildCost, acquisitionPrice, takeoverEligible } from './economy.js';
 import { TUNING } from '../data/tuning.js';
 import { RENT_POOL } from './payback.js';
 
@@ -35,20 +35,60 @@ export function landingInfo(state, player, nodeId) {
     : ['jail','jailGate'].includes(node?.kind) ? 'jail' : null;
   const effectDestination = facility ? state.map.facility?.[facility] ?? nodeId : nodeId;
   const turnsLost = facility ? state.config?.[`${facility}Turns`] ?? TUNING[`${facility}Turns`] : 0;
+  const maxLevel=state.config?.maxLevel??TUNING.maxLevel;
   const plots=(node?.adjacentPlots??[]).map(id=>{
     const plot=state.map.plots.find(p=>p.id===id), pr=state.properties[id];
     const owner=state.players.find(p=>p.id===pr?.ownerId);
-    return {id,name:plot?.name??id,street:plot?.street,level:pr?.level??0,owner:owner?.name??null,
-      own:owner?.team===player.team,price:buyPrice(state,id),rent:rentFor(state,id),closed:pr?.closed??0,inflate:pr?.inflate??0,availableFromDay:plot?.availableFromDay??1};
+    const own=owner?.team===player.team;
+    const level=pr?.level??0;
+    // #3340：停在一块地旁边，钱到底往哪走 —— 由引擎决定，不由这块地的标价决定。
+    // flow.js 里付租那一支第一句就是 `if (owner?.team === p.team) { …加盖询问…; continue; }`，
+    // 即**自己的店不收自己的租**（#3338 实测 31/31 局、155 次停留、一分钱没有）。
+    // 所以「我停在这里会收到多少」只能由这一处算，别处不许再拿 rentFor 当我的收益。
+    //   rentToMe > 0  别人的店：我付给他（负号）
+    //   rentToMe = 0  自己的店 / 无主地：不收也不付
+    const rentToMe = own || !owner ? 0 : -rentFor(state,id);
+    // 自己停在自己店旁唯一真会发生的事：加盖（引擎在同一支里问）。
+    const canBuild = !!own && !(pr?.closed>0) && level>0 && level<maxLevel;
+    const buildAskCost = canBuild ? Math.round((pr?.big?30000:buildCost(level+(state.slice?1:0)))*state.priceIndex) : null;
+    return {id,name:plot?.name??id,street:plot?.street,level,owner:owner?.name??null,
+      own,price:buyPrice(state,id),rent:rentFor(state,id),closed:pr?.closed??0,inflate:pr?.inflate??0,availableFromDay:plot?.availableFromDay??1,
+      rentToMe,canBuild,buildAskCost};
   });
   return {id:nodeId,label:node?.label??'街道',plots,effectDestination,facility,turnsLost,
     risk:plots.reduce((s,p)=>s+(!p.own&&p.owner?p.rent:0),0)};
 }
 
+// #3340：落点旁那块地「对我这笔钱做了什么」的**唯一**措辞。
+//
+// 上一版对三种归属共用同一个形状：「名字：己方/某人 · 租 N」。对别人的店是对的（走过去要付 N），
+// 对自己的店是错的 —— 引擎在自己的店旁从不收租，而是问要不要加盖。
+// 实测（120 局，seed 1–40，`.scratch/3340/mislead.mjs`）：定步屏 3.46 次/局、20.8 个点选项/局，
+// 其中 **25.1%** 的点选项里出现「己方 · 租 N」；这些行里 **89.7%** 的那个数比同屏所有对手租都大，
+// **33%** 是那个点数下唯一的落点信息 —— 也就是说，最能拉动玩家选那个点数的那句话，
+// 在自家店上是假的。平均被印出来的数是 5,669。
+//
+// 自己的店改成说引擎真会问的事（加盖多少钱、封顶没封顶），不再报一个不会到账的租金。
+export function plotVisitLine(p, state) {
+  if (!p.owner) {
+    if (state.day < p.availableFromDay) return `第 ${p.availableFromDay} 天开售`;
+    return `可买 ${p.price.toLocaleString()}`;
+  }
+  if (p.own) {
+    // 停业这件事两侧必须是同一句话（test/closed-rent.test.js 钉的）：
+    // 「不付租」对我自己的店同样成立 —— 我不付，也不收。
+    if (p.closed) return '你的店 · 停业 · 不付租';
+    if (p.canBuild) return `你的店 Lv.${p.level} · 停在这里可加盖 ${p.buildAskCost.toLocaleString()}`;
+    return `你的店 Lv.${p.level} · 自己停在自己的店旁不收租`;
+  }
+  if (p.closed) return `${p.owner} · 停业 · 不付租`;
+  return `${p.owner} · ${p.rentToMe < 0 ? `付租 ${p.rent.toLocaleString()}` : `租 ${p.rent.toLocaleString()}`}`;
+}
+
 export function landingText(state, player, id) {
   const info=landingInfo(state,player,id);
   if(info.facility) return `${info.label}：失去 ${info.turnsLost} 回合，结算后停在${info.facility==='hospital'?'医院':'监狱'}入口`;
-  const details=info.plots.map(p=>`${p.name}：${p.owner?(p.own?'己方':p.owner)+' · '+(p.closed?'停业 · 不付租':`租 ${p.rent.toLocaleString()}`):state.day<p.availableFromDay?`第 ${p.availableFromDay} 天开售`:`可买 ${p.price.toLocaleString()}`}`);
+  const details=info.plots.map(p=>`${p.name}：${plotVisitLine(p,state)}`);
   return details.join(' / ') || (info.label==='零工'?'零工：随机收入，最多 3,000':info.label==='发薪处'?'经过发薪处 +4,000':info.label);
 }
 
@@ -124,8 +164,11 @@ export function routePreview(state, player, forkNode, id, remainingSteps) {
         if (plot.owner) tag = plot.closed ? '停业 · 不付租' : `租 ${plot.rent.toLocaleString()}`;
         else if (plot.availableFromDay && state.day < plot.availableFromDay) tag = `第 ${plot.availableFromDay} 天开售`;
         else tag = `可买 ${(plot.price ?? 0).toLocaleString()}`;
-        const whom = plot.owner ? (plot.own ? '己方' : plot.owner) + ' · ' : '';
-        push(`${plot.street}（${whom}${tag}）`, outlookTier(plot, false));
+        // #3340：己方店不再印一个不会到账的租，改说走过去真能做的事（加盖）。
+        const whom = plot.own ? '己方' : plot.owner ? plot.owner : '';
+        // 到顶（或停业）时也不能回头写租金 —— 那条分支漏掉过一次，正是被本文件的判据咬出来的。
+        if (plot.own) tag = plot.canBuild ? `可加盖 ${plot.buildAskCost.toLocaleString()}` : '自己停在这里不收租';
+        push(`${plot.street}（${whom ? whom + ' · ' : ''}${tag}）`, outlookTier(plot, false));
       }
       if (info.facility) {
         const f = info.facility === 'hospital' ? '医院' : '监狱';
