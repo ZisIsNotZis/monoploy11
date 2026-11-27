@@ -1,0 +1,59 @@
+{
+ "source_run": "OUT-clean-full",
+ "product": {
+  "lock": "docs/evidence/slice-entry-3333.sha256",
+  "lock_sha256": "71e44959d77623847e82bafa780ced897828305cb6d86724d2342059080c46aa",
+  "tree_sha256": "71921f99d3cf4b5b091837d1d602a08f227322acdfa107a0e4a467c99d8f1542",
+  "files": 35
+ },
+ "cut_by": "support/full-game/make-receipt.py",
+ "judged_same_as_raw": true,
+ "raw": {
+  "record-8-summary.json": {
+   "bytes": 281103,
+   "sha256": "d2a5a76be0d357d750a1f76de2a90568789049f71db1589cd177f00b69e65d65",
+   "gz": "raw/record-8-summary.json.gz",
+   "gz_bytes": 14692,
+   "gz_sha256": "e0db51d4b998323f8a958568d32f4c5a49076828ac5428edf40aef85d273c8e8"
+  },
+  "record-10-replay.json": {
+   "bytes": 652,
+   "sha256": "c946cd6b3a24e632ac51b7d623aa1fd45eed525b2d5ec36d1d720b05c9e7f3b3",
+   "gz": "raw/record-10-replay.json.gz",
+   "gz_bytes": 328,
+   "gz_sha256": "406521840e037321560b5dcabb6241386498cca53ce4621cedc85a715ff2e18b"
+  },
+  "after.json": {
+   "bytes": 126,
+   "sha256": "1a1e9d5698005b1a891cda0a750274857f879770df911cef7dc60233c8a2619b",
+   "gz": "raw/after.json.gz",
+   "gz_bytes": 115,
+   "gz_sha256": "c64cc9bc052b49697597306d52ec13833ba0579e0636cee15c296ad9ad85c6eb"
+  }
+ },
+ "slim": {
+  "record-8-summary.json": {
+   "bytes": 74685,
+   "sha256": "5c6854592e9ef4c46f73d1957592f4990c0647c5656666372461a0638aae2c11"
+  },
+  "record-10-replay.json": {
+   "bytes": 584,
+   "sha256": "0af86867184c0efe5940d9069c44ede188aff7c19d75ee48a8749644d4e09648"
+  },
+  "after.json": {
+   "bytes": 90,
+   "sha256": "19d347e33e3e6c2e1b1ba61e0b8a267916a239bad130e6ee9bba122197b74511"
+  }
+ },
+ "dropped_fields": {
+  "record-8-summary.json": [
+   "hintInserts",
+   "firstFrames",
+   "replay"
+  ],
+  "record-10-replay.json": [],
+  "after.json": [
+   "host_chrome_total"
+  ]
+ }
+}

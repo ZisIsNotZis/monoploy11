@@ -213,7 +213,24 @@ function renderBoard(el, state, currentP, actions) {
       ? state.mapPick.takeover.rows.find(r => r.id === plot.id) : null;
     // 收购候选的价全都一样（都是 10,000），所以这里印价等于没印；印**每局大概能收多少**
     // —— 那才是这四个候选真正不同的地方。价在面板里逐条列着。
-    const captionValue=state.slice&&!owner&&state.day<(plot.availableFromDay??1)?`第 ${plot.availableFromDay} 天开售`:takeRow?`约 +${money(takeRow.net)}`:state.mapPick?.cardId==='buyland'?`收 ${money(acquisitionPrice(state,plot.id))}`:owner?pr.closed?'停租':`租 ${money(rentFor(state,plot.id))}`:`购 ${money(buyPrice(state,plot.id))}`;
+    // #3333：角标只印**我这块**每局收多少（perGame），不印 perGame+siblingPerGame。
+    // 角标只有一格宽，两个数塞不下；而把「他少收」并进来会让人以为那块地的租金值这个数。
+    // 两项都在面板里分开写（那里有位置说清是谁的）。
+    // #3333（用户报的那一屏带出来的第二处）：选收购目标时，**地图上每一块**都在印价 ——
+    // 自己的两间、无主地、书屋，全都写「收 10,000」。而这张卡只收「别人已开张的小店」，
+    // 那些地根本不是候选（它们是 pick-blocked 的灰色块）。印价等于告诉玩家可以点。
+    //
+    // 修法：只给**真候选**（takeRow 存在的那几块）印数；其余保留归属与状态，不印价。
+    // 不是隐藏信息 —— 标价在 title 里、买/收购别处都有；这里只是不再声称那一块能收。
+    // 非候选（自己的店、无主地、书屋）只写它**本来**是什么 —— 租金 / 可买价 / 开售日，
+    // 那是地图一直都在提供的信息，不是这张卡的报价。写一排「不能收」虽然不假，
+    // 但九块都写一遍会把地图变成噪音，而且玩家真正要比较的是四块候选之间的关系。
+    // 收购报价只出现在真候选上（takeRow），与面板同一个数。
+    const captionValue = state.slice && !owner && state.day < (plot.availableFromDay ?? 1)
+      ? `第 ${plot.availableFromDay} 天开售`
+      : takeRow ? `约 +${money(takeRow.perGame)}`
+      : owner ? (pr.closed ? '停租' : `租 ${money(rentFor(state, plot.id))}`)
+      : `购 ${money(buyPrice(state, plot.id))}`;
     const level = plot.big ? '' : (pr?.level > 0 ? `<span class="lvp">${'•'.repeat(Math.min(5, pr.level))}</span>` : '');
     return `<div class="prop ${plot.big ? 'bigprop' : ''} ${plot.name === '中央大酒店' ? 'grand' : ''} ${pr && !owner ? 'unowned' : ''} ${pickClass} ${pr ? (pr.level > 0 ? 'built' : 'empty-ground') : ''}" data-plot="${plot.id}"${pickPlot && pickAllowed ? ` data-pick-plot="${plot.id}"` : ''} title="${title}"
       style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px;height:${h - 2}px;border-color:${owner?.color ?? '#3a404b'};background:${owner ? owner.color + '22' : '#181c22'}">
@@ -610,11 +627,19 @@ function renderChoice(el, state, p, actions) {
       ? state.mapPick.takeover : null;
     const takeLines = take ? take.rows.map(r => {
       const who = r.seller ? `从${r.seller}` : '收购';
-      // 「每局约」是 RENT_POOL 的 72 局实测均值，不是本局预言 —— 必须写「约」。
-      // 断链那一项分开写，因为它不是我这块的租金，是对手少收的。
-      const chain = r.siblingLoss > 0 ? `，另压对手 ${money(r.siblingLoss)}` : '';
+      // #3333（用户当场抓到的那处）：这里原来写「每局约 +2,078，另压对手 800」，
+      // 而 2,078 里**已经含**那 800，且 800 是「对手每次」的单次量、不是每局。
+      // 读起来是「多赚 2,078，再额外压 800」——一个数重复了一次，两个数单位还不同。
+      //
+      // 现在拆成两笔**同量纲（都是每局）且互不包含**的账：
+      //   我：我这块每局约收 N（rentMine × 每局被踩次数）
+      //   他：对手同街另一块每局约少收 M（每次少收 × 它自己的每局被踩次数）
+      // 比较时看两者之和（排序用的也是它），但屏上不把它们相加成一个数就完事 ——
+      // 「你多赚」和「他少收」对胜负的作用不同，混成一个数会让人以为那 800 是白得的。
+      const mine = `我这块每局约 +${money(r.perGame)}`;
+      const theirs = r.siblingPerGame > 0 ? `他少收约 ${money(r.siblingPerGame)}` : '';
       // 店名自己已经含街名（「灯火街茶铺」），不再前缀一次街名，否则一行里写两遍。
-      return `<li>${r.name} ${money(r.cost)}（${who}）<b>每局约 +${money(r.net)}</b>${chain}</li>`;
+      return `<li>${r.name} ${money(r.cost)}（${who}）<b>${mine}</b>${theirs ? ` · ${theirs}` : ''}</li>`;
     }).join('') : '';
     // #1398：翻修选目标要写「升完多少」。原先只说「升 1 级」，地图角标只说**当前**租，
     // 两个候选都写「租 2,800」，玩家看不出升完差多少。

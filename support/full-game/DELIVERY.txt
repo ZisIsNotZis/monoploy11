@@ -48,6 +48,10 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
+# #3333 的锁 = **当前**产品的描述（35 个产品文件）。
+# 它相对 3332 只改了三个文件：src/engine/insight.js（量纲/去重）、
+# src/engine/slice-ai.js（AI 合法性问引擎）、src/ui/render.js（屏上两笔账 + 角标）。
+doc  docs/evidence/slice-entry-3333.sha256
 doc  docs/evidence/slice-entry-3332.sha256
 # #3331 签的锁。它现在不是**当前**产品的描述（#3332 改了收购卡的目标规则），
 # 但 receipt-3331-final 跑在它身上，所以必须留在库里让那份回执可核。
@@ -223,6 +227,17 @@ doc  docs/evidence/receipt-3332-final/raw/after.json.gz
 # #3332：修了「收购卡对空地也收 125% 溢价」，产品字节变了，所以重签了锁。
 # 旧锁 3331 仍在库里（它记的是 #3331 那版字节），新锁记的是现在这棵树。
 doc  docs/evidence/RESULT-3332.md
+# #3333：用户在我 #3332 交的那一屏上抓到「每局约 +2,078，另压对手 800」重复计数 + 单位不一致；
+# 同一轮还测到并修了一处会让一局**永远走不下去**的卡死（AI 候选集 ⊃ 引擎合法集）。
+# 回执跑在 slice-entry-3333 上（provenance.product.lock_sha256 对上）。
+doc  docs/evidence/RESULT-3333.md
+doc  docs/evidence/receipt-3333-final/provenance.json
+doc  docs/evidence/receipt-3333-final/record-8-summary.json
+doc  docs/evidence/receipt-3333-final/record-10-replay.json
+doc  docs/evidence/receipt-3333-final/after.json
+doc  docs/evidence/receipt-3333-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3333-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3333-final/raw/after.json.gz
 # 重跑：node tools/balance-slice.mjs --seeds 150 --json > docs/evidence/balance-3332-300.json
 # 跑一次会在这个目录里产出 OUT-*/、chrome-profile-*/、trees/。这几条 ignore 规则必须一起走：
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。

@@ -353,6 +353,15 @@ export function takeoverModel(state, viewer) {
     }
     const hits = means[plot?.name] ?? 0;
     const perGame = Math.round(rentMine * hits);
+    // #3333：对手那块「每局」少收多少 —— **同一个量纲**（每局被踩次数 × 每次少收）。
+    //
+    // #3332 的错（用户当场抓到）：siblingLoss 是「对手**每次**被踩少收 800」这个**单次量**，
+    // 却被直接加进「每局约 +N」，然后又在句尾印了一次 —— 屏上读成「多赚 2,078，再额外压 800」。
+    // 实测同一帧：灯火街茶铺 perGame=1,278 + siblingLoss=800 = net=2,078，
+    // 而 siblingLoss 真实的每局意义是 800 × 对手那块每局被踩 0.431 次 ≈ 345。
+    // 两个数被加在一起，既重复计了一次，单位也不一致。
+    //
+    // 现在：两项各自都是「每局」，且都不含对方。排序才用它们的和。
     // 对手那条街剩下的那块会掉多少（同街连锁乘数断掉）。
     const siblings = state.map.plots.filter(p => p.street === plot?.street && p.id !== id);
     let siblingLoss = 0;
@@ -369,15 +378,19 @@ export function takeoverModel(state, viewer) {
         sp.ownerId = savedSib;
       }
     }
+    // 对手那块「每局」少收多少 = 每次少收 × 每局被踩次数（与 perGame 完全同一个量纲）。
+    const siblingHits = siblings.reduce((s, p) => s + (means[p.name] ?? 0), 0);
+    const siblingPerGame = Math.round(siblingLoss * siblingHits);
     return {
       id, name: plot?.name ?? id, street: plot?.street ?? '',
       seller: seller?.name ?? null, cost,
       rentMine, hits, perGame,
-      siblingLoss: Math.round(siblingLoss),
+      siblingLoss: Math.round(siblingLoss),        // 每次被踩少收（单次量）
+      siblingPerGame,                              // 每局约少收（与 perGame 同量纲）
     };
   });
-  // 排序键 = 我这块每局能收多少 + 断掉对手连锁省下的。两者都是「一次踩到」的钱。
-  for (const r of rows) r.net = r.perGame + r.siblingLoss;
+  // 排序键 = 我这块每局能收多少 + 断掉对手连锁每局少收的。**两者同量纲（每局）**，互不包含。
+  for (const r of rows) r.net = r.perGame + r.siblingPerGame;
   rows.sort((a, b) => b.net - a.net);
   return { rows, best: rows[0] ?? null, worst: rows[rows.length - 1] ?? null };
 }

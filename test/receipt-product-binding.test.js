@@ -75,7 +75,7 @@ test('牙：新增一份回执而不登记，必须变红', () => {
 //   ④ 当前产品锁对应的回执，provenance.json 里必须真的带 product 绑定；
 //   ⑤ 反例守卫：一份没有 product 的回执必须被认成「未绑定」，而不是被当成通过。
 test('当前锁的回执必须在 provenance 里带真实的产品绑定', () => {
-  const lock = readFileSync(path.join(EVIDENCE, 'slice-entry-3332.sha256'), 'utf8');
+  const lock = readFileSync(path.join(EVIDENCE, 'slice-entry-3333.sha256'), 'utf8');
   const lockSha = createHash('sha256').update(lock).digest('hex');
   const bound = receiptsOnDisk().filter(name => {
     const prov = JSON.parse(readFileSync(path.join(EVIDENCE, name, 'provenance.json'), 'utf8'));
@@ -86,7 +86,7 @@ test('当前锁的回执必须在 provenance 里带真实的产品绑定', () =>
   // 绑定的回执还必须点的是**产品锁本身**，不是随手一个 sha。
   for (const name of bound) {
     const prov = JSON.parse(readFileSync(path.join(EVIDENCE, name, 'provenance.json'), 'utf8'));
-    assert.equal(prov.product.lock, 'docs/evidence/slice-entry-3332.sha256',
+    assert.equal(prov.product.lock, 'docs/evidence/slice-entry-3333.sha256',
       `${name} 绑定指向了别的文件`);
     assert.match(prov.product.tree_sha256, /^[0-9a-f]{64}$/, `${name} 的 tree_sha256 不是 sha256`);
     assert.notEqual(prov.product.tree_sha256, prov.product.lock_sha256,
@@ -102,7 +102,7 @@ test('牙：没有 product 的回执不能被当成已绑定', () => {
   });
   assert.ok(unbound.length > 0, '负对照失效：库里已没有未绑定回执，这条守卫就测不到东西');
   const lockSha = createHash('sha256')
-    .update(readFileSync(path.join(EVIDENCE, 'slice-entry-3332.sha256'))).digest('hex');
+    .update(readFileSync(path.join(EVIDENCE, 'slice-entry-3333.sha256'))).digest('hex');
   const wouldBind = unbound.some(name => {
     const prov = JSON.parse(readFileSync(path.join(EVIDENCE, name, 'provenance.json'), 'utf8'));
     return prov.product && prov.product.lock_sha256 === lockSha;

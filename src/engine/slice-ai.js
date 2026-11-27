@@ -1,5 +1,5 @@
 import { buyPrice, acquisitionPrice, rentFor } from './economy.js';
-import { reachableLandings } from './insight.js';
+import { reachableLandings, sliceTargetIds } from './insight.js';
 
 // Only public board information is scored. No RNG draws or future dice are read.
 const ownerOf = (state, pr) => state.players.find(p => p.id === pr?.ownerId);
@@ -39,10 +39,20 @@ function plotTargets(state, player, cardId) {
       return [{ value: plot.id, score: pr.level * 3 + frontage(state, plot.id) + (pr.inflate > 0 ? 5 : 0) }];
     }
     if (cardId === 'buyland') {
-      // #3332：与引擎同一处算价。无主地不加溢价，否则 AI 会把「空地的真价」当成 1.25 倍，
-      // 于是每个目标都算成亏 —— 它 40/40 局都不出这张卡就是这么来的。
+      // #3333：**合法名单只有一处** —— insight.sliceTargetIds（内部 takeoverEligible）。
+      //
+      // 这一段原来自己写了一遍合法性（big / own / cash / 天数），没有空地这一条：
+      // 于是 AI 的候选集 ⊃ 引擎的合法集。实测（seed 173）AI 认为最优的是 1,4——
+      // 一块**无主**地，引擎根本不认（takeoverEligible 已把空地排除）。AI 返回它，
+      // flow.js 的 allowed 过滤把它删成 null，卡没被消耗，action 屏再问一遍 ——
+      // 这一局就永远走不下去了。人类点「取消」也是回到同一屏。
+      //
+      // 教训与 #3332 同构：同一件事有两份实现，就会有一份先漂。这里漂出来的不是
+      // 一个错数字，是**一局卡死**。所以买不起/太晚这样的策略判断可以留在这里，
+      // 但「哪些地块引擎会接受」必须问引擎。
+      if (!sliceTargetIds(state, player, 'buyland').includes(plot.id)) return [];
       const price = acquisitionPrice(state, plot.id);
-      if (plot.big || own || player.cash < price + reserve(state) || state.day > state.config.dayLimit - 3) return [];
+      if (player.cash < price + reserve(state) || state.day > state.config.dayLimit - 3) return [];
       enemyExposure ??= landingExposure(state, enemies);
       selfExposure ??= landingExposure(state, [player]);
       const fronts = state.map.nodes.filter(n => n.adjacentPlots?.includes(plot.id));
