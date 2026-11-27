@@ -98,7 +98,7 @@ $ sha256(styles.css)        = 与 528de72 相同
 
 ## 3. 对照脚本不再依赖本机路径
 
-新增 `support/compare/find-chrome.mjs`，五个 smoke 改为从它取浏览器：
+新增 `support/find-chrome.mjs`，九个脚本从这里查找浏览器：
 
 1. 显式 `CHROME=<path>`（说了算，指向不存在会直接报错，不静默降级）；
 2. `PATH` 上的 `chrome` / `chromium` / `chromium-browser` / `google-chrome`；
@@ -106,7 +106,7 @@ $ sha256(styles.css)        = 与 528de72 相同
 
 规则与 `support/full-game/run-full.py` 的 `find_chrome` 一致，两处不各记一套。
 
-它放在 `support/find-chrome.mjs`（顶层，不在 `compare/` 里）：一共**九个**调用点 —— 五个
+九个调用点包括五个
 `support/compare/` 的 smoke，加四个早就写死同一条路径的老探针
 （`probe-3334/geom.mjs`、`probe-3335/geom-lastday.mjs`、`probe-3338/geom.mjs`、
 `probe-3338/settlement.mjs`）。只改新的五个会留下半截，所以九个一起换。
@@ -125,29 +125,19 @@ grep -rnE "/(home|mnt|Users)/" support/ tools/ src/ test/ \
 它解释的是**曾经**写死过路径这件事，本身不是被执行的路径。
 `--include` 覆盖不到 `.md` 是有意的：文档里当然会讨论这些前缀。）
 
-## 4. 提交形状：从 `528de72` 往前接
+## 4. 发布提交
 
-`528de72` 是远端 master 的 HEAD（`git ls-remote origin` 实测 `HEAD` 与 `refs/heads/master`
-都指向它），所以「往前接」= 以它为父做线性提交，用户那边是 fast-forward，不重写历史。
+玩法交付为公开提交 `f109795`，直接接在 `528de72` 上。用固定提交比较本次玩家代码：
 
-分支 `candidate/3391v-ship`，两个提交：
+```bash
+git diff 528de72 f109795 -- src index.html styles.css
+```
 
-1. **experience**（父 = `528de72`）：本次玩法体验的全部产品字节 + README + 与新字节绑定的
-   锁/回执/胜率表 + 那一处 `slice.js` 指纹常量。
-   核对只需一条命令：
-
-   ```bash
-   git diff 528de72 HEAD~1 -- src index.html styles.css
-   ```
-
-2. **evidence**：本探针、本文与交付集登记。`git diff HEAD~1 HEAD -- src index.html styles.css` 为空。
-
-玩家可见的四处（其余是「为什么这么写」的注释）：
+玩家可见改动：
 
 | 文件 | 玩家看到的 |
 |---|---|
-| `src/data/slice.js` | 三句起手 hook 只写手上真有的卡（不再承诺「看准别人养好的店」） |
-| `src/main.js` | 争街说明两类座位各自说清；开局与规则都写回地址栏；规则档改由地址栏打开 |
+| `src/main.js` | 三句起手说明按手上实际拿到的卡写。争街说明区分人类座位与对手座位。开局和可选规则写回地址栏。 |
 | `src/engine/flow.js` | 默认关闭的 `settleStreetBusiness`（一条街全归你时的每日进项） |
 | `src/ui/slice.js`、`src/engine/market-ledger.js` | 侧栏与买地屏在**决定之前**说清这笔进项 |
 
@@ -177,17 +167,16 @@ RESTORED  src/engine/market-ledger.js 字节已复原
 
 ```
 node --test test/*.test.js                       **681** pass / 0 fail（含本轮新增 9 条）
-python3 support/full-game/check-delivery.py      PASS 431 entries, 36 lock bytes unchanged
+python3 support/full-game/check-delivery.py      PASS 435 entries, 36 lock bytes unchanged
 python3 support/full-game/verify-receipt.py docs/evidence/receipt-3400-full
-                                                 A–F 全过（E: tree b9215828…；F: lock sha 749e4e00…）
+                                                 A–F 全过（E: tree 51a3fee7…；F: lock sha 73ce617c…）
 python3 support/full-game/run-full.py            494–496 帧 / 66 按 / 3 次买地，VERDICT PASS
 support/compare/layout-smoke.mjs                 PASS（390×844 / 1280×800 命中；360×640 同基线）
 support/compare/entry-opening-smoke.mjs          PASS（真点开局单选；规则档关→第 2 天无进项，开→真入账）
 ```
 
 整局回执 `docs/evidence/receipt-3400-full`，锁 `docs/evidence/slice-entry-3400.sha256`。
-对外测试数写 **672**（不带参数的 `node --test` 会数出 673，多的是
-`src/data/maps/test-manor.js` 被默认发现当成测试）。
+本节的 **681** 条按上面指定的 `test/*.test.js` 范围计数。
 
 ## 6. 不能引用 / 仍未解决
 
