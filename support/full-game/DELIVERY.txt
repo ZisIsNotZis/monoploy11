@@ -164,6 +164,13 @@ test support/serve-variant.py
 # support/serve-variant.py 里做（不需要任何人手工把夹具摆到 .scratch/）。
 tool support/compare/af-variant.html
 tool support/compare/af-variant-inject.js
+# #3322 的入口证据脚本：起真的 8001，从对照页的真实引用递归取 31 个资源
+# （含 29 个产品模块），少于 30 个就 FAIL —— 递归被绕开时红，而不是安静地绿。
+# 不在清单里就会变成「只在我这台机器上能重跑」，而那正是 #3319 判成不可核对的理由。
+tool support/compare-entry-smoke.py
+# #3322 的结论与验收记录。判别力那段记的是改之前实测到的旧行为；
+# 在旧实现上重演问题的专用脚本只服务那一轮取证，不入发布树。
+doc  docs/evidence/RESULT-3322.md
 # 跑一次会在这个目录里产出 OUT-*/、chrome-profile-*/、trees/。这几条 ignore 规则必须一起走：
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
 tool support/full-game/.gitignore

@@ -139,24 +139,6 @@ def is_servable(norm):
     return norm in SERVABLE_EXACT
 
 
-# 尾斜杠：/x.html/ 直接回 200 会让浏览器把最后一段当目录，
-# 相对子资源（./af-variant-inject.js、../styles.css）全部解析错位 ——
-# 页面看似打开、实际没有注入。所以「尾斜杠 + 指向真实文件」一律 301 到规范路径；
-# 指向目录的尾斜杠保持原语义。
-
-
-def normalize_url_path(raw):
-    # 手工切 query/fragment，不用 urlsplit：urlsplit('//x') 会把 x 当成 netloc、
-    # path 变空，函数就退化成 '/'。虽然 parse_request 已先把前导 // 折掉，
-    # 但归一函数不该依赖调用方的预处理。
-    path = raw.split('#', 1)[0].split('?', 1)[0]
-    path = urllib.parse.unquote(path).replace('\\', '/')
-    path = posixpath.normpath('/' + path.lstrip('/'))
-    if path == '.':
-        path = '/'
-    return ALIASES.get(path, path)
-
-
 # 夹具已提交在 `support/compare/`，但 URL 与若干测试必须继续是 `/.scratch/...`
 # （8001 对 `.scratch` 有意开放）。以前这个恒等式只在「开发机上有 .scratch 副本」时成立：
 # 干净检出里 `node --test` 会因此整片红（44 条 blocked-* 全挂，第一句是
@@ -180,6 +162,23 @@ def compare_fallback(norm):
     return cand if os.path.isfile(cand) else None
 
 
+# 尾斜杠：/x.html/ 直接回 200 会让浏览器把最后一段当目录，
+# 相对子资源（./af-variant-inject.js、../styles.css）全部解析错位 ——
+# 页面看似打开、实际没有注入。所以「尾斜杠 + 指向真实文件」一律 301 到规范路径；
+# 指向目录的尾斜杠保持原语义。
+
+def normalize_url_path(raw):
+    # 手工切 query/fragment，不用 urlsplit：urlsplit('//x') 会把 x 当成 netloc、
+    # path 变空，函数就退化成 '/'。虽然 parse_request 已先把前导 // 折掉，
+    # 但归一函数不该依赖调用方的预处理。
+    path = raw.split('#', 1)[0].split('?', 1)[0]
+    path = urllib.parse.unquote(path).replace('\\', '/')
+    path = posixpath.normpath('/' + path.lstrip('/'))
+    if path == '.':
+        path = '/'
+    return ALIASES.get(path, path)
+
+
 def _inside_root(path):
     """真路径必须落在仓库里 —— 用 realpath，所以符号链接绕出去也能拦。"""
     try:
@@ -188,6 +187,24 @@ def _inside_root(path):
     except OSError:
         return False
     return real == root or real.startswith(root + os.sep)
+
+
+def _strict_realpath(path):
+    """解析到真实文件；任何一段不存在、或成环，都返回 None（不兜底）。
+
+    #3322：解析失败本身就是一个答案 —— 404。以前「失败」靠 translate_path 换成
+    INVALID 哨兵、再靠「仓库根恰好没有这个文件」才落到 404；有人在根目录写个同名
+    文件，失败就变成 200 并把那个文件发出去。现在不依赖盘上有没有占位文件。
+    """
+    try:
+        return os.path.realpath(path, strict=True)
+    except TypeError:
+        # Python < 3.10 没有 strict 参数；退化成「自己查存在性」，语义相同。
+        real = os.path.realpath(path)
+        return real if os.path.exists(real) else None
+    except OSError:
+        # ENOENT / ELOOP / ENOTDIR —— 都当「解析不出来」。
+        return None
 
 
 def allowed_paths():
@@ -199,15 +216,13 @@ def allowed_paths():
       · 其余路径只做了 abspath 前缀检查，没问最终文件是不是**那个被允许的文件**。
     两者叠起来，「URL 白名单」与「实际发出去的字节」就不是同一个集合了。
 
-    所以收口的不是 URL，而是**最终文件**：把这个入口会发出的那几个文件逐个换成
-    规范化绝对路径，再要求请求落到的文件正好在集合里。
-
     为什么用 abspath 而不是 realpath（第一版就是这么写错的）：
     用 realpath 算出来的集合里，`/.scratch/af-variant.html -> /etc/passwd` 的真实路径
     就是 `/etc/passwd`，而请求解析到的也是 `/etc/passwd` —— 两个同一个值，于是「匹配」。
-    那是一个自己跟自己比对的判据，永远为真。符号链接另用两道判：
-      · final 本身是链就拒（见 resolve_servable_file）；
-      · `_inside_root` 用 realpath 拦「链在仓内、指向仓外」。
+    那是一个自己跟自己比对的判据，永远为真。
+
+    #3322：这张表是**名字**，不是字节。所以它只回答「这个 URL 的名字在不在册」，
+    「名字底下真正打开的是不是同一个文件」由 resolve_servable_file 用一次严格解析回答。
     """
     allowed = set()
     for norm in SERVABLE_EXACT:
@@ -219,8 +234,19 @@ def allowed_paths():
 def resolve_servable_file(norm):
     """URL -> 该发的那个真实文件；不合格一律 None。
 
-    这是**唯一**的落盘判定：拉直、仓内、没被拦、而且真路径正好是允许发的那几个文件之一。
-    translate_path 的每条分支都只能交到这个函数，不允许提前 return 一个没验过的路径。
+    这是**唯一**的落盘判定，而且只解析一次：同一个结果既用来授权、也作为返回值被打开，
+    所以「判过的路径」和「发出去的字节」不可能分叉。translate_path 的每条分支都只能
+    交到这里，不允许提前 return 一个没验过的路径。
+
+    判据三层，缺一不可：
+      ① 名字：归一后的 URL 在逐文件白名单里，且落盘名字正是白名单算出来的那个；
+      ② 解析：严格 realpath（父目录也解析）；解析不出来 = None = 404，
+         不看盘上有没有同名占位文件；
+      ③ 一致：解析结果必须**等于**「真根 + 同一个相对路径」。
+         这条是 #3322 的收口。只查「在不在仓内」不够：把 `support/compare/` 换成
+         一个指向仓内别处的符号链接，名字仍在册、真路径仍在仓内，于是旧代码会发
+         出白名单外的字节。而这里两边是同一个值才放行 —— 注意不能把允许集合也做成
+         realpath 再和请求的 realpath 比：那样父目录被换时两边同样同值，判据永远为真。
     """
     if is_blocked(norm):
         return None
@@ -235,28 +261,52 @@ def resolve_servable_file(norm):
     if norm == '/':
         norm = '/index.html'
     cand = compare_fallback(norm) or os.path.join(ROOT, norm.lstrip('/'))
-    full = os.path.abspath(cand)
-    if not _inside_root(full):
-        return None   # realpath 出仓（含「链在仓内、指向仓外」）
-    if _blocked_realpath(full):
-        return None   # 大小写 / 8.3 短名 / 尾点尾空格绕出来的同一条路径
-    if os.path.islink(full):
-        # 要发的是「这个路径上的字节」，不是它指向的东西。
-        # 允许链就等于允许「白名单里的名字 + 白名单外的内容」，而这个入口
-        # 从来不需要发符号链接：两个夹具是普通文件，产品模块也是。
-        return None
-    if not os.path.isfile(full):
-        return None   # 目录（含目录列表）与不存在都不发
-    if full not in allowed_paths():
+    literal = os.path.abspath(cand)
+    if literal not in allowed_paths():
         return None   # 名字解析到了允许发的那几个文件之外
-    return full
+
+    real = _strict_realpath(literal)
+    if real is None:
+        return None   # 解析失败（含父目录不存在）：直接 404
+
+    real_root = _strict_realpath(ROOT) or os.path.abspath(ROOT)
+    rel = os.path.relpath(literal, ROOT)
+    if real != os.path.join(real_root, rel):
+        # 中间某一段是符号链接 / 大小写别名 / 8.3 短名：实际打开的字节已经不是
+        # 白名单里那个名字对应的文件。最后一段是链接的情况也落在这一条里。
+        return None
+    if not _inside_root(real):
+        return None   # 双保险：realpath 出仓
+    if _blocked_realpath(real):
+        return None   # 大小写 / 8.3 短名 / 尾点尾空格绕出来的同一条路径
+    if not os.path.isfile(real):
+        return None   # 目录（含目录列表）不发
+    return real
 
 
 class Handler(SimpleHTTPRequestHandler):
+    def _resolve(self):
+        """一次请求只解析一次，结果缓存在 self._resolved 上。
+
+        #3322：授权和响应必须用**同一个**解析结果。以前响应走 translate_path、
+        授权走 handler 层再算一遍，解析失败则换 INVALID 哨兵 —— 那等于「拦住」依赖
+        仓库根恰好没有 `__invalid_path__` 这个文件。现在解析失败就直接在这里 404。
+        """
+        if not hasattr(self, '_resolved'):
+            self._resolved = resolve_servable_file(normalize_url_path(self.path))
+        return self._resolved
+
     def translate_path(self, path):
-        # 所有分支（含 compare_fallback）都在 resolve_servable_file 里收口，
-        # 这里不再有「先返回一个没验过的路径」的分支。
-        return resolve_servable_file(normalize_url_path(path)) or INVALID
+        # 只交出 _resolve() 已经验过的那个路径；没验过的一律 404（由 send_head 挡住）。
+        return self._resolve() or INVALID
+
+    def send_head(self):
+        # 解析失败（含父目录不存在、白名单外、目录）是**这个请求的答案**，不是「换个占位
+        # 文件再交给父类」。这里回 404 后不再进入父类，也就没有第二次解析。
+        if self._resolve() is None:
+            self.send_error(404, 'File not found')
+            return None
+        return super().send_head()
 
     def _redirect_trailing_slash(self):
         # 返回 True 表示已经回过 301，调用方别再走正常响应。
@@ -281,12 +331,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _deny_blocked(self):
         # 返回 True 表示已回过 404。
-        # translate_path 把被拦路径换成 INVALID 哨兵，靠的是「那个文件名不存在」
-        # 才落到 404 —— 只要有人在仓库根写个同名文件，被拦路径就会变成它的 200。
-        # 所以这里在 handler 层直接拒，不依赖文件系统状态。
+        #
+        # #3322：这一层现在是**冗余**的，不再承担判定。它以前承担过，因为
+        # translate_path 把被拦路径换成 INVALID 哨兵、靠「仓库根恰好没有这个文件」
+        # 才落到 404 —— 有人在根目录写个同名文件，被拦路径就变成它的 200。
+        # 现在 `send_head` 直接问 `_resolve()`，解析失败就 404，不看盘上有谁。
+        # 留着它是因为「名字层」的拒绝足够便宜，不该等到底层文件系统再发现；
+        # 但判断拦截是否成立，请去测 send_head / resolve_servable_file，别测这一层。
         norm = normalize_url_path(self.path)
-        # 白名单也在这里再判一次（不是只靠 translate_path 换 INVALID 哨兵）：
-        # 哨兵靠「那个名字在盘上不存在」才落到 404，而白名单之外的名字将来可能有文件。
         if is_blocked(norm) or not is_servable(norm):
             self.send_error(404, 'File not found')
             return True
