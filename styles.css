@@ -2,6 +2,73 @@
   --bg: #14161a; --panel: #1b1e24; --line: #2b3038; --text: #e6e8eb;
   --muted: #8b93a1; --gold: #d8a13f;
 }
+
+/* 街角切片：关键规则直接可读，普通事件不占用全局等待。 */
+.slice-intro { width:min(840px,94vw); padding:24px; border:1px solid #454034; border-radius:16px; background:linear-gradient(135deg,#25231e,#171d23); }
+.slice-intro h2 { font-size:clamp(24px,3vw,36px); margin:8px 0; color:#f3e4bd; }
+.slice-intro p { line-height:1.7; color:#c3c7cb; }
+.eyebrow { color:var(--gold); letter-spacing:2px; font-size:12px; }
+.slice-styles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:18px 0; }
+.style-choice { display:grid; grid-template-columns:18px 1fr; gap:8px; padding:14px; border:1px solid #464a50; border-radius:10px; cursor:pointer; }
+.style-choice:has(input:checked) { border-color:var(--gold); background:#d8a13f12; }
+.style-choice span { grid-column:2; color:#b3bbc5; font-size:12px; line-height:1.6; }
+.advanced-setup { width:min(1000px,94vw); padding:10px; }
+.advanced-setup summary { cursor:pointer; color:#abb2bd; }
+#setup:has(.slice-intro) { justify-content:flex-start; overflow:auto; padding:24px 0; }
+.slice-mode #insight { border:1px solid #464034; border-radius:8px; padding:10px; background:#d8a13f08; font:13px/1.6 system-ui,sans-serif; }
+.turn-heading { color:#f2ddad; font-weight:700; display:flex; justify-content:space-between; gap:8px; }
+.turn-heading span { color:#b6bec9; font-size:12px; }
+#insight p { margin:5px 0; }
+#insight details { max-height:110px; overflow:auto; color:#b8c2ce; }
+/* #1478b：summary 恒为 1 行。
+   为什么不是改文案：「两笔原因」有 101/996 帧，实测连 31 字的压缩形状之外都装不进
+   343px（13px 字号下最多约 26 个字），而要装下就得删掉金额或对象 —— 那是裁定里禁止的。
+   改成 nowrap + 省略后行数不再取决于文本长度：最长 65 字的串实测仍是 1 行、
+   第三张卡 845.7 可点（改前是 2 行、863.2 out-of-view）。
+   文本一个字没删：DOM 里完整，<details> 里逐行原文也在，点开即可核对。 */
+#insight summary { cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:list-item; list-style-position:inside; }
+/* #1745：上面那行原本是 display:block —— 它把 summary 压成 1 行的同时，**把 disclosure 三角一起吃了**。
+   实测（真 Edge 1280×720 与 1366×768，seed 2，各 62 帧）：折叠态下 45 帧里没有任何「这行能点开」的线索
+   （三角 0、省略号 0），看起来就是一行普通灰字。判据不看计算样式，看布局空间：
+   display:block 时 summary 内容盒左缘到第一个字是 0px；改 list-item 后 >6px，三角真的占位。
+   改成 list-item 后重跑了 #1478b 的判据：summary 行数分布仍恒为 1（720 档 63 帧全 1）。
+   这一条作用在全局：缺陷是 #1478b 在全局那行引入的，不是短视口特有的。 */
+.slice-mode #log { flex:1 1 50px; min-height:28px; max-height:none; font-size:12px; }
+.slice-mode #hand { flex-direction:column; align-items:stretch; min-height:0; }
+.slice-mode #cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); max-height:34vh; overflow:auto; gap:8px; padding:2px; }
+.slice-mode #dice { display:flex; flex-direction:row; align-items:center; justify-content:space-between; }
+.slice-card { display:flex; flex-direction:column; gap:6px; padding:10px; text-align:left; border:1px solid #64543a; background:linear-gradient(145deg,#302c25,#22262d); border-radius:8px; color:#eee4d1; cursor:pointer; min-height:104px; }
+.slice-card b { font-size:17px; color:#f3d38e; }
+.slice-card span { font:12px/1.5 system-ui,sans-serif; color:#c1c7ce; }
+.slice-card em { font-style:normal; color:#de9e8c; font-size:11px; }
+.slice-card:hover:not(:disabled),.slice-card:focus-visible { border-color:#f4ce7c; box-shadow:0 0 0 2px #d8a13f33; }
+.slice-card:disabled { opacity:.45; cursor:default; }
+.slice-mode #choice { overflow:auto; max-height:48vh; font:14px/1.6 system-ui,sans-serif; }
+.slice-mode .hint { font-size:12px; line-height:1.6; }
+.slice-mode .prop .picon { height:45%; opacity:.8; }
+.plot-caption { position:absolute; bottom:2px; left:0; right:0; text-align:center; font:9px/1.25 system-ui,sans-serif; color:#dbe1e9; pointer-events:none; text-shadow:0 1px 2px #000; white-space:nowrap; }
+.plot-caption b { color:#f2d496; font-size:10px; }
+.slice-mode .bigprop .plot-caption { font-size:13px; bottom:7px; }
+.slice-mode .bigprop .plot-caption b { font-size:15px; }
+.slice-mode .landing-preview { outline:3px solid #f4d084; outline-offset:2px; background:#6a572a; }
+.supply-options,.landing-options { display:flex!important; flex-direction:column; gap:8px; }
+.supply-options button,.route-choice,.landing-options button,.discard-card { display:flex; flex-direction:column; align-items:flex-start; text-align:left; padding:10px!important; width:100%; white-space:normal; }
+.supply-options span,.route-choice span,.landing-options span { display:block; color:#bfc7d1; font-size:12px; line-height:1.55; margin-top:4px; }
+.route-choice em { display:block; font-style:normal; color:#9fb0c4; font-size:11px; line-height:1.5; margin-top:2px; }
+.slice-mode #board .tok { width:25px; height:25px; }
+.slice-mode #side { font-family:system-ui,sans-serif; }
+.slice-mode .avatar { width:28px; height:28px; }
+.slice-mode .pline { font-size:13px; gap:5px; }
+.slice-mode .pline b { font-size:14px; }
+.slice-mode .pmeta { font-size:12px; }
+@media(max-width:760px) {
+  .slice-styles { grid-template-columns:1fr; gap:6px; }
+  .style-choice { padding:8px; }
+  .slice-intro { padding:16px; }
+  .slice-mode #insight { padding:7px; font-size:12px; }
+  .slice-mode #cards { max-height:27vh; }
+  .slice-card { min-height:90px; padding:7px; }
+}
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -183,6 +250,93 @@ button { font: inherit; }
 #sideGrip { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 30; }
 #sideGrip:hover { background: rgba(216, 161, 63, .35); }
 @media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) var(--side-w, 300px); } }
+
+/* #1255：宽屏下把决策面板（#choice）钉成侧栏底部的抽屉。
+   根因（真 Edge 1280×N 同帧实测，数据与图见 #1255 交付报告）：
+     #side 是 flex 列、自身 0..100vh 不滚动；#hand 被 margin-top:auto 顶到列底，高度由内容决定；
+     #choice 又是 #hand 里 overflow:auto 的那层 ⇒ 面板长到 429px 时 #choice 下沿 778 已越过 720 窗口，
+     而 .slice-mode #choice{max-height:48vh} 只夹它自己的高度、管不了它的起点。
+     于是「加盖」按钮落在 742–776，玩家点不到。摘掉机会成本那句也仍在窗外（720 档 817–851）
+     ⇒ 这是既有版面缺陷，不是句子撑出来的；句子又被判据钉着，所以修容器而不是改句子。
+   抽屉让面板贴 #side 底边、自己滚动：内容再长只内部滚，按钮始终在窗内。
+   实测三档 op/fk/btn 全在窗内、elementFromPoint 命中按钮本身，720 档受信任点击真的生效。
+   窄屏（≤760）走它自己的补给屏布局，不受这条影响。 */
+@media (min-width: 761px) {
+  .slice-mode #hand.choice { overflow: visible; max-height: none; min-height: 0; }
+  .slice-mode #choice:not([hidden]) {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
+    max-height: calc(100vh - 8px); overflow: auto;
+    background: var(--panel); border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, .55); padding: 10px 12px;
+  }
+}
+
+/* #1523：短高度（≤795px）下的手牌与面板。1366×768 是常见笔电尺寸，而在这个高度上
+   第三张卡在视口外 —— 按「玩家点不到的东西不是排版偏好」判为缺陷，本段修它。
+
+   根因（真 Edge 1280×720，seed 2，逐层量到，不是推断）：
+     #side 高 720，内容自然总高 837 ⇒ 缺 117px，而 body{overflow:hidden} 让玩家无法滚到下面。
+     分层：#system 66｜#players 253｜#insight 183｜#log 28｜#hand 内容 268（只分到 142）。
+     手牌 268 里的大头是 #cards 在 slice 模式下的两列网格：一张卡 106.6，三张就两行。
+     所以第二、三张卡落在 730.8–834.8，elementFromPoint 命中不到。
+
+   修法（只动布局，不动规则/文案/掷骰逻辑/lastTurn 语义）：短高度下把卡片改成**单行**；
+   牌多时沿用 #cards 本来就有的横向滚动。手牌高度与牌数无关，第二三张卡回到窗内。
+   上面几块同时收紧（#players 自滚、明细收窄、间距 4px），给长摘要留余量。
+
+   为什么卡高是 96 而不是第一版的 72（#1523b 的读数）：
+   72 高 + 两行截断时，逐字符量过可见段（真 Edge，1280×720，seed 2）：
+     翻修 全文 41 字 / 可见 20 字，截掉「级）· 现在可升 2 栋，单栋+2,800」
+     旺季 全文 42 字 / 可见 22 字，截掉「的街对你有利、有的不利，最多 5,600」
+   卡片描述是「效果主句 · 盘面此刻的数」，**数字全在句尾**，而 line-clamp 只从尾部裁 ——
+   所以它砍掉的第一个东西恰好是金额。改成 3 行仍砍（可见 31 字，金额照样在 35 字之后）。
+   卡变高要多出来的高度从可滚动的 #players（21vh→11vh）和 #insight 明细（52→40px）里出，
+   总量不变，所以 #1523 已签的几何没有退化（实测 720/768 仍是 0 出窗 / 0 滚不到）。
+
+   为什么不是别的形态（每条都有实测死因，别再试）：
+     · 只让 #hand 自己滚 —— #side 溢出反而变大（117→149），卡仍在窗外；
+     · 卡片改三列 —— 中心可命中，但底边 780.8 仍在窗外；
+     · position:sticky 贴底 —— 这个 flex 列里根本没把 #hand 抬进窗；
+     · 手牌 position:absolute 钉底 —— 牌多时手牌长高，盖住 #insight 16px、#log 54px；
+       这是拿上下文换可达性，不接受；
+     · 只让 #side 可滚 —— 几何一位未动，因为溢出发生在 #hand 内部。
+
+   读数（#1523 交付报告里的最终量具 final.mjs，真 Edge + 真鼠标，seed 2）：
+     1280×720   基线 28 帧卡竖直出窗、20 条滚不到 → 本段 0 / 0（195 动作屏＋61 决策屏）
+     1366×768   基线 40 / 89                        → 本段 0 / 0（204＋61）
+   （基线是拿 styles.before.css 单独起一个根实测的：之前那组数字没有产物，已按实测改。）
+     1280×800   与基线逐条相同（40 / 1）—— 门槛 795 之上不触发，本段对 800 档零影响
+     1920×1080  与基线逐条相同（0 / 21）—— 同上
+   判据是「每张卡完整在窗内且中心命中卡自身」「骰键同」「手牌不与 #insight/#log 相交」；
+   被横向滚动裁掉一角的卡另验「真 wheel 能滚到」，不是靠程序 scrollIntoView。
+   窄屏（≤760）走自己的布局，不受这条影响；决策抽屉（#1255）形态不变。 */
+@media (max-height: 795px) and (min-width: 761px) {
+  .slice-mode #cards {
+    display: flex; flex-direction: row; grid-template-columns: none;
+    overflow-x: auto; overflow-y: hidden; max-height: none; gap: 6px;
+  }
+  .slice-mode #cards .slice-card {
+    flex: 0 0 106px; min-height: 0; height: 96px;
+    padding: 5px 6px; gap: 1px; overflow: hidden;
+  }
+  .slice-mode #cards .slice-card b { font-size: 13px; }
+  .slice-mode #cards .slice-card span {
+    font-size: 10px; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .slice-mode #cards .slice-card em { font-size: 9px; }
+  .slice-mode #side { gap: 4px; padding: 8px 12px 6px; }
+  .slice-mode #players { max-height: 11vh; overflow-y: auto; }
+  .slice-mode #insight { padding: 7px; }
+  .slice-mode #insight p { margin: 3px 0; }
+  /* #1745：40px 连一条明细都装不下。真 Edge 逐行量过（720/768，seed 2）：
+     summary 自己吃掉约 34px，明细行高 20.8（1 行）／41.6（2 行）／62.4（3 行）——
+     40px 里第一条就只剩 6px，5/29 帧里「点开并滚到底仍有一整行读不全」。
+     96px 是实测下能完整装下最长一条（62.4）的最小档，仍小于改前的 110px。
+     代价：#insight 会长高 56px。这一块本身是自滚动的，内容一条不减；
+     但 #side 的其它块会被往下挤，所以必须同时验卡片几何没被顶回去（#1688 的 96px 不能丢）。 */
+  .slice-mode #insight details { max-height: 96px; }
+}
 
 .cell { cursor: default; }
 .cell.no-ground { background: #171b21; }
@@ -472,6 +626,34 @@ button { font: inherit; }
   #log { flex: 1; min-height: 50px; font-size: 12px; }
   #hand { min-height: 100px; }
   #hand.choice { max-height: 34vh; }
+  /* #776：窄屏下补给屏是「暂停式」决策点，日志与资产在那儿秒里不是要读的东西。
+     实测背景（真 Edge 390×844、真入口、同帧注入+测量）：
+       现状 #hand 可视 70px、第一个选项 top 874（视口 844）⇒ 一个都看不见；
+       只改上面那条 max-height 无效（仍 70）——真正被抢走的是 #log。
+     隐去日志与资产后 #hand 230px，第一个选项 714 且 elementFromPoint 可命中。
+     只作用在窄屏且只在补给屏（#hand.choice）存续时；桌面与普通选卡不受影响。 */
+  /* 作用域用 #side:has(#hand.choice)：只在选牌/补给屏真的存续时生效，
+     普通行棋时日志与资产照旧（上一版写成 .slice-mode #log 会在整局都隐藏，超出授权）。 */
+  .slice-mode #side:has(#hand.choice) { display: flex; flex-direction: column; min-height: 0; }
+  /* 不要在这里写 height：实测固定 62vh 后 #hand 虽拿到 400px，但盒子下沿被推出窗口，
+     第一个选项 fullyVisible 反而从 true 变成 false（窗高 844 而按钮落到 746–850）。
+     保持原侧栏高度，只把腾出的空间留给 #hand。 */
+  .slice-mode #side:has(#hand.choice) > #log,
+  .slice-mode #side:has(#hand.choice) > #insight { display: none; }
+  .slice-mode #hand.choice { flex: 1 1 auto; min-height: 0; max-height: none; }
+  /* #786 P4：滚到底时最后一项「保留现有手牌，不补给」差 15px 摸不到。
+     根因不是高度不够，是 **sticky 提示占着底部 34px**：它既压住最后一项，
+     又让 hiddenOptionCount 永远归不了零。修法在 render.js（把提示挂到滚动容器之外），
+     这里只给滚动内容末尾留一点呼吸位。 */
+  .slice-mode #hand.choice { padding-bottom: 6px; }
+  /* #786 未完成：H2（最后一个入口「保留现有手牌」在 390×844 滚到底仍差 10px 摸不到）
+     没修好。三试三败，都不留代码里：
+       ① padding-bottom:18px —— 滚动容器加底部内边距后末项永远算“在下面”，提示归不了零；
+       ② 把提示改挂到滚动容器父级 —— #hand 从 233 打到 122，提示消失；
+       ③ scroll-margin-bottom:40px —— 读数逐字不变，完全无效（末项不是 scrollIntoView，是手动设 scrollTop）。
+     根因是 sticky 提示占着底部 34px。要真修得让提示不参与滚动几何，
+     那条路需要改 DOM 挂点或换成 fixed 定位，都超出本单“最小 diff”且已实测会打坏布局。
+     待裁。 */
   #cards { overflow-x: auto; }
   .card { flex: 0 0 62px; height: 62px; }
   .shop-grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
@@ -495,3 +677,172 @@ button { font: inherit; }
 
 .dice-choice { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 .dice-choice button { min-width: 34px; min-height: 34px; font-size: 15px; }
+#choice .superdice-values button, #choice button[data-superdice-confirm], #choice button[data-superdice-cancel] { min-height: 44px; }
+#choice .superdice-values button { min-width: 44px; }
+#choice .superdice-values button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+#choice .superdice-values button:focus-visible, #choice button[data-superdice-confirm]:focus-visible, #choice button[data-superdice-cancel]:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+#choice .superdice-lines { white-space: pre-line; line-height: 1.55; margin: 6px 2px; }
+#choice button[data-superdice-confirm]:disabled { opacity: .55; cursor: default; }
+
+/* Ultra-short two-route choice: cue lives beside the first heading, not over the preview. */
+.route-inline-more { display: none; }
+/* #2915：方向期在既有标语 pill 内复用原地图操作句；桌面仍显示原标语，窄屏才换。
+   不加行、不加浮层、不加可聚焦元素；句与 render.js 的 #choice 提示逐字相同。 */
+.map-hint-cue, .map-hint-steps { display: none; }
+@media (max-width: 760px) {
+  #system .pill:has(.map-hint-cue) .map-hint-default { display: none; }
+  #system .pill:has(.map-hint-cue) .map-hint-cue { display: inline; }
+}
+/* 在有足够一行宽度的高窄屏，把剩余步数移出会保留滚位的 #hand。
+   不另占一行；超短屏键盘布局不变。 */
+@media (min-width: 375px) and (max-width: 760px) and (min-height: 700px) {
+  .slice-mode #system .pill:has(.map-hint-steps) { white-space: nowrap; }
+  .slice-mode #system .map-hint-steps { display: inline; margin-inline-end: 6px; color: #f4ce7c; font-weight: 700; }
+  .slice-mode #side:has(#system .map-hint-steps) #choice > h3:first-child { display: none; }
+}
+@media (min-width: 320px) and (max-width: 420px) and (max-height: 500px) {
+  .slice-mode #choice:not([hidden]):has(.route-choice:focus-visible) .route-inline-more {
+    display: inline; margin-inline-start: 8px; color: #f4ce7c;
+    font-size: 11px; line-height: 1; font-weight: normal; white-space: nowrap;
+  }
+  .slice-mode #hand:has(#choice:not([hidden]) .route-choice:focus-visible):has(#choice:not([hidden]) .route-inline-more) .route-more[data-overflow-hint] { display: none; }
+}
+
+
+/* #3166：390×844 的超级骰子决策板。
+   #3162 原图实测：选 5 后金边按钮在 y=781–825，而两条后果 y=886–1034、确认/取消
+   y=1042–1086，都被 #hand 的裁剪线 y≈836.7 切掉。差的不只是几像素：内容总高 424px，
+   #hand 只分到 180px；再高的滚动容器也放不下一个「看后果再确认」的决策。
+   这里的做法是窄屏 + 只在超级骰子面板存续时，把同一份原生 #choice 抬成底部固定决策板：
+   地图留在上方，面板从视口下缘长上来，所有原生控件、aria、onclick 与引擎行为一字不动。
+   作用域用 :has([data-superdice-lines]) 钉死：其它选卡/补给屏、桌面尺寸、街角切片都不受影响。
+   13 个步数仍全可选；44px 触点保留，故排成 7+6 两行而不是压成 20px 一条。 */
+@media (max-width: 760px) {
+  #choice:not([hidden]):has([data-superdice-lines]) {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    max-height: min(390px, 46vh);
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(216, 161, 63, .55);
+    border-radius: 10px 10px 0 0;
+    background: var(--panel);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, .55);
+    overflow: auto;
+    overscroll-behavior: contain;
+    font: 13px/1.45 system-ui, sans-serif;
+  }
+  /* 标题压成一行；说明仍完整（「确认才用卡」「有岔路仍在移动时选」正是防止把预览当承诺的两句）。 */
+  #choice:not([hidden]):has([data-superdice-lines]) h3 {
+    margin: 0 0 2px;
+    font-size: 16px;
+  }
+  #choice:not([hidden]):has([data-superdice-lines]) > .hint {
+    margin: 0 0 4px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  /* 7+6：宽 390 时每格约 46px，仍 ≥44px 的触控底线。 */
+  #choice:not([hidden]):has([data-superdice-lines]) .superdice-values {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    margin: 4px 0;
+  }
+  #choice:not([hidden]):has([data-superdice-lines]) .superdice-values button {
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+  }
+  /* 数字跟「已选中」不能只靠颜色：内描边在灰度/低对比屏上也能看出哪一格被按下。 */
+  #choice:not([hidden]):has([data-superdice-lines]) .superdice-values button[aria-pressed="true"] {
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+  /* 两条岔路原文不删、不改写；只把行宽收进 390 视口，高度从实测的 147px 降到约 90px。 */
+  #choice:not([hidden]):has([data-superdice-lines]) .superdice-lines {
+    margin: 4px 2px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  /** 确认与取消各占半行：两个动作都留在拇指区，且分别 ≥48px 高。 */
+  #choice:not([hidden]):has([data-superdice-lines]) [data-superdice-confirm],
+  #choice:not([hidden]):has([data-superdice-lines]) [data-superdice-cancel] {
+    display: inline-block;
+    width: calc(50% - 4px);
+    min-height: 48px;
+    margin: 2px 0 0;
+    padding: 6px;
+    vertical-align: top;
+  }
+}
+
+/* #3264（预登记见 docs/6_SLICE.md 的 #3264 节）：加盖屏的提交键在 390×844 落在
+   #hand 的裁切线以下（实测 986.7..1021.1，裁切线 837.3），页面不可滚 ⇒ 玩家读得到面板、
+   点不到「加盖」。只把**这一屏**提升成底部固定板，作用域严格限 #choice 内出现 data-act="build"；
+   不动引擎、不动 #hand 的 overflow、不碰上面 8 条 :has([data-superdice-lines])。
+   沿用 #3166 已验收的超级骰子固定板的样式语言（背景/上圆角/顶边细线/阴影）。
+   贴底固定后若正文超过上限，仍要能滚到，所以留 overflow:auto 与 overscroll-behavior:contain。 */
+@media (max-width: 760px) {
+  /* #3264c：补给屏与加盖屏同根因 —— #choice 被 #hand 裁到 837.5，实测 4 个补给里只有第 1 个
+     hit=true，后三个 partial/none（读数见 docs/6_SLICE.md 的 #3264 节）。
+     两条选择器并排：哪一屏出现就把哪一屏提上来，互不影响。 */
+  #choice:not([hidden]):has([data-act="build"]),
+  #choice:not([hidden]):has([data-act="buy"]),
+  #choice:not([hidden]):has([data-replay]),
+  #choice:not([hidden]):has(.supply-options) {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    /* #3264c：420px 装不下实测 441px 的 build 正文，才逼出 sticky 把按钮钉在滚动区底边、
+       于是按钮盖住正文末行（ink-band.py：788 行 126 墨点 vs 修后 362）。抬到 520/70vh 后
+       内容不滚、sticky 不位移，正文与按钮都不被遮。 */
+    max-height: min(520px, 70vh);
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(216, 161, 63, .55);
+    border-radius: 10px 10px 0 0;
+    background: var(--panel);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, .55);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  /* 两个提交键各占半行、≥48px：读清之后要用拇指点得到。
+     #3264b：底边固定板上，这两键是**最后的内容**，内容比 420px 高时它们自然落在
+     滚动区底缘以下（实测 810.4..858.4，面板止于 844 ⇒ 被裁 14.4px，玩家只看到半个按钮）。
+     所以把它们钉在滚动区底边：position:sticky + bottom:0 让它们在任何内容长度下都完整可见，
+     且仍参与流式布局（不会盖住上面的数字段落）。背景与顶边只为不透明，避免正文透出来。 */
+  /* #3278：结算屏同样被 #hand 裁掉，但它的「下一步」只有一颗「再开一局」。
+     把按钮钉在滚动区底边，让玩家在读完名次表后不必再找它；
+     另给面板留出按钮高度（结算屏不挂溢出提示，padding 不会影响提示计数）。 */
+  #choice:not([hidden]):has([data-replay]) { padding-bottom: 62px; }
+  #choice:not([hidden]):has([data-replay]) [data-replay] {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    margin: 6px 0 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--panel);
+    box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
+  }
+  #choice:not([hidden]):has([data-act="build"]) [data-act="build"],
+  #choice:not([hidden]):has([data-act="build"]) [data-act="skip"],
+  #choice:not([hidden]):has([data-act="buy"]) [data-act="buy"],
+  #choice:not([hidden]):has([data-act="buy"]) [data-act="skip"] {
+    display: inline-block;
+    width: calc(50% - 4px);
+    min-height: 48px;
+    margin: 6px 0 0;
+    padding: 6px;
+    vertical-align: top;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--panel);
+    box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
+  }
+}

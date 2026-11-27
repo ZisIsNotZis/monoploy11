@@ -8,6 +8,10 @@ export const EXPERIENCE = Object.freeze({
   }),
   floatMs: 2400,               // 金额 / 卡牌 / 状态飘字
   newsMs: 2400,                // 新闻 / 事件横幅
+  // outMs：人类已出局、全局还没结束时用的节奏。那时玩家没有任何决定可做，剩余回合只是陪看；
+  // 保持正常节奏等于让「等」成为出局的额外惩罚（实测 seed1 take 13.5s / seed4 grow 15.8s）。
+  // 只改等待时长，不跳过任何回合、不改任何结算 —— 胜负与资产逐字不变。
+  slice: Object.freeze({stepMs:140,aiMs:220,outMs:40}),
   speech: Object.freeze({
     afterAudioMs: 300,         // 语音结束后气泡再停留
     noAudioMs: 1800,           // 没有语音素材（也不回退）时气泡最短停留

@@ -1,0 +1,149 @@
+{
+  "config": {
+    "seedStart": 1,
+    "seeds": 40,
+    "permutations": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        1,
+        0,
+        2
+      ],
+      [
+        1,
+        2,
+        0
+      ],
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        2,
+        1,
+        0
+      ]
+    ],
+    "dayLimit": 16,
+    "centerAvailableFromDay": 4,
+    "decisionsPerGameLimit": 5000
+  },
+  "completed": 240,
+  "failures": [],
+  "stalls": 0,
+  "decisions": 44202,
+  "turns": 11180,
+  "totalEndDays": 4069,
+  "rent": 4139600,
+  "cardsPlayed": 8857,
+  "takeovers": 21,
+  "ties": {
+    "games": 0,
+    "winnerSeats": {},
+    "styles": {}
+  },
+  "center": {
+    "unownedAtEnd": 53,
+    "neverBought": 43,
+    "totalFirstPurchaseDay": 1100
+  },
+  "byStyle": {
+    "grow": {
+      "games": 240,
+      "wins": 157,
+      "tiedAtTop": 0,
+      "bankrupt": 17,
+      "finalAssets": 19483000,
+      "rentEarned": 1553200,
+      "rentPaid": 1460200,
+      "cardsPlayed": 3062,
+      "takeovers": 0,
+      "centerFirstBought": 83,
+      "centerFinalOwner": 80,
+      "meanFinalAssets": 81179.16666666667
+    },
+    "take": {
+      "games": 240,
+      "wins": 45,
+      "tiedAtTop": 0,
+      "bankrupt": 32,
+      "finalAssets": 14584800,
+      "rentEarned": 1339600,
+      "rentPaid": 1284800,
+      "cardsPlayed": 2791,
+      "takeovers": 21,
+      "centerFirstBought": 55,
+      "centerFinalOwner": 54,
+      "meanFinalAssets": 60770
+    },
+    "cross": {
+      "games": 240,
+      "wins": 38,
+      "tiedAtTop": 0,
+      "bankrupt": 30,
+      "finalAssets": 14573200,
+      "rentEarned": 1246800,
+      "rentPaid": 1394600,
+      "cardsPlayed": 3004,
+      "takeovers": 0,
+      "centerFirstBought": 59,
+      "centerFinalOwner": 53,
+      "meanFinalAssets": 60721.666666666664
+    }
+  },
+  "bySeat": {
+    "1": {
+      "games": 240,
+      "wins": 53,
+      "tiedAtTop": 0,
+      "bankrupt": 37,
+      "finalAssets": 14422400,
+      "rentEarned": 1043200,
+      "rentPaid": 2040800,
+      "cardsPlayed": 2915,
+      "takeovers": 12,
+      "centerFirstBought": 50,
+      "centerFinalOwner": 51,
+      "meanFinalAssets": 60093.333333333336
+    },
+    "2": {
+      "games": 240,
+      "wins": 109,
+      "tiedAtTop": 0,
+      "bankrupt": 32,
+      "finalAssets": 16814200,
+      "rentEarned": 1256400,
+      "rentPaid": 1458200,
+      "cardsPlayed": 2989,
+      "takeovers": 3,
+      "centerFirstBought": 117,
+      "centerFinalOwner": 106,
+      "meanFinalAssets": 70059.16666666667
+    },
+    "3": {
+      "games": 240,
+      "wins": 78,
+      "tiedAtTop": 0,
+      "bankrupt": 10,
+      "finalAssets": 17404400,
+      "rentEarned": 1840000,
+      "rentPaid": 640600,
+      "cardsPlayed": 2953,
+      "takeovers": 6,
+      "centerFirstBought": 30,
+      "centerFinalOwner": 30,
+      "meanFinalAssets": 72518.33333333333
+    }
+  },
+  "meanEndDay": 16.954166666666666
+}

@@ -1,5 +1,6 @@
 // 规则型 AI：只通过 ui.ask 返回动作，不直接改状态。
 import { CARD_DEFS } from './game.js';
+import { sliceAnswer } from './slice-ai.js';
 
 const ATTACK = new Set(['turtle','turn','stay','sleep','hibernate','scheme','missile','pick','audit','equalpoor','magic','sendgod','dirrandom']);
 const SELF = new Set(['motorcycle','car','invitegod','godfavor','glory','green','free','dirchoose','dirclockwise','dircounter']);
@@ -77,6 +78,7 @@ function chooseDirection(prompt, state) {
 }
 
 export function aiAnswer(prompt, state) {
+  if (state.config.mode === 'slice') return sliceAnswer(prompt, state);
   const p = prompt.player;
   switch (prompt.type) {
     case 'action': {

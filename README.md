@@ -1,6 +1,63 @@
 # Monopoly 11 · 大酒店
 
-**项目状态 · 未完成（2026-11-26）**。独立浏览器棋盘原型可开局，远端固定版本 node --test 96/96；接受范围仍有窄屏决策与离线交付，活跃 Vibe 工作尚未验收。 从远端真实入口完成一次可读、可重复的窄屏完整局。
+**项目状态 · 玩得完整，还不够好玩（2026-11-27）**。窄屏（390×844）已能从本文入口独立玩完整局并核到结算，
+360×640 也能玩完但每回合要先整页滚一次（见下文）。产品判断仍未完成：
+「爱玩」没有被人类试玩证明，完整模式的 12 张地图仍是保留资产而非本轮验收对象。
+
+> 当前开发方向是「轻量、爱玩」的 vertical slice。打开页面优先进入 **街角生意**：三人、16 天、五种卡片和可选补给。
+> 原有完整模式在「完整模式与自定义设置」中。当前目标见 [目标](docs/2_GOAL.md)，切片规则、验证与边界见
+> [街角生意](docs/6_SLICE.md)。下文的大酒店内容介绍对应原有完整模式。
+
+## 拿到并玩一局
+
+```bash
+git clone https://github.com/ZisIsNotZis/monoploy11.git
+cd monoploy11
+git pull --ff-only        # 已在本地有仓库时：快进到最新，不会生成合并提交
+```
+
+然后按下一节起一局。下面所有命令都在仓库根目录直接敲，不需要构建步骤或依赖安装。
+
+> 维护者/审阅者要的提交形状、独立检出与两条验收路径，写在
+> [RESULT-3278 §5](docs/evidence/RESULT-3278.md)，不放在玩家入口里。
+> 要确认切片真能玩，请按下一节实跑一局而不是只读本文——360×640 的已知代价也写在下面
+> （那一档要先整页滚一次才能点到掷骰与手牌）。
+
+## 从干净检出玩一局（本次已复验）
+
+```bash
+python3 -B serve.py 0      # 打印 LISTENING <port>；端口交给系统分配，不占 8000
+```
+
+打开 `http://127.0.0.1:<port>/index.html?slice=1&style=grow&seed=1`。页面停在第一屏，
+先在三张起手（街角店主 / 机会买家 / 穿街高手）里选一张，再点「开一局街角生意」。
+
+- `slice=1` 进「街角生意」切片；`style=grow|take|cross` 预选起手；`seed` 固定随机序列。
+- 不带参数打开会落在完整设置页（完整模式 12 张地图仍在）。
+- 固定端口也可：`python3 -B serve.py 8000` → `http://127.0.0.1:8000/?slice=1&style=grow&seed=1`。
+
+窄屏（390×844）已用真实鼠标点击走完整局并核对结算；360×640 也走完过两局，但那一档要先整页滚一次
+才能点到掷骰与手牌，**不是同一结论**（回执 §5.1）。回执与复跑命令见
+[RESULT-3278](docs/evidence/RESULT-3278.md)：
+
+```bash
+python3 support/full-game/run-full.py         # 跑一局，自动给 PASS/FAIL
+python3 support/full-game/check-delivery.py   # 交付文件与锁字节是否一致
+python3 support/full-game/clean-checkout.py   # 只复制交付文件到空目录，再从那里跑一局
+python3 support/full-game/make-candidate.py   # 只打印把交付集做成根提交的 id（不动任何分支、不 push）
+python3 support/full-game/make-candidate.py --branch candidate/3278-narrow-slice   # 同上，并把该分支指过去
+```
+
+无浏览器调试（这两个脚本只依赖交付集里的模块，干净检出里可直接跑）：
+`node tools/play.mjs --slice --seed 7`，逐行发送 `{"op":"auto","count":10}` 等 JSON；
+策略实验 `node tools/evaluate-slice.mjs --seeds 20`。这些检查不能替代人类对乐趣的判断。
+
+`tools/verify-*.mjs` 三个旧脚本硬编码了 Windows Edge 安装路径与 `.scratch` profile，
+**不在交付集**，只适用于原来的开发机；窄屏整局的量具是 `support/full-game/`。
+
+排除 `report-full.py` 的整局记录不需要浏览器：`python3 support/full-game/report-full.py <那次运行的目录>`。
+它会明确区分 PASS / FAIL / **SKIP**（这一局没走到那张屏，就不声称它被判过），例如 F6“可点 ⇔ 能接受回答”
+这一项只对动作屏发言。
 
 纯前端、零后端、零依赖的网格棋盘游戏。把《大富翁 11》的规则搬进浏览器，用 SVG 建筑、卡片和角色头像代替 3D 美术。
 
@@ -12,6 +69,23 @@ python3 serve.py
 ```
 
 `serve.py` 禁止缓存；改完 JS 刷新即可。也可以换任意静态服务器。
+
+### 第二入口（8001 对照页）
+
+对照页 `/.scratch/af-variant.html` 需要一个额外的静态服务，**唯一权威入口是 `support/serve-variant.py`**：
+
+```bash
+python3 -B support/serve-variant.py 8001
+# 打开 http://127.0.0.1:8001/af-variant.html
+```
+
+`support/serve-variant.py` 与 `serve.py` 同一套内部目录拦截（但不拦 `.scratch` —— 对照页只能从那里取），
+并且同样支持 `python3 -B support/serve-variant.py 0` 由系统分配端口（stdout 会打印 `LISTENING <port>`）。
+
+> 历史：这个入口原先住 `.scratch/serve-variant.py`。`.scratch` 是例行清理的 ignored 目录，
+> 2026-11-22 被清掉后，仍在跑的 8001 进程 argv 指向了一个已不存在的文件 ——
+> 重启会直接失败。现在副本在 `support/`（随仓库走），`tools/verify-full-game.mjs` 与
+> `tools/verify-grow-panel.mjs` 也都用 `support/` 的路径起服务。
 
 ## 现在能玩什么
 

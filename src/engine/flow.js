@@ -1,8 +1,11 @@
 // 异步回合引擎：一个游戏循环，按阶段 await；回合只在流程自然结束后推进。
 import { TUNING } from '../data/tuning.js';
 import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } from './board-v2.js';
-import { rentFor, buyPrice, buildCost, assetsOf, pay, log, bossRentMultiplier, incomeBonus } from './economy.js';
+import { rentFor, buyPrice, buildCost, assetsOf, pay, log, bossRentMultiplier, incomeBonus, cheapestBuyable, cheapestAcquirable } from './economy.js';
 import { tickMap, mapExtraSteps, mapShopMultiplier } from './map-runtime.js';
+import { SUPPLIES, SLICE_CARDS } from '../data/slice.js';
+import { poolShareLine, roundsLine } from './payback.js';
+import { sliceTargetIds } from './insight.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
   useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE, cardRange,
@@ -35,9 +38,11 @@ export async function runGame(state, ui) {
 }
 
 function beginTurn(state, p) {
+  if(state.slice)state.slice.turnStart=null;
   if (!p || !p.alive) return true;
   state.phase = 'action';
   p.aiUsedCard = false;
+  if(state.slice) { p.sliceCardsUsed=0; state.slice.turnStart={playerId:p.id,day:state.day,cash:p.cash,deposit:p.deposit,assets:assetsOf(state,p),log:state.log.at(-1)}; }
   p.builtThisTurn = [];
   if (p.statusDays > 0 && (p.status === '梦游' || p.status === '冬眠')) {
     log(state, `${p.name} 正在${p.status}，跳过本回合`);
@@ -56,7 +61,7 @@ function beginTurn(state, p) {
     return true;
   }
   if (p.skipTurns > 0) { p.skipTurns -= 1; log(state, `${p.name} 停留，跳过本回合`); return true; }
-  while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
+  if(!state.slice) while (p.cards.length > p.handLimit) log(state, `${p.name} 回合开始弃掉 ${p.cards.pop()}`);
   log(state, `—— 第 ${state.day} 天 · ${p.name} 的回合 ——`);
   return false;
 }
@@ -69,6 +74,22 @@ function endPlayerTurn(state, p) {
     if (p.statusDays <= 0) { log(state, `${p.name} 的 ${p.status} 状态结束`); p.status = null; }
   }
   tickGod(state, p);
+  if(state.slice?.turnStart) {
+    const before=state.slice.turnStart;
+    const report={playerId:p.id,name:p.name,day:before.day,money:p.cash+p.deposit-before.cash-before.deposit,assets:assetsOf(state,p)-before.assets,
+      cardsPlayed:p.sliceCardsUsed??0,lines:state.log.slice(state.log.indexOf(before.log)+1).map(l=>l.text)};
+    state.slice.history.push(report); p.lastTurn=report;
+  }
+  // #646：记一次全场绝对资产快照，供离场屏指出「哪一天开始落后」。
+  // 只读 assetsOf，不写 money/cash，不改结算顺序。同一天只留最末一条（当天结束时的事实）。
+  if (state.slice) {
+    const snap = {};
+    for (const q of state.players) snap[q.id] = assetsOf(state, q);
+    const list = state.slice.assetByDay ?? (state.slice.assetByDay = []);
+    const entry = { day: state.day, assets: snap };
+    if (list.length && list[list.length - 1].day === state.day) list[list.length - 1] = entry;
+    else list.push(entry);
+  }
 }
 
 function advanceDay(state) {
@@ -80,10 +101,12 @@ function advanceDay(state) {
     state.priceIndex = +(state.priceIndex + step).toFixed(2);
     log(state, `物价指数上涨到 ${state.priceIndex.toFixed(2)}`);
   }
-  for (const p of state.players) if (p.alive) applyMonthly(state, p);
-  tickStocks(state);
-  drawLottery(state);
-  spawnOccupants(state);
+  if(!state.slice) {
+    for (const p of state.players) if (p.alive) applyMonthly(state, p);
+    tickStocks(state);
+    drawLottery(state);
+  }
+  if(!state.slice) spawnOccupants(state);
   tickTimers(state);
 }
 
@@ -112,6 +135,18 @@ function finish(state, team) {
 }
 
 async function playTurn(state, p, ui) {
+  if(state.slice) {
+    if(state.day>1 && (state.day-1)%3===0) {
+      const id=await ui.ask({type:'supply',player:p,options:SUPPLIES});
+      const pack=SUPPLIES.find(s=>s.id===id);
+      if(pack) {for(const card of pack.cards) addCard(state,p,card); log(state,`${p.name} 选择「${pack.name}」：${pack.cards.map(c=>SLICE_CARDS[c].name).join(' + ')}`);}
+    }
+    while(p.cards.length>p.handLimit) {
+      const index=await ui.ask({type:'discard',player:p,cards:[...p.cards],excess:p.cards.length-p.handLimit});
+      const at=Number.isInteger(index)&&index>=0&&index<p.cards.length?index:p.cards.length-1;
+      const [id]=p.cards.splice(at,1);log(state,`${p.name} 整理手牌，弃掉 ${SLICE_CARDS[id]?.name??CARD_DEFS[id].name}`);
+    }
+  }
   const diceCount = await actionPhase(state, p, ui);
   if (diceCount === null) return;
   const stay = !!p.skipMove;
@@ -121,7 +156,7 @@ async function playTurn(state, p, ui) {
   else if (p.status === '乌龟') n = 1;
   else if (p.status === '冰冻') n = 0;
   else if (p.forcedDice != null) { n = p.forcedDice; p.forcedDice = null; }
-  else if (p.diceValue != null) { n = p.diceValue * diceCount; p.diceValue = null; log(state, `遥控骰子：${diceCount} 颗骰子都按 ${n / diceCount} 点计算`); }
+  else if (p.diceValue != null) { n = p.diceValue * diceCount; p.diceValue = null; log(state, state.slice?`定步生效：本回合走 ${n} 步`:`遥控骰子：${diceCount} 颗骰子都按 ${n / diceCount} 点计算`); }
   else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
@@ -146,7 +181,10 @@ async function playTurn(state, p, ui) {
 
 async function actionPhase(state, p, ui) {
   state.phase = 'action';
+  let previousCards=p.cards.length;
   while (true) {
+    if(state.slice && p.cards.length<previousCards) {p.sliceCardsUsed++;p.sliceStats.cardsPlayed++;}
+    previousCards=p.cards.length;
     ui.render(state);
     const a = await ui.ask({ type: 'action', player: p });
     if (!a) return null;
@@ -154,6 +192,7 @@ async function actionPhase(state, p, ui) {
     if (a.action === 'bank') { await bankFlow(state, p, ui, false); continue; }
     if (a.action === 'stock') { await stockFlow(state, p, ui); continue; }
     if (a.action === 'card') {
+      if(state.slice && p.sliceCardsUsed>=2) continue;
       const id = p.cards[a.index];
       if (!id || PASSIVE.has(id)) continue;
       if (id === 'remotedice') { await diceChoiceFlow(state, p, ui, a.index, 1, 6); continue; }
@@ -166,7 +205,9 @@ async function actionPhase(state, p, ui) {
         if (kind === 'player') {
           opts = state.players.filter(q => q.alive && (q.id !== p.id || SELF_TARGET.has(id)) && !(id === 'sendgod' && q.talents.includes('no_sendgod_outside_turn') && q.id !== p.id && q.team !== p.team) && (bossInfiniteRange(p, id) || !TARGET_RANGE_5.has(id) || (id === 'turn' && p.talents.includes('turn_card_infinite')) || q.position === p.position || pathWithin(state.map, p.position, q.position, cardRange(p, id))));
         }
-        target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, max: kind === 'cell' ? cardRange(p, id, id === 'robotdoll' ? 10 : 5) : null });
+        const plotIds=state.slice&&['plot','street'].includes(kind)?sliceTargetIds(state,p,id):undefined;
+        if(plotIds&&!plotIds.length) continue;
+        target = await ui.ask({ type: 'target', player: p, cardId: id, kind, players: opts, plotIds, max: kind === 'cell' ? cardRange(p, id, id === 'robotdoll' ? 10 : 5) : null });
         if (!target) continue;
       }
       if (id === 'turn') {
@@ -237,7 +278,7 @@ async function movePhase(state, p, steps, ui) {
   p.trail = trail;
   let cameFrom = p.lastNode;
   for (let i = 0; i < steps; i++) {
-    const next = await chooseStep(state, p, cameFrom, i === 0, ui, i < steps - 1);
+    const next = await chooseStep(state, p, cameFrom, i === 0, ui, state.slice || i < steps - 1, steps-i);
     if (!next) break;
     cameFrom = p.position;
     p.position = next;
@@ -255,7 +296,7 @@ async function movePhase(state, p, steps, ui) {
         if (!p.alive) return true;
       }
     }
-    if (next === state.map.startId) { const salary = incomeBonus(p, TUNING.salary); p.cash += salary; log(state, `${p.name} 经过起点 +${salary}`); }
+    if (next === state.map.startId) { const salary = incomeBonus(p, state.slice?4000:TUNING.salary); p.cash += salary; log(state, `${p.name} 经过起点 +${salary}`); }
     const node = state.map.nodes.find(n => n.id === next);
     if (node?.surface === 'ice' && p.forceRestart == null) { p.forceRestart = 1; p.forceRandom = true; log(state, `${p.name} 踩到冰面，沿朝向滑行 1 格`); }
     if (node?.surface === 'slope' && i < steps - 1) { steps -= 1; log(state, `${p.name} 上坡，多消耗 1 步`); }
@@ -339,13 +380,13 @@ function nextForward(state, pos, cameFrom) {
   return forward?.to ?? pos;
 }
 
-async function chooseStep(state, p, cameFrom, first, ui, allowAsk) {
+async function chooseStep(state, p, cameFrom, first, ui, allowAsk, remainingSteps) {
   const adj = buildAdj(state.map);
   const exits = adj[p.position].filter(e => edgeUsable(state.map, state.day, e));
   if (exits.length >= 3 && !p.forceRandom && !['cw','ccw','random'].includes(p.dirMode) && allowAsk && typeof ui.ask === 'function') {
     const options = exits.filter(e => e.to !== cameFrom).map(e => e.to);
     if (options.length > 1) {
-      const to = await ui.ask({ type: 'direction', player: p, options });
+      const to = await ui.ask({ type: 'direction', player: p, options, remainingSteps });
       if (to && options.includes(to)) {
         p.facing = to;
         return to;
@@ -452,7 +493,7 @@ async function dogEffect(state, p) {
 export async function landingPhase(state, p, ui) {
   let cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return;
-  log(state, `${p.name} 停在 ${cell.label}`);
+  log(state, `${p.name} 停在 ${cell.label}${state.slice&&cell.adjacentPlots?.length?'，旁边是 '+cell.adjacentPlots.map(id=>state.map.plots.find(p=>p.id===id)?.name).join('、'):''}`);
   const occ = state.placements[cell.id];
   if (occ?.kind === 'banana') { await bananaChain(state, p); return; }
   if (occ) {
@@ -496,6 +537,10 @@ export async function landingPhase(state, p, ui) {
 }
 
 export async function groundPhase(state, p, ui) {
+  // #1026：上游 landingPhase 会把人从医院/监狱格送到 facility 格并设 jail/hospital
+  // （flow.js:524/:525），而 playTurn 紧接着无条件调用本函数。入狱/住院那一回合不该再结算
+  // 邻店——人不是在走过去，是被送进去的。landingPhase:504 已有同一前提，这里补齐。
+  if (!p.alive || p.jail > 0 || p.hospital > 0) return;
   const cell = state.map.nodes.find(n => n.id === p.position);
   if (!cell) return;
   const ids = cell.adjacentPlots ?? [];
@@ -503,6 +548,7 @@ export async function groundPhase(state, p, ui) {
     const plot = state.map.plots.find(x => x.id === id);
     const pr = state.properties[id];
     if (!pr || !pr.ownerId) {
+      if(state.slice && state.day<(plot.availableFromDay??1)) {log(state,`${plot.name} 第 ${plot.availableFromDay} 天开售，现在先看好位置`);continue;}
       if (await ui.ask({ type: 'buy', player: p, plot, price: buyPrice(state, id), level: pr?.level ?? 0, bigType: pr?.bigType ?? null })) {
         buyPlot(state, p, id, plot);
         ui.render?.(state);
@@ -525,11 +571,11 @@ export async function groundPhase(state, p, ui) {
       if (pr.big && !pr.bigType) {
         const type = await ui.ask({ type: 'chooseBig', player: p, plot });
         if (type) chooseBig(state, p, id, type);
-      } else if (pr.level < TUNING.maxLevel) {
+      } else if (pr.level < (state.config.maxLevel??TUNING.maxLevel)) {
         if (p.god === '衰神') {
           log(state, `${p.name} 的衰神让 ${labelForPlot(state, id)} 无法加盖`);
         } else {
-          const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level) * state.priceIndex;
+          const cost = pr.big ? 30_000 * state.priceIndex : buildCost(pr.level+(state.slice?1:0)) * state.priceIndex;
           if (await ui.ask({ type: 'build', player: p, plot, cost })) {
             buildPlot(state, p, id);
             ui.render?.(state);
@@ -549,9 +595,69 @@ export async function groundPhase(state, p, ui) {
     if (owner?.talents.includes('rent_dealt_up')) rent = Math.round(rent * 1.2);
     if (p.god === '穷神') rent *= 2;
     rent = Math.round(rent * bossRentMultiplier(state, owner));
-    log(state, `${p.name} 向 ${owner.name} 支付租金 ${rent}`);
-    state.stats.rents += rent;
+    // #554 候选 A：把「为什么是这个数」写在金额旁，而不是另起一行。
+    // 归因缺口（我 #542 自己找到的）：停业封租时 rent=0，旧文本只写「应付租金 0」，
+    // 玩家看不出为什么白跑一趟。这里直接标停业，并标出付不起的情形。
+    const rentWhy = state.slice
+      ? `${pr.closed > 0 ? ' · 停业中，不计租' : pr.inflate > 0 ? ' · 旺季翻倍' : ''}${p.cash + p.deposit < rent ? ' · 现金不够，会破产' : ''}`
+      : '';
+    log(state, `${p.name} 向 ${owner.name} ${state.slice ? '应付' : '支付'}租金 ${rent}${state.slice ? `（${plot.name}）` : ''}${rentWhy}`);
+    if (!state.slice) state.stats.rents += rent;
+    const payerFundsBefore = p.cash + p.deposit;
+    const ownerFundsBefore = owner.cash + owner.deposit;
     if (!pay(state, p, owner, rent, '租金')) state.stats.bankruptcies += 1;
+    if(state.slice) {
+      const paid = Math.max(0, payerFundsBefore - p.cash - p.deposit);
+      const earned = Math.max(0, owner.cash + owner.deposit - ownerFundsBefore);
+      p.sliceStats.rentPaid += paid;
+      owner.sliceStats.rentEarned += earned;
+      state.stats.rents += paid;
+      // 第三问（对我下回合）：付完还剩多少。这是判据里「我剩多少现金」那一项，
+      // 必须跟在同一行，不能靠侧栏的累计值去拼。
+      // #807 Q3：付完剩多少只是数字，得翻成「它能买下什么」。
+      // 双向：玩家付租时写「够/不够买一块」；玩家收租时写「这笔钱让你能/不能做什么」。
+      // 最低价取自 cheapestBuyable（只读，不写死）；没有可买地块时就不写这段。
+      const viewer = state.players.find(q => q.controller === 'human');
+      const cheap = viewer ? cheapestBuyable(state, viewer) : null;
+      // #807 人读判据拓到的 bug：原来「余额」总是付款方的 `p.cash`，
+      // 而收款方分支的 Q3 半句用 `viewer.cash` —— 两个不同人的钱并在同一行，
+      // 读者会以为「余额 6600」和「这笔钱让你能买下 8,000 的地」说的是同一叠钱。
+      // 现在：余额只写**玩家的**，并在括号里标明是谁；玩家不在场就不写余额也不写 Q3。
+      let q3Text = '';
+      if (viewer && cheap) {
+        const left = viewer.cash + viewer.deposit;
+        const affordable = left >= cheap.price;
+        if (p.id === viewer.id) {
+          q3Text = ` · 你剩 ${left.toLocaleString()}` +
+            (affordable ? `，够买一块 ${cheap.name}（${cheap.price.toLocaleString()}）`
+                        : `，不够买 ${cheap.name}（${cheap.price.toLocaleString()}），还差 ${(cheap.price - left).toLocaleString()}`);
+        } else if (owner.id === viewer.id) {
+          q3Text = ` · 你剩 ${left.toLocaleString()}` +
+            (affordable ? `，够买一块 ${cheap.name}（${cheap.price.toLocaleString()}）`
+                        : `，暂不够买 ${cheap.name}（差 ${(cheap.price - left).toLocaleString()}）`);
+        }
+      }
+      // 余额只在玩家是其中一方时才写，且写成「你剩」——不再出现“别人余额 + 你的能力”拼在一起。
+      // #845：无主小店全卖完时 cheap 为 null，上面整段不写 ⇒ 12.9% 的行动帧没有 Q3。
+      // 但收购是**卡牌动作**（game.js:454），没拿收购卡就没有「收购最便宜一块要多少」这件事，
+      // 所以报价只在玩家手里确实有 buyland 时出现；没卡时给一句不含任何金额的真话。
+      // 价一律 Math.round(buyPrice × 1.25) 现算（cheapestAcquirable），不写死常数。
+      if (viewer && !cheap && (p.id === viewer.id || owner.id === viewer.id)) {
+        const left = viewer.cash + viewer.deposit;
+        const hasCard = (viewer.cards ?? []).includes('buyland');
+        const target = hasCard ? cheapestAcquirable(state, viewer) : null;
+        if (target) {
+          q3Text = ` · 你剩 ${left.toLocaleString()}，收购 ${target.name} 要 ${target.price.toLocaleString()}` +
+            (left >= target.price ? '（够）' : `（还差 ${(target.price - left).toLocaleString()}）`);
+        } else if (hasCard) {
+          q3Text = ` · 你剩 ${left.toLocaleString()}，无主小店已售完；手上的收购卡暂时没有可收的小店`;
+        } else {
+          q3Text = ` · 你剩 ${left.toLocaleString()}，无主小店已售完；拿收购卡才能收对手的店`;
+        }
+      }
+      const balancePart = q3Text ? '' : ` · ${p.name} 余额 ${(p.cash + p.deposit).toLocaleString()}`;
+      log(state, `${p.name} 实付租金 ${paid}（${plot.name}），${owner.name} 收到 ${earned}${balancePart}${q3Text}`);
+    }
     if (!p.alive) return;
     if (pr.bigType === 'bookstore') { addCard(state, owner, drawBaseCard(state, owner)); log(state, `${owner.name} 的书店卖出 1 本书，获得 1 张卡`); }
     if (pr.bigType === 'research') { const adv = makeOffer(state, 1, 'research')[0]?.id; if (adv) { addCard(state, owner, adv); log(state, `${owner.name} 的研究所产出 1 张进阶卡`); } }
@@ -560,22 +666,79 @@ export async function groundPhase(state, p, ui) {
 }
 
 export function buyPlot(state, p, id, plot) {
+  if(state.slice&&state.day<(plot?.availableFromDay??1))return;
   if (p.cash < buyPrice(state, id)) return;
   p.cash -= buyPrice(state, id);
   const old = state.properties[id];
   p.properties.push(id);
   state.properties[id] = { ownerId: p.id, level: old?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: old?.bigType ?? null, closed: old?.closed ?? 0, inflate: old?.inflate ?? 0, price: old?.price ?? plot?.price ?? null };
-  log(state, `${p.name} 买下 ${plot?.big ? '大空地' : '小地产'}`);
+  // #807 Q3：买下大店不只是「花了一笔钱」——它改变了「谁踩到就要付」。
+  // 视角必须对：买的人自己拿到收租权，其他人才是该付的。
+  // 金额一律 rentFor，不写死。
+  let q3Text = '';
+  if (state.slice) {
+    const viewer = state.players.find(q => q.controller === 'human');
+    const nowRent = rentFor(state, id).toLocaleString();
+    if (plot?.big) {
+      q3Text = viewer && viewer.id === p.id
+        ? `；现在别人踩到这格要付你 ${nowRent}`
+        : `；现在这是 ${p.name} 的大店，你踩到要付 ${nowRent}`;
+    } else {
+      const left = viewer ? viewer.cash + viewer.deposit : 0;
+      q3Text = viewer && viewer.id === p.id
+        ? `；你还剩 ${left.toLocaleString()}，对手踩到付你 ${nowRent}`
+        : `；${p.name} 还剩 ${(p.cash + p.deposit).toLocaleString()}，你踩到付 ${nowRent}`;
+    }
+  }
+  log(state, `${p.name} 买下 ${state.slice?plot.name+'（支付 '+buyPrice(state,id)+'）':plot?.big ? '大空地' : '小地产'}${q3Text}`);
 }
 
 export function buildPlot(state, p, id) {
   const pr = state.properties[id]; const plot = state.map.plots.find(x => x.id === id);
-  if (!pr || pr.level >= TUNING.maxLevel) return;
-  const cost = Math.round((pr.big ? 30_000 : buildCost(pr.level)) * state.priceIndex);
+  if (!pr || pr.level >= (state.config.maxLevel??TUNING.maxLevel)) return;
+  const cost = Math.round((pr.big ? 30_000 : buildCost(pr.level+(state.slice?1:0))) * state.priceIndex);
   if (p.cash < cost) return;
   p.cash -= cost; pr.level += 1;
   (p.builtThisTurn ??= []).push(id);
-  log(state, `${p.name} 将 ${plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）`);
+  // #565 候选 B（付费加盖）：同样接上租金。
+  // 行号不是 620：候选 A 在 :583 加了注释，整个函数已下移到 628。
+  // #570：回本回合数 = ceil(花费 / 增量租金)。
+  // 增量租金 = 升级后 rentFor − 升级后同一时刻、同等级的「上一级」租金。
+  // 这里不能简单用 pr.level-1 去算：`rentFor` 读的是 state.properties，已经改过了。
+  // 所以用「升级后租金 × 0.5」？不行 —— 小店每层翻倍但同街加成与旺季也会乘。
+  // 可靠做法：先算出升级后的单价，再算把 level 降一级后的值的差，再恢复。
+  let paybackText='';
+  if(state.slice&&pr){
+    const lv=pr.level;
+    let prevRent;
+    try { pr.level=lv-1; prevRent=rentFor(state,id); }
+    finally { pr.level=lv; }  // 先恢复再做事：rentFor 抛错也不能把等级停在低级
+    const gain=rentFor(state,id)-prevRent;
+    // #1044：回合数不再就地 ceil —— 全仓只有 payback.roundsLine 一个实现。
+    // 「回合回本」这句本身保留（#570 签过），降为尾部；主句由 poolShareLine 出。
+    if(gain>0) paybackText=`, ${roundsLine(cost,gain)}`;
+  }
+  // #807 Q3：回本回合是「这笔投资」的属性，不是「我下回合」的处境。
+  // 且源文本无视角 —— 对手盖楼时会印得像玩家自己的街（flow.js 原日志只写 p.name）。
+  // 所以这里按「这条街归谁」分两种写法，绝不在对手盖楼时写「归你」。
+  // 金额一律走 rentFor，不写死（测试会断言它与 rentFor 相等）。
+  let q3Text = '';
+  if (state.slice) {
+    const viewer = state.players.find(q => q.controller === 'human');
+    const owner = state.players.find(q => q.id === pr.ownerId);
+    const nowRent = rentFor(state, id).toLocaleString();
+    const mine = !!viewer && owner?.id === viewer.id;
+    q3Text = mine
+      ? `；这条街现在归你，对手踩到付 ${nowRent}`
+      : `；对手这条街涨到 ${nowRent}，你踩到付 ${nowRent}`;
+  }
+  // #1044：日志是第三个真打印点（人类与 AI 看同一句）。主句与提议框同源：这一笔占全场租金多少。
+  // 两条已签约束决定了它必须是**前一行**，而不是接在后面或单独后一行：
+  //   ① test/q3-events.test.js:59-62 断言升级日志里第一个「；」之后**只能出现 rentFor 那一个金额**；
+  //   ② 一批已签断言用 lastLog(s) 取「最后一条日志」当那道升级行本身。
+  // 接在后面会破 ①，另起后一行会破 ②。放在前一行两条都保住，且顺序读起来是「先算账，再升级」。
+  if (state.slice) log(state, `${plot?.name ?? '这间店'} 这笔账：${poolShareLine(cost, plot?.name)}`);
+  log(state, `${p.name} 将 ${state.slice?plot.name:plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）${state.slice?`，${pr.inflate>0?'旺季 ':''}租 ${rentFor(state,id).toLocaleString()}${paybackText}`:''}${q3Text}`);
 }
 
 function chooseBig(state, p, id, type, free = false) {
@@ -655,13 +818,14 @@ function turnChoice(state, p, cameFrom, mode) {
 }
 
 async function directionPhase(state, p, ui) {
+  if(state.slice)return; // 下次真正移动到岔路时再选择，避免问一次随后又问一次。
   const adj = buildAdj(state.map);
   if (adj[p.position].length < 3) return;
   const opts = adj[p.position].map(e => e.to).filter(id => id !== p.lastNode);
   if (!opts.length) return;
   if (p.dirMode === 'cw' || p.dirMode === 'ccw') { p.facing = turnChoice(state, p, p.lastNode, p.dirMode); return; }
   if (p.dirMode === 'random') { p.facing = state.rng.pick(opts); return; }
-  const to = await ui.ask({ type: 'direction', player: p, options: opts });
+  const to = await ui.ask({ type: 'direction', player: p, options: opts, remainingSteps: 0 });
   if (to) p.facing = to;
 }
 
@@ -823,14 +987,14 @@ async function diceChoiceFlow(state, p, ui, index, min, max) {
   if (!id) return false;
   const type = id === 'superdice' ? 'steps' : 'diceValue';
   const value = await ui.ask({ type, player: p, cardId: id, min, max });
-  if (value == null || value < min || value > max) return false;
+  if (!Number.isInteger(value) || value < min || value > max) return false;
   p.cards.splice(index, 1);
   if (id === 'superdice') {
     p.forcedDice = value;
     log(state, `${p.name} 使用超级骰子卡：本回合走 ${value} 步`);
   } else {
     p.diceValue = value;
-    log(state, `${p.name} 使用遥控骰子：本回合每颗骰子固定为 ${value} 点`);
+    log(state, state.slice?`${p.name} 使用定步：本回合走 ${value} 步`:`${p.name} 使用遥控骰子：本回合每颗骰子固定为 ${value} 点`);
   }
   return true;
 }
@@ -863,6 +1027,7 @@ function labelForPlot(state, id) {
   const pr = state.properties[id];
   const plot = state.map.plots.find(x => x.id === id);
   if (!plot) return id;
+  if(state.slice)return plot.name;
   if (plot.big) return pr?.bigType ? BIG_NAMES[pr.bigType] : '大空地';
   return '小地产';
 }

@@ -44,10 +44,6 @@ export function mapRentMultiplier(state, pr) {
   const m = state.map.mechanic;
   if (!m || !pr) return 1;
   if (m.id === 'night') return state.day % 2 ? m.rentDay : m.rentNight;
-  if (m.id === 'mountain') {
-    const spots = state.map.nodes.filter(n => !state.placements[n.id] && !state.players.some(p => p.position === n.id));
-    if (spots.length) state.placements[state.rng.pick(spots).id] = { kind: 'dog' };
-  }
   if (m.id === 'festival') {
     const plot = state.map.plots.find(x => x.id === pr.id);
     const zone = state.map.zones?.find(z => z.id === state.map.runtime?.zone);

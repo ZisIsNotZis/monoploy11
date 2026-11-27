@@ -1,0 +1,6 @@
+# Run artifacts: these are evidence produced by a run, not the delivery itself.
+OUT-*/
+chrome-profile-*/
+trees/
+record-tree.json
+__pycache__/

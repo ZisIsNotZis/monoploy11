@@ -1,0 +1,107 @@
+# #3278 交付文件集（干净检出里应当存在的每一个文件）
+#
+# 这一份清单存在的原因：之前几轮说"可重跑"，但重跑要用的量具放在 .scratch 里，
+# 而 .scratch 不入库 —— 从干净检出根本跑不起来。"可复取"必须能被点名，否则只是说法。
+#
+# 格式：
+#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3278.sha256 里钉死
+#   doc  <path>   —— 说明与证据文字
+#   tool <path>   —— 量具（跑一局、判一局、核字节目录）
+#
+# 校验：python3 support/full-game/check-delivery.py
+
+lock index.html
+lock serve.py
+lock styles.css
+lock src/data/bosses.js
+lock src/data/card-desc.js
+lock src/data/characters.js
+lock src/data/experience.js
+lock src/data/lines.js
+lock src/data/map-boss.js
+lock src/data/maps/grand-hotel.js
+lock src/data/maps/grid-manor.js
+lock src/data/maps/index.js
+lock src/data/maps/test-manor.js
+lock src/data/maps/variants.js
+lock src/data/slice.js
+lock src/data/tuning.js
+lock src/debug/session.js
+lock src/engine/ai.js
+lock src/engine/board-v2.js
+lock src/engine/economy.js
+lock src/engine/flow.js
+lock src/engine/game.js
+lock src/engine/insight.js
+lock src/engine/map-runtime.js
+lock src/engine/payback.js
+lock src/engine/rng.js
+lock src/engine/slice-ai.js
+lock src/main.js
+lock src/sim.js
+lock src/ui/icons.js
+lock src/ui/render.js
+lock src/ui/slice.js
+lock src/ui/speech.js
+lock src/ui/superdice-preview.js
+lock src/ui/voice.js
+
+doc  README.md
+doc  docs/evidence/slice-entry-3278.sha256
+doc  docs/6_SLICE.md
+doc  docs/slice-release-readiness.md
+doc  docs/evidence/RESULT-3278.md
+# README 第一行就链 [目标](docs/2_GOAL.md)。此前它在清单外，于是「从干净检出打开首页说明」
+# 的第一步就是死链——而交付集自检只看产品字节，不会发现这一点。
+# 下面这些是被链到的文档再链到的下一跳（2_GOAL → 0_ROADMAP、3_REQUIREMENT → 5_PRODUCT、
+# 9_IMPLEMENTATION），收进来是为了「文档链接在检出里闭合」，不是为了凑数：
+# test/delivery-links.test.js 从 README 出发走完整个链接闭包，少一份就红。
+doc  docs/0_ROADMAP.md
+doc  docs/2_GOAL.md
+doc  docs/3_REQUIREMENT.md
+doc  docs/5_PRODUCT.md
+doc  docs/9_IMPLEMENTATION.md
+# 6_SLICE 与 9_IMPLEMENTATION 点名这份实验数据；readiness 页链接四份历史字节锁。
+doc  docs/evidence/slice-benchmark.json
+doc  docs/evidence/slice-entry-2980.sha256
+doc  docs/evidence/slice-entry-3077.sha256
+doc  docs/evidence/slice-entry-3166.sha256
+# 6_SLICE 的 #3264 一节链这份锁（链接闭包由 test/delivery-links.test.js 咬住）。
+doc  docs/evidence/slice-entry-3264.sha256
+# test/blocked-internal-dirs.test.js GETs this over HTTP and expects 200: it is the page's
+# "docs are readable, not blocked" half. A bare copy without it reads as a product 404.
+doc  docs/variant-entry-and-risk.md
+doc  LICENSE
+
+tool support/full-game/run-full.py
+tool support/full-game/drive-full.mjs
+tool support/full-game/lib.js
+tool support/full-game/fit.js
+tool support/full-game/probe-lib.mjs
+tool support/full-game/verify-http.py
+tool support/full-game/report-full.py
+tool support/full-game/check-delivery.py
+tool support/full-game/clean-checkout.py
+tool support/full-game/make-candidate.py
+tool support/full-game/DELIVERY.txt
+# README 点名的两个调试工具。它们只 import src/ 下已在锁内的模块，不读私有路径、
+# 不写盘、不需要浏览器 ⇒ 干净检出里能直接跑。另外三个 tools/verify-*.mjs 硬编码了
+# Edge 安装路径与 .scratch profile，不入交付集。
+tool tools/play.mjs
+tool tools/evaluate-slice.mjs
+
+# 测试套件（不进播放树，但属于检出的一部分：干净检出要能自查）
+test test/*.test.js
+# 服务器测试的两个夹具。第一次干净检出模拟（181 条红）就是因为这里漏了 serve-variant.py：
+# 缺了它，blocked-* 与 trailing-slash-* 整组都报「夹具缺失」。清单漏项会伪装成产品回归。
+test support/serve-fixture.js
+test support/serve-variant.py
+# 对照实验的两个夹具（原住 .scratch，那里会被例行清理 ⇒ 干净检出会红）。
+# 测试断言的是字面 URL `/.scratch/…`，而文件住在这里；URL 到文件的映射在
+# support/serve-variant.py 里做（不需要任何人手工把夹具摆到 .scratch/）。
+tool support/compare/af-variant.html
+tool support/compare/af-variant-inject.js
+# 跑一次会在这个目录里产出 OUT-*/、chrome-profile-*/、trees/。这几条 ignore 规则必须一起走：
+# 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
+tool support/full-game/.gitignore
+# test/no-edge-profiles.test.js reads .scratch directly too; it tolerates absence.

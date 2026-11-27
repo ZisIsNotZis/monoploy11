@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monopoly 11</title>
+<link rel="stylesheet" href="../styles.css">
+<!-- 对照注入：必须在 src/main.js 之前求值 -->
+<script type="module" src="./af-variant-inject.js"></script>
+</head>
+<body>
+<div id="setup">
+  <h1>Monopoly 11</h1>
+  <section class="slice-intro">
+    <span class="eyebrow">第一场 · 街角生意</span>
+    <h2>两间小店，一手打算。</h2>
+    <p>和两位对手做 16 天生意。翻修、抓旺季，或封住危险街再穿过去。<br>每回合最多用两张卡；每三天选一组新补给。书屋第 4 天开售。资金 + 地产标价最高者赢。</p>
+    <div id="sliceStyles" class="slice-styles"></div>
+    <p id="sliceStyleNote" class="hint" hidden></p>
+    <button id="startSlice">开一局街角生意</button>
+    <p class="hint">不用先读规则。卡片效果、地产租金与每回合发生的事都会直接显示。16 天是回合上限，实际时长正在验证。</p>
+  </section>
+  <details class="advanced-setup"><summary>完整模式与自定义设置</summary>
+  <div class="setup-grid">
+    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option></select></label>
+    <label>地图 <select id="map"><option value="grand-hotel" selected>大酒店</option>
+      <option value="snow">雪国</option>
+      <option value="sky">云上庭院</option>
+      <option value="machine">机械迷宫</option>
+      <option value="night">不夜天</option>
+      <option value="water">水乡</option>
+      <option value="mountain">山城</option>
+      <option value="angel">天使岛</option>
+      <option value="festival">狂欢节</option>
+      <option value="music">音乐之都</option>
+      <option value="season">锦绘时代</option>
+      <option value="volcano">火山古迹</option></select></label>
+    <label>种子 <input id="seed" type="number" value="1"></label>
+    <label>初始现金 <input id="startingCash" type="number" value="100000" step="10000"></label>
+    <label>初始存款 <input id="startingDeposit" type="number" value="100000" step="10000"></label>
+    <label>金钱格上限 <input id="moneyCap" type="number" value="30000" step="1000"></label>
+    <label>初始手牌 <input id="startingCards" type="number" value="4" min="0"></label>
+    <label>手牌上限 <input id="handLimit" type="number" value="8" min="1"></label>
+    <label>天数上限 <input id="dayLimit" type="number" value="50" min="1"></label>
+    <label>物价起始 <input id="priceStart" type="number" value="1" step="0.1"></label>
+    <label>物价步长 <input id="priceStep" type="number" value="0.1" step="0.05"></label>
+    <label>物价间隔 <input id="priceEvery" type="number" value="15" min="1"></label>
+    <label>银行利率% <input id="interestRate" type="number" value="10" step="1"></label>
+    <label>结息天数 <input id="interestEvery" type="number" value="30" min="1"></label>
+    <label>医院天数 <input id="hospitalDays" type="number" value="2" min="1"></label>
+    <label>监狱天数 <input id="jailDays" type="number" value="2" min="1"></label>
+    <label>乐透票价 <input id="lotteryTicket" type="number" value="2000" step="100"></label>
+    <label>开奖天数 <input id="lotteryEvery" type="number" value="10" min="1"></label>
+    <label>初始奖池 <input id="lotteryBase" type="number" value="200000" step="10000"></label>
+    <label>小地产价 <input id="smallPrice" type="number" value="8000" step="1000"></label>
+    <label>大地产价 <input id="bigPrice" type="number" value="20000" step="1000"></label>
+    <label class="check"><input type="checkbox" id="testcards"> 测试卡组</label>
+  </div>
+  <div id="setupRows"></div>
+  <div class="setup-row"><button id="start">开始</button></div>
+  <p class="hint">队伍选同一个编号就是组队；每名参赛者可选人类或 AI。角色就是身份，不再单独命名。</p>
+  <div class="setup-help">
+    <b>这一局怎么玩</b>
+    <span>目标：50 天内队伍总资产最高，或让对手先破产。</span>
+    <span>中心大酒店有 12 个入口，抢到它租金最凶；标“无主已建”的地产买下即继承等级，普通小地产买下仍是空地。</span>
+    <span>移动进岔路时自己选方向；右侧栏可以拖动调宽。</span>
+  </div>
+  </details>
+</div>
+
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="../src/main.js?v=150"></script>
+</body>
+</html>

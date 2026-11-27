@@ -39,11 +39,62 @@ export function buyPrice(state, ref) {
   const plot = state.map.plots.find(p => p.id === cellId);
   const pr = state.properties[cellId];
   const base = pr?.price ?? plot?.price ?? (plot?.big ? (state.config?.bigPlotPrice ?? 20_000) : (state.config?.smallPlotPrice ?? 8_000));
+  if(state.config.mode==='slice') {
+    const initial=state.map.initialProperties?.find(p=>p.plotId===cellId)?.level??0;
+    return Math.round(base+Math.max(0,(pr?.level??0)-initial)*(plot?.big?8000:4000));
+  }
   return Math.round(base * state.priceIndex);
 }
 
 export function buildCost(level) {
   return Math.max(1, level) * 5_000;
+}
+
+// #807：rent 那句 Q3 要写「剩 N，够不够买一块最低价 M 的地」。
+// M 必须是当场可买地块的真实最低价，不能写死。
+// 只读：不写 state、不读随机数；没有可买地块时返回 null（调用方就不写这一段）。
+//
+// 为什么只算**无主**地：对手的地也能拿（收购），但要付 `buyPrice × 1.25`（game.js:454），
+// 而这里返回的是 buyPrice。真浏览器日志里出现过：
+//   「实付租金 0（晚风街小店），… 你剩 32,000，够买一块 晚风街小店（8,000）」
+// 那块地是对手的，实际要 10,000。用 8,000 说“够买”会误导。
+// 所以把对手地排除在外：无主地才是「走到就能买」的那种。
+export function cheapestBuyable(state, viewer) {
+  if (!state?.slice) return null;
+  const viewerId = viewer?.id ?? null;
+  let best = null;
+  for (const plot of state.map.plots) {
+    if (plot.big) continue;                                   // 大地产走另一套规则，不混进来
+    if (state.day < (plot.availableFromDay ?? 1)) continue;    // 还没开售
+    const pr = state.properties[plot.id];
+    if (pr?.ownerId) continue;                                 // 有主（自己的或对手的）都不算「可买」
+    const price = buyPrice(state, plot.id);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    if (best === null || price < best.price) best = { price, name: plot.name, id: plot.id };
+  }
+  return best;
+}
+
+// #845：收购是**卡牌动作**（game.js:454 的 buyland 分支），不是常驻能力。
+// 所以「收购最便宜的一块要多少钱」这句话只有在玩家手里确实有 buyland 时才许出现。
+// 这个函数只算价、不看手牌（谁说话由调用方判）——与 applyCard 同口径：
+//   排除 big（含书屋，game.js:454 `if(state.slice&&plot.big)return false`）、排除己方、
+//   价 = Math.round(buyPrice × 1.25)（不写死常数）。
+// 只读：不写 state、不读随机数。
+export function cheapestAcquirable(state, viewer) {
+  if (!state?.slice || !viewer) return null;
+  let best = null;
+  for (const plot of state.map.plots) {
+    if (plot.big) continue;                                    // 大店/书屋只能到场买
+    if (state.day < (plot.availableFromDay ?? 1)) continue;     // 还没开售
+    const pr = state.properties[plot.id];
+    if (pr?.ownerId === viewer.id) continue;                    // 自己的店不用收
+    const mark = buyPrice(state, plot.id);
+    if (!Number.isFinite(mark) || mark <= 0) continue;
+    const price = Math.round(mark * 1.25);
+    if (best === null || price < best.price) best = { price, mark, name: plot.name, id: plot.id };
+  }
+  return best;
 }
 
 // 领主收入/租金加成集中在这里，方便按档位测试。
@@ -65,7 +116,7 @@ export function assetsOf(state, p) {
   for (const id of p.properties) {
     const pr = state.properties[id];
     if (!pr) continue;
-    v += buyPrice(state, id) + (pr.level > 0 ? (pr.big ? 30_000 : TUNING.buildCost[pr.level] ?? 0) : 0);
+    v += buyPrice(state, id) + (state.config.mode==='slice'?0:(pr.level > 0 ? (pr.big ? 30_000 : TUNING.buildCost[pr.level] ?? 0) : 0));
   }
   for (const [id, qty] of Object.entries(p.stocks ?? {})) {
     const stock = state.stocks.find(s => s.id === id);
@@ -111,9 +162,11 @@ export function pay(state, from, to, amount, reason) {
       doctor.cards.push(...from.cards);
       log(state, `神秘博士据为己有：接收 ${from.name} 的 ${from.cards.length} 张卡与 ${from.properties.length} 块地`);
     }
-    if (to) { if (reason === '租金') to.deposit += incomeBonus(to, available); else to.cash += incomeBonus(to, available); }
+    if (to) { if (reason === '租金' && !state.slice) to.deposit += incomeBonus(to, available); else to.cash += incomeBonus(to, available); }
     from.cash = 0; from.deposit = 0; from.alive = false;
-    for (const id of from.properties) { const pr = state.properties[id]; if (pr) pr.ownerId = null; }
+    // A recipient may already have inherited a plot. Only release assets still
+    // owned by the bankrupt player; never erase the transfer above.
+    for (const id of from.properties) { const pr = state.properties[id]; if (pr?.ownerId === from.id) pr.ownerId = null; }
     from.properties = []; from.cards = [];
     log(state, `${from.name} 付不出 ${amount}（${reason}），破产`);
     return false;
@@ -123,7 +176,7 @@ export function pay(state, from, to, amount, reason) {
   from.cash -= fromCash;
   const rest = amount - fromCash;
   if (rest > 0) from.deposit -= rest;
-  if (to) { const gain = incomeBonus(to, amount); if (reason === '租金') to.deposit += gain; else to.cash += gain; }
+  if (to) { const gain = incomeBonus(to, amount); if (reason === '租金' && !state.slice) to.deposit += gain; else to.cash += gain; }
   if (!from.isBoss) {
     const yuan = state.players.find(p => p.isBoss && p.bossId === 'yuanyuan' && p.bossTier >= 3 && p.alive);
     if (yuan) { const siphon = Math.round(yuan.deposit * 0.01 * state.priceIndex); yuan.deposit += siphon; log(state, `圆圆流通手段：抽走 ${siphon}`); }

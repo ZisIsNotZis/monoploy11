@@ -9,6 +9,16 @@
 <body>
 <div id="setup">
   <h1>Monopoly 11</h1>
+  <section class="slice-intro">
+    <span class="eyebrow">第一场 · 街角生意</span>
+    <h2>两间小店，一手打算。</h2>
+    <p>和两位对手做 16 天生意。翻修、抓旺季，或封住危险街再穿过去。<br>每回合最多用两张卡；每三天选一组新补给。书屋第 4 天开售。资金 + 地产标价最高者赢。</p>
+    <div id="sliceStyles" class="slice-styles"></div>
+    <p id="sliceStyleNote" class="hint" hidden></p>
+    <button id="startSlice">开一局街角生意</button>
+    <p class="hint">不用先读规则。卡片效果、地产租金与每回合发生的事都会直接显示。16 天是回合上限，实际时长正在验证。</p>
+  </section>
+  <details class="advanced-setup"><summary>完整模式与自定义设置</summary>
   <div class="setup-grid">
     <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option></select></label>
     <label>地图 <select id="map"><option value="grand-hotel" selected>大酒店</option>
@@ -53,6 +63,7 @@
     <span>中心大酒店有 12 个入口，抢到它租金最凶；标“无主已建”的地产买下即继承等级，普通小地产买下仍是空地。</span>
     <span>移动进岔路时自己选方向；右侧栏可以拖动调宽。</span>
   </div>
+  </details>
 </div>
 
 <main id="desk">
@@ -61,6 +72,7 @@
     <div id="sideGrip" title="拖动调整侧栏宽度"></div>
     <div id="system"></div>
     <div id="players"></div>
+    <div id="insight"></div>
     <ol id="log"></ol>
     <div id="hand">
       <div id="cards"></div>

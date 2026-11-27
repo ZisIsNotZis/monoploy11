@@ -1,5 +1,21 @@
 # 实现结构
 
+## 当前切片入口（2026-11-13）
+
+街角生意的规则及验证以 [6_SLICE.md](6_SLICE.md) 为准。既有完整模式继续保留，本文件下文记录其基础结构。
+
+- `src/data/slice.js`：精简地图、五卡定义、补给和开局配置；不向旧 12 图目录增加伪完成项。
+- `src/engine/flow.js` / `game.js`：同一真实回合引擎，按 `config.mode === 'slice'` 启用明确的切片规则。
+- `src/engine/insight.js`：只读落点枚举、风险说明和合法目标，供界面与 AI 共享；不读未来 RNG。
+- `src/engine/slice-ai.js`：公开信息 AI，按风格偏好及当前经济机会选卡、选补给、选路。
+- `src/ui/slice.js`：资金/资产回顾、卡片清晰文案与结算解释；`main.js` 接入实际交互，旧完整设置折叠保留。
+- `src/debug/session.js` + `tools/play.mjs`：引擎 `ui.ask` 的可暂停 JSONL 调试适配器，支持只读观察、带 promptId 的回答和 AI 推进。
+- `tools/evaluate-slice.mjs`：各实际座次排列的批量实验；证据在 `docs/evidence/slice-benchmark.json`。
+
+Node DOM 适配器测试执行真实入口与选择处理；它验证接线与生成文案，不验证浏览器布局。切片体验时长也在 `src/data/experience.js` 统一配置。
+
+## 完整模式实现基线
+
 > 三层文档分工：`3_REQUIREMENT.md` 是玩法设计，`5_PRODUCT.md` 是体验设计，本文件是**架构设计**。本文件只讲数据、模块、状态和执行顺序，不讲主题、配色和动效观感。
 
 本文件记录代码的组织方式，供后续接手者不靠对话记忆也能继续。规则口径以 `3_REQUIREMENT.md` 为准；本文件只讲实现。

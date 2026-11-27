@@ -5,6 +5,7 @@ import { BOSS_BY_ID } from '../data/bosses.js';
 import { TEST_MANOR } from '../data/maps/test-manor.js';
 import { MAPS as PRODUCT_MAPS } from '../data/maps/index.js';
 import { createMapRuntime } from './map-runtime.js';
+import { SLICE_MAP, SLICE_CARDS, initializeSlice } from '../data/slice.js';
 import { walk, validateMap, buildAdj, isPlatformActive, nearestStable, pathWithin, reachableWithin } from './board-v2.js';
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, ownsStreet, incomeBonus } from './economy.js';
 
@@ -13,7 +14,7 @@ const GENDER = {
   qiange:'男', shalagongzhu:'女', wumi:'女', gongben:'男', xiaodanni:'男', tangtang:'女',
   yuehanqiao:'男', wumeila:'女', ludwig:'男', shiyi:'女', doctor:'男', octopus:'男', bear:'男', yuanyuan:'女',
 };
-const MAPS = { ...PRODUCT_MAPS, 'test-manor': TEST_MANOR };
+const MAPS = { ...PRODUCT_MAPS, 'test-manor': TEST_MANOR, [SLICE_MAP.id]: SLICE_MAP };
 
 export function teamColor(teamIndex, memberIndex, memberCount) {
   const hue = Math.round((teamIndex * 137.508 + 12) % 360);
@@ -89,6 +90,7 @@ export function createGame(config = {}) {
   }
   log(state, `开局：${players.map(p => p.name).join('、')}，地图 ${map.name}`);
   if (map.intro) log(state, map.intro);
+  if (config.mode === 'slice') initializeSlice(state);
   state.phase = 'action';
   return state;
 }
@@ -155,6 +157,7 @@ export function randomCard(rng) { return rng.pick(CARD_LIST.filter(([id]) => !AD
 // 卡片来源的“熟客”偏向：已经握有 2 张以上同名单卡时，有一半概率再给同名单卡，
 // 让五张同名合成在卡片格/书店/事件里自然发生，同时总供给仍受随机池限制。
 export function drawBaseCard(state, p) {
+  if (state.config.mode === 'slice') return state.rng.pick(Object.keys(SLICE_CARDS));
   const counts = {};
   for (const id of p.cards) if (!ADVANCED.has(id) && RECIPES[id]) counts[id] = (counts[id] ?? 0) + 1;
   const warm = Object.entries(counts).filter(([, n]) => n >= 2).map(([id]) => id);
@@ -164,6 +167,7 @@ export function drawBaseCard(state, p) {
 
 export function addCard(state, p, id) {
   p.cards.push(id);
+  if(state.config.mode==='slice')return;
   const adv = RECIPES[id];
   if (!adv) return;
   const n = p.cards.filter(x => x === id).length;
@@ -406,7 +410,33 @@ export function useCard(state, index, target) {
   p.cards.splice(index, 1);
   const octo = state.players.find(x => x.isBoss && x.bossId === 'octopus' && x.bossTier >= 3 && x.alive);
   if (octo && id !== 'pick' && state.rng.float() < 0.3) addCard(state, octo, 'pick');
-  log(state, `${p.name} 使用 ${def.name}${target ? ` → ${target}` : ''}`);
+  const targetLabel=state.slice?(state.map.plots.find(plot=>plot.id===target)?.name??state.players.find(q=>q.id===target)?.name??target):target;
+  // #565 候选 B：翻修后必须看得到「这间店现在收多少」。
+  // 只读 rentFor（纯函数，不写状态、不消耗随机数、不改结算），且只在切片模式加。
+  // 第一版（#554）这里只写「升到 N 级」—— 玩家要自己去看地图小字才知道自己刚做了什么。
+  // 为什么必须标旺季：rentFor 已含 inflate ×2：同一局晨光街茶铺 3 级在旺季是 22,400、旺季过后回到 11,200。
+  // 只写「租 22,400」会被当成地基租金，旺季一过就像 bug。
+  // 与 #554「会付 4,000 而实际收 19,200」同一类：同一个租金额必须带时点/状态。
+  // #570：把「值不值」变成一行可判的数。卡牌翻修是免费的，所以回本是立即的；
+  // 它真正的代价是「这张卡本可以拿去旺季/停业」，那不可算，不在日志里编。
+  const afterRentPr=state.slice&&id==='worker'?state.properties[target]:null;
+  const afterRent=afterRentPr?`，${afterRentPr.inflate>0?'旺季 ':''}租 ${rentFor(state,target).toLocaleString()}（免费，立即回本）`:'';
+  // #807：卡牌翻修（这条路径）原来说完回本就完了，没说「这条街现在对下回合意味着什么」。
+  // 与 flow.js 的 buildPlot 同一个口径：按谁的地分两种写法，金额全走 rentFor。
+  // 为什么必须补：build 26 条里 20 条走的是这里（卡牌），只改 buildPlot 只到 6。
+  let cardQ3='';
+  if(state.slice&&id==='worker'&&afterRentPr){
+    const viewer=state.players.find(q=>q.controller==='human');
+    const cardOwner=state.players.find(q=>q.id===afterRentPr.ownerId);
+    const r=rentFor(state,target).toLocaleString();
+    if(viewer){
+      cardQ3=cardOwner?.id===viewer.id
+        ? `；这条街现在归你，对手踩到付 ${r}`
+        : `；对手这条街涨到 ${r}，你踩到付 ${r}`;
+    }
+  }
+  const consequence=state.slice&&id==='worker'?`，升到 ${state.properties[target]?.level} 级${afterRent}${cardQ3}`:state.slice&&id==='inflate'?'，租金翻倍 3 天':state.slice&&id==='close'?'，停租 2 天':'';
+  log(state, `${p.name} 使用 ${state.slice?(SLICE_CARDS[id]?.name??def.name):def.name}${targetLabel ? ` → ${targetLabel}` : ''}${consequence}`);
   return state;
 }
 
@@ -432,12 +462,13 @@ export function applyCard(state, p, id, target) {
       const key = targetPlotId(state, target);
       const plot = state.map.plots.find(x => x.id === key);
       if (!plot) return false;
+      if(state.slice&&plot.big)return false;
       const pr = state.properties[key];
       if (pr?.ownerId === p.id) return false;
-      const price = buyPrice(state, key);
+      const price = Math.round(buyPrice(state, key)*(state.slice?1.25:1));
       if (p.cash < price) return false;
       p.cash -= price;
-      if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) old.properties = old.properties.filter(x => x !== key); }
+      if (pr) { const old = state.players.find(x => x.id === pr.ownerId); if (old) { old.properties = old.properties.filter(x => x !== key); if(state.config.mode==='slice') {old.cash+=price; p.sliceStats.takeovers++; log(state, `${p.name} 向 ${old.name} 支付 ${price} 收购 ${plot.name}`);} } }
       p.properties.push(key);
       state.properties[key] = { ownerId: p.id, level: pr?.level ?? 0, street: plot?.street ?? null, big: !!plot?.big, bigType: pr?.bigType ?? null, closed: pr?.closed ?? 0, inflate: pr?.inflate ?? 0, price: pr?.price ?? plot?.price ?? null };
       return true;
@@ -466,7 +497,7 @@ export function applyCard(state, p, id, target) {
     case 'close': {
       const street = String(target ?? '');
       for (const pr of Object.values(state.properties)) {
-        if (pr.street === street) pr.closed = 5;
+        if (pr.street === street) pr.closed = state.config.mode==='slice'?2:5;
       }
       return true;
     }
@@ -499,8 +530,8 @@ export function applyCard(state, p, id, target) {
       if (!plot) return false;
       const pr = state.properties[key];
       const owner = pr?.ownerId ? state.players.find(q => q.id === pr.ownerId) : null;
-      if (!pr || !owner || owner.team !== p.team || pr.level <= 0) return false;
-      pr.level = Math.min(TUNING.maxLevel, pr.level + 1);
+      if (!pr || !owner || owner.team !== p.team || pr.level <= 0 || pr.level >= (state.config.maxLevel??TUNING.maxLevel)) return false;
+      pr.level = Math.min(state.config.maxLevel??TUNING.maxLevel, pr.level + 1);
       if (p.talents.includes('worker_to_truck') && state.rng.float() < 0.3) {
         addCard(state, p, 'truck');
         log(state, `${p.name} 赢家：机器工人用毕，获得 1 张工程车卡`);
@@ -509,7 +540,7 @@ export function applyCard(state, p, id, target) {
     }
     case 'inflate': {
       const street = String(target ?? '');
-      for (const pr of Object.values(state.properties)) if (pr.street === street) pr.inflate = 6;
+      for (const pr of Object.values(state.properties)) if (pr.street === street) pr.inflate = state.config.mode==='slice'?3:6;
       return true;
     }
     case 'superdice': p.forcedDice = 12; return true;
