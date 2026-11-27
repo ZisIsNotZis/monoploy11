@@ -1,12 +1,12 @@
 {
  "label": "clean-full",
  "human": "街角店主",
- "entry": "http://127.0.0.1:8431/index.html?slice=1&style=grow&seed=1",
- "frames": 416,
- "ms": 53845,
+ "entry": "http://127.0.0.1:46195/index.html?slice=1&style=grow&seed=1",
+ "frames": 415,
+ "ms": 53797,
  "kinds": {
   "action": {
-   "frames": 383,
+   "frames": 382,
    "headings": [
     "",
     "翻修",
@@ -2515,7 +2515,7 @@
     "cardsVisible": true,
     "bubble": null
    },
-   "frame": 382,
+   "frame": 381,
    "kind": "action",
    "heading": "旺季",
    "before": {
@@ -2548,7 +2548,7 @@
     "logLen": 3053
    },
    "hit": "itself",
-   "bubble": "先冷静一下。",
+   "bubble": "这地方，我不熟。",
    "after": {
     "stillEnabled": false,
     "rollDisabled": true,
@@ -2556,9 +2556,9 @@
     "day": "第 15 天",
     "panelHidden": true,
     "cardsVisible": true,
-    "bubble": "先冷静一下。"
+    "bubble": "这地方，我不熟。"
    },
-   "frame": 388,
+   "frame": 387,
    "kind": "action",
    "heading": "旺季",
    "before": {
@@ -2601,7 +2601,7 @@
     "cardsVisible": true,
     "bubble": null
    },
-   "frame": 402,
+   "frame": 401,
    "kind": "direction",
    "heading": "还剩 2 步，往哪走？",
    "before": {
@@ -2644,7 +2644,7 @@
     "cardsVisible": true,
     "bubble": null
    },
-   "frame": 405,
+   "frame": 404,
    "kind": "supply",
    "heading": "这三天，你想怎么做？",
    "before": {
@@ -2687,7 +2687,7 @@
     "cardsVisible": false,
     "bubble": null
    },
-   "frame": 406,
+   "frame": 405,
    "kind": "action",
    "heading": "这三天，你想怎么做？",
    "before": {
@@ -2730,7 +2730,7 @@
     "cardsVisible": true,
     "bubble": null
    },
-   "frame": 407,
+   "frame": 406,
    "kind": "mapPick/street",
    "heading": "旺季",
    "before": {
@@ -2773,7 +2773,7 @@
     "cardsVisible": true,
     "bubble": null
    },
-   "frame": 408,
+   "frame": 407,
    "kind": "action",
    "heading": "旺季",
    "before": {
@@ -2796,12 +2796,12 @@
  "runtimeErrors": [],
  "runtimeErrorCount": 0,
  "png": {
-  "bytes": 92659,
+  "bytes": 92626,
   "size": [
    390,
    844
   ],
-  "sha256": "c4abb3deda0ffc292ad19bc5f9069a2dadc20cd575a774f85a5b162af385e557"
+  "sha256": "1a4274bd319de68652603e2b9a7090c154f472a6d8e60a46983d0dfb1151a9e5"
  },
  "judge": {
   "ok": true,
@@ -3547,7 +3547,7 @@
    "visible": null
   },
   {
-   "frame": 402,
+   "frame": 401,
    "kind": "direction",
    "heading": "还剩 2 步，往哪走？",
    "key": 11,
@@ -3589,7 +3589,7 @@
    "visible": true
   },
   {
-   "frame": 405,
+   "frame": 404,
    "kind": "supply",
    "heading": "这三天，你想怎么做？",
    "key": null,
@@ -3637,7 +3637,7 @@
    "visible": null
   },
   {
-   "frame": 409,
+   "frame": 408,
    "kind": "direction",
    "heading": "还剩 5 步，往哪走？",
    "key": 12,
@@ -3673,7 +3673,7 @@
    "visible": true
   },
   {
-   "frame": 413,
+   "frame": 412,
    "kind": "direction",
    "heading": "还剩 2 步，往哪走？",
    "key": 13,

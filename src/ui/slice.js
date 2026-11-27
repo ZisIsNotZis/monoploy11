@@ -1130,18 +1130,18 @@ function rentPaidOn(state, human, name) {
   return { sum, hits };
 }
 
-// 人类从某间店实收过的租金合计（同样的实付行口径，只看收款方是不是我）。
+// 人类从某间店实收过的租金：金额与次数（同样只认实付行，只看收款方是不是我）。
 function rentEarnedOn(state, human, name) {
-  let sum = 0;
+  let sum = 0, hits = 0;
   for (const entry of state.log ?? []) {
     const m = /^(\S+) 实付租金 (\d+)（([^）]+)），(\S+) 收到 (\d+)/.exec(entry.text);
     if (!m || m[4] !== human.name || m[3] !== name) continue;
-    sum += Number(m[5]);
+    sum += Number(m[5]); hits += 1;
   }
-  return sum;
+  return { sum, hits };
 }
 
-// 人类付过的最大一笔租（破产那一刻常常就是它）。
+// 人类付过的最大一笔租。这是「本局最贵的一停」，**不是**出局原因：它可能已经付清了。
 function biggestRentPaid(state, human) {
   let best = null;
   for (const entry of state.log ?? []) {
@@ -1153,17 +1153,60 @@ function biggestRentPaid(state, human) {
   return best;
 }
 
+// 破产那一刻到底发生了什么：应付多少、实际付得出多少、哪块地。只认引擎写的那两行。
+//
+// #3337b（supervisor 在 5ec96f8 上抓到的）：这一支原来用的是「人类付过的**最大**一笔租」，
+// 于是 grow/seed 19 被写成「第 12 天你为街心书屋一次付了 9,600，付不出就出局了」——
+// 而日志里那一笔**付清了**（实付 9,600），真正出局是第 16 天的同一间店：
+// 应付 9,600、实付 4,400、日志里写着 `付不出 9600（租金），破产`。
+// 两个数字都是真的，但句子把「最大的一笔」当成了「击穿的那一笔」——
+// 这是编造因果，比不说更坏。
+//
+// 所以这里只读引擎自己写的破产行，再回头找同一笔的应付行与实付行来补全口径；
+// 找不到就返回 null，让调用方降级到一句不含因果的话。
+const BUST = /^(\S+) 付不出 (\d+)（([^）]*)），破产$/;
+const OWED = /^(\S+) 向 (\S+) 应付租金 (\d+)（([^）]+)）/;
+const PAID = /^(\S+) 实付租金 (\d+)（([^）]+)），(\S+) 收到 (\d+)/;
+
+function bustEntry(state, human) {
+  const log = state.log ?? [];
+  let idx = -1;
+  for (let k = log.length - 1; k >= 0; k--) {
+    const m = BUST.exec(log[k].text);
+    if (m && m[1] === human.name) { idx = k; break; }
+  }
+  if (idx < 0) return null;            // 没写破产行：不编因果
+  const fail = BUST.exec(log[idx].text);
+  const amount = Number(fail[2]);
+  const reason = fail[3];
+  const day = log[idx].day;
+  // 同一天、同一付款方、同一金额的应付行给出店名；实付行给出真实付得出来的钱。
+  let plot = null, paid = null;
+  for (let k = Math.max(0, idx - 8); k < log.length; k++) {
+    const e = log[k];
+    if (e.day !== day) continue;
+    const o = OWED.exec(e.text);
+    if (o && o[1] === human.name && Number(o[3]) === amount && !plot) plot = o[4];
+    const p = PAID.exec(e.text);
+    if (p && p[1] === human.name && (plot ? p[3] === plot : true) && paid == null) paid = Number(p[2]);
+  }
+  return { day, amount, reason, plot, paid };
+}
+
 export function nextGameLine(state) {
   const human = state.players?.find(q => q.controller === 'human');
   const plots = state.map?.plots ?? [];
   if (!human || !plots.length) return '';
   const props = state.properties ?? {};
 
-  // ① 破产：说出把它击穿的那一笔（本局日志原文），而不是泛泛「注意现金」。
+  // ① 破产：说出真正把它击穿的那一笔（应付 / 实付 / 哪块地），而不是「付过的最大一笔」。
+  // 两者不是同一件事：#3337b 之前这句把一笔**付清了**的 9,600 说成了出局原因。
   if (!human.alive) {
-    const bust = biggestRentPaid(state, human);
-    if (bust) {
-      return `在这笔之前留够现金：第 ${bust.day} 天你为${bust.plot}一次付了 ${money(bust.amount)}，付不出就出局了。`;
+    const bust = bustEntry(state, human);
+    if (bust && bust.amount != null) {
+      const tail = bust.paid == null ? '' : `，你只付得出 ${money(bust.paid)}`;
+      const where = bust.plot ? `为${bust.plot}` : '一笔租金';
+      return `在这笔之前留够现金：第 ${bust.day} 天${where}应付 ${money(bust.amount)}${tail}，付不出就出局了。`;
     }
     return '先留住一次租金的现金再买地：这一局你的资金先耗尽了。';
   }
@@ -1195,9 +1238,16 @@ export function nextGameLine(state) {
         return `拿到${name}之后接着往上盖：从 ${lv} 级到 ${max} 级要花 ${money(cost)}，`
           + `它每次被踩到的租金 ${money(now)} → ${money(top)}。`;
       }
+      // 到顶了：再投钱也涨不上去。这一支不该只复述本局 —— 它得说清「这座店还剩什么事可做」。
+      // 引擎规则：租金只在别人踩到时才收（rentFor 只在付款那一路被读取），所以满级之后
+      // 唯一的变量是「它有没有被踩到」。这两个数都来自日志原文，不是估算。
       const earned = rentEarnedOn(state, human, name);
-      const when = took ? `第 ${took.day} 天用 ${money(took.price)} 买下` : '买下';
-      return `这么用${name}：本局你${when}它，${earned ? `它替你收了 ${money(earned)}` : '它一次也没被踩到'}。`;
+      if (!earned.hits) {
+        return `${name}已经 ${lv} 级到顶，再投钱也涨不上去：本局它一次没被踩到。`
+          + `下一局把它放在你的路线上（停步的落点选它旁边），满级的租才收得到。`;
+      }
+      return `${name}已经 ${lv} 级到顶：本局它被踩到 ${earned.hits} 次、替你收了 ${money(earned.sum)}，`
+        + `下一局这个数只能靠「多被踩到」再涨。`;
     }
     if (owner) {
       const paid = rentPaidOn(state, human, name);

@@ -45,19 +45,38 @@ test('任何起手、任何局面都有一条句子，且不是空串', () => {
   }
 });
 
-test('破产那一支：指出击穿它的那一笔，金额与天数都来自日志原文', () => {
+// #3337b（supervisor 在 5ec96f8 上抓到的真缺陷）：这一支原来取「人类付过的**最大**一笔租」。
+// grow/seed 19：第 12 天为街心书屋付了 9,600（**付清了**），第 16 天同一间店应付 9,600、
+// 实付 4,400、破产。旧句把一笔付清的账说成了出局原因。
+// 所以判据要钉的是「出局那一笔」，不是「最贵那一笔」。
+test('破产那一支：报出的是真的没付成的那一笔，不是付过的最大一笔', () => {
   const state = seed('grow', 1);
   const me = human(state);
   me.alive = false;
   push(state, `${me.name} 向 甲 应付租金 7000（晚风街小店） · 现金不够，会破产`, 9);
   push(state, `${me.name} 实付租金 7000（晚风街小店），甲 收到 7000`, 9);
   push(state, `${me.name} 向 乙 应付租金 11200（灯火街小店） · 现金不够，会破产`, 12);
-  push(state, `${me.name} 实付租金 11200（灯火街小店），乙 收到 11200`, 12);
+  push(state, `${me.name} 付不出 11200（租金），破产`, 12);
+  push(state, `${me.name} 实付租金 4400（灯火街小店），乙 收到 4400`, 12);
   const line = nextGameLine(state);
-  assert.match(line, /11,200/, `应报出最大的一笔（11,200），得到：${line}`);
-  assert.match(line, /第 12 天/, `应报出它发生的那一天：${line}`);
+  assert.match(line, /11,200/, `应报出应付的 11,200：${line}`);
+  assert.match(line, /4,400/, `应报出真的付得出的 4,400：${line}`);
+  assert.match(line, /第 12 天/, `应报出出局那一天：${line}`);
   assert.match(line, /灯火街小店/, `应报出是哪间店：${line}`);
-  assert.doesNotMatch(line, /7,000/, '不应报出较小的一笔');
+  assert.doesNotMatch(line, /7,000/, '不应报出一笔已经付清、不是出局原因的租金');
+});
+
+// 真局固化成判据：supervisor 报的那一局（grow / seed 19）必须不说错。
+// 这一次是跑真实引擎重放，不是人造夹具 —— 夹具造不出「应付与实付不等」这种真实形状。
+test('真局 grow/19：出局原因必须是第 16 天那一笔，不得指向第 12 天已付清的 9,600', async () => {
+  const { runGame } = await import('../src/engine/flow.js');
+  const { aiAnswer } = await import('../src/engine/ai.js');
+  const s = startSession(createSliceConfig({ human: true, seed: 19, style: 'grow' }));
+  await runGame(s, { render() {}, async step() {}, async ask(p) { return aiAnswer(p, s); } });
+  const line = nextGameLine(s);
+  assert.match(line, /第 16 天/, `应指向第 16 天：${line}`);
+  assert.doesNotMatch(line, /第 12 天/, `不得把第 12 天那笔已付清的租说出局原因：${line}`);
+  assert.match(line, /4,400/, `应报出那一笔只付得出 4,400：${line}`);
 });
 
 test('书屋在对手机里：句子的金额 = 引擎 rentFor/日志，不是写死的「近一万」', () => {
@@ -130,6 +149,32 @@ test('已买下书屋且未到顶：给出到顶的价钱与租金，两个数�
   assert.match(line, new RegExp(money(now)), `应报出现在每次 ${money(now)}：${line}`);
   assert.match(line, new RegExp(money(top)), `应报出到顶后每次 ${money(top)}：${line}`);
   assert.match(line, /2 级/, `应说出现在几级：${line}`);
+});
+
+// 满级是一支很容易写成「复述本局」的分支（第一版就是）。它必须回答「这座店还剩什么事可做」，
+// 而引擎里满级之后唯一的变量就是「有没有被踩到」——所以句子里必须出现这个变量。
+test('书屋已满级：说清再投钱没用，并给出剩下的唯一变量（被踩次数/金额来自日志）', () => {
+  const state = seed('cross', 1);
+  const me = human(state);
+  const rival = state.players.find(p => p.team !== me.team);
+  state.properties.market = { ...state.properties.market, ownerId: me.id, level: 3, bigType: 'bookstore' };
+  state.log.push({ day: 6, text: `${rival.name} 向 ${me.name} 应付租金 9600（街心书屋）` });
+  state.log.push({ day: 6, text: `${rival.name} 实付租金 9600（街心书屋），${me.name} 收到 9600` });
+  state.log.push({ day: 11, text: `${rival.name} 实付租金 9600（街心书屋），${me.name} 收到 9600` });
+  const line = nextGameLine(state);
+  assert.match(line, /3 级/, `应说出现在满级：${line}`);
+  assert.match(line, /2 次/, `应报出被踩 2 次：${line}`);
+  assert.match(line, new RegExp(money(19200)), `应报出实收 19,200：${line}`);
+  assert.match(line, /踩到/, `必须点出「被踩到」才是剩下的变量：${line}`);
+});
+
+test('书屋已满级且一次没被踩到：不能把「没被踩」写成「没用」', () => {
+  const state = seed('grow', 9);
+  const me = human(state);
+  state.properties.market = { ...state.properties.market, ownerId: me.id, level: 3, bigType: 'bookstore' };
+  const line = nextGameLine(state);
+  assert.match(line, /一次没被踩到|一次也没被踩到/, `应如实说没被踩到：${line}`);
+  assert.match(line, /到顶/, `应说明已到顶：${line}`);
 });
 
 test('句子里的钱一律是 money() 的格式（与排名表同一个格式化函数）', () => {

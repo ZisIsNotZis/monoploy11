@@ -274,6 +274,8 @@ tool support/probe-3337/market.mjs
 tool support/probe-3337/levers.mjs
 tool support/probe-3337/line.mjs
 tool support/probe-3337/negctl2.mjs
+tool support/probe-3337/branch.mjs
+tool support/probe-3337/audit.mjs
 # #3336：当前锁的唯一指针。run-full / check-delivery / verify-http 都读它，
 # 不许再各自写死锁名；test/current-lock.test.js 咬住。
 doc  docs/evidence/current-lock.txt
