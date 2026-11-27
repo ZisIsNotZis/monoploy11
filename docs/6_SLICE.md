@@ -239,8 +239,41 @@ B 的 90 条红**不是产品回归**：它们全在 `blocked-*` 的两服务器
 - **判据本身也修了一轮**：`F4 gapMatches` 原先只在「人类输了」那一支上跑过（产品赢了时打 `你赢了。`，
   不带差额数字），第一次赢就红；改成从 `judge.rows` 重算差额，不再信驱动器传的布尔值。
 
+## #3278b 再来一局：结算屏的回放落点（本地已复验）
+
+上一段把「replay 落在完整设置页、三种起手未预选」写成了已知边界。它是**第一次玩完的人最关键的
+一个动作**：他刚看完名次，想知道「换个打法会怎样」。落回完整设置页意味着先在一堆完整模式选项里
+重新找入口、再重选起手——成本不高但位置全错。
+
+- **证据**（改前）：`support/full-game/OUT-W-390-gate/record-10-replay.json` ——
+  `sliceEntryAfterReplay=false`、`stylePreselected=[]`、`url="?style=grow&seed=2"`。
+- **修法**（`src/main.js` 的 `replay()`，一个函数）：写回 `slice=1`、把**这局人类座位的起手**
+  写回 `style=`、种子 +1。不新增按钮、不改版面、改动一个文件。
+- **判据从「记录」改成「判定」**：F5 新增两项 —— 是否回到切片入口（`body.slice-entry`）、
+  是否预选了**这局玩的那一手**（从按下前的 URL 读，按下后就读成新文档了）。
+  旧记录没有这两项证据 ⇒ 判 **SKIP** 并点名，不判 PASS（三态规矩同 F2/F6）。
+  实测：`report-full.py support/full-game/OUT-W-390-gate` 现在结尾多一行
+  `NOT JUDGED by this run (2): F5 replay returned to the slice entry, F5 replay kept the starter…`。
+- **改后整局**（交付里的 `docs/evidence/receipt-3317-390/`，390×844）：**24 项全 PASS / 0 SKIP**、
+  `VERDICT: PASS`、355 帧 / 44 按 / 买地 2 / 差 27,800 —— 与改前决定性数字逐字相同，
+  只有 replay 落点变了：`url="?slice=1&style=grow&seed=2"`、`picks=["grow"]`、`sliceEntry=true`。
+- **回执形状（#3317）**：交付里放的不是整份原始帧（`record-8-summary.json` 单文件 256 KB、11000+ 行，
+  其中 `firstFrames` 92 KB 与 `hintInserts` 6 KB 没有任何判据在读），而是**同一局裁过的记录**：
+  只留 `report-full.py` 真读的字段，而且仍是一个 `report-full.py <dir>` 能直接判的目录 ——
+  读回执与复判回执是同一条命令（`python3 support/full-game/report-full.py docs/evidence/receipt-3317-390`）。
+  裁剪工具 `support/full-game/make-receipt.py` 跑两遍判据（原始 / 精简）并逐字比对，判词不同就拒写；
+  原始记录缺一个判据索引的字段也拒写，不用“缺了也算 PASS”换小文件。
+  原始帧留在 `support/full-game/OUT-Y3317-390/`（不入库，供复验），`provenance.json` 记着它们的 sha256
+  与裁掉的字段名。牙：`test/receipt-slim.test.js`。
+- **牙**：`test/slice-replay-entry.test.js` 钉 URL 契约（写回 slice/style/seed、起手从这局读、不许写死），
+  并用旧函数体做反例；把旧写法塞回 `src/main.js` 实测会红两条。
+- **代价与代价之外**：`src/main.js` 字节变了，锁已重冻（`docs/evidence/slice-entry-3278.sha256`
+  里只有 `src/main.js` 一行变）。改前那条「锁拒绝漂移字节」的保护真的响过——
+  `run-full.py` 在改完但未重冻时直接拒跑，这正是它该做的事。
+
 **未验、不外推**：整局证据到 390×844 与 360×640 两个视口，都是 CDP 鼠标而非真机触屏；iOS Safari 未覆盖；
-结算屏 replay 落在完整设置页且三种起手未预选（多一次点击，本轮未改产品）；文件仍在工作区，
+回放只验到「回到入口、起手保留、种子 +1」，没有验「连续再开三局」的疲劳与节奏（那是体验问题，不是接线问题）；
+文件仍在工作区，
 **已落成本地候选分支，未推送**，而且是两种形状：`candidate/3278-narrow-slice`（根提交，树上只有清单文件，
 回答“交付集自不自成一体”）与 `release/3278-narrow-slice`（**父提交就是 `origin/master`**，
 `git pull --ff-only` 直接快进、不删不改用户已有的任何文件，回答“能不能合入发布”）。

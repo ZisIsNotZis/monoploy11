@@ -51,6 +51,20 @@ doc  docs/evidence/slice-entry-3278.sha256
 doc  docs/6_SLICE.md
 doc  docs/slice-release-readiness.md
 doc  docs/evidence/RESULT-3278.md
+# 回放落点那一刀的整局回执。它是**交付的一部分**：README 与 RESULT 都引用它，而 OUT-*/
+# 默认被 .gitignore 挡在提交之外 —— 所以按名字点进来。
+#
+# #3317 改了形状：以前这里放的是整份原始帧（record-8-summary.json 单文件 256 KB、
+# 11000+ 行，其中 firstFrames 92 KB 与 hintInserts 6 KB 没有任何判据在读）。把原始记录
+# 当"回执"发出去，读者无法一眼看出 PASS，diff 也不可审。现在交付的是**同一局的精简回执**：
+# 只留 report-full.py 真读的字段，而且**仍然是一个 report-full.py 能直接判的目录** ——
+# 读回执与复判回执是同一条命令。原始帧留在 OUT-Y3317-390/（不入库，供复验与追查）。
+# 精简工具自己会跑两遍判据（原始 / 精简）并比对全文，判词不同就拒写：
+# 丢掉一个被读字段会变成"判词变了"，不会变成"文件小了"。
+doc  docs/evidence/receipt-3317-390/provenance.json
+doc  docs/evidence/receipt-3317-390/record-10-replay.json
+doc  docs/evidence/receipt-3317-390/record-8-summary.json
+doc  docs/evidence/receipt-3317-390/after.json
 # README 第一行就链 [目标](docs/2_GOAL.md)。此前它在清单外，于是「从干净检出打开首页说明」
 # 的第一步就是死链——而交付集自检只看产品字节，不会发现这一点。
 # 下面这些是被链到的文档再链到的下一跳（2_GOAL → 0_ROADMAP、3_REQUIREMENT → 5_PRODUCT、
@@ -83,6 +97,7 @@ tool support/full-game/report-full.py
 tool support/full-game/check-delivery.py
 tool support/full-game/clean-checkout.py
 tool support/full-game/make-candidate.py
+tool support/full-game/make-receipt.py
 tool support/full-game/DELIVERY.txt
 # README 点名的两个调试工具。它们只 import src/ 下已在锁内的模块，不读私有路径、
 # 不写盘、不需要浏览器 ⇒ 干净检出里能直接跑。另外三个 tools/verify-*.mjs 硬编码了

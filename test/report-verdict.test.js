@@ -51,8 +51,12 @@ const baseSummary = over => ({
   ...over,
 });
 
+// 这份夹具代表「一局什么都判到了」的记录，所以它必须含当前判据的**全部**字段。
+// 漏一项不是小事：报告会把缺证据读成 SKIP，于是“全部判过”的反例测试变成红——
+// 变红的是夹具过期，不是产品。加新判据时同步这里。
 const baseReplay = {
-  checks: {setupShown: true, seedIs2: true, urlSeedIs2: true, stylesOffered: true, ctaUsable: true},
+  checks: {setupShown: true, seedIs2: true, urlSeedIs2: true, stylesOffered: true, ctaUsable: true,
+    sliceEntry: true, styleKept: true},
 };
 const baseAfter = {own_chrome: 0, ports_free: {'8041': true, '19529': true, '19629': true}};
 

@@ -414,6 +414,13 @@ async function main() {
       }
       if (rp.missing) throw Error('REPLAY-MISSING');
       if (!rp.usable) throw Error(`REPLAY-UNREACHABLE ${rp.why}`);
+      // Read the starter from THIS document, before the press: the press navigates, and a
+      // probe after it would read the new document's URL and call every style "kept".
+      // style=grow puts 街角店主 in seat 1 (src/data/slice.js:48-53), so the URL parameter
+      // that opened this game is the honest witness of what was played.
+      const playedStyle = await ev(`(() => {
+        const m = /[?&]style=(grow|take|cross)(&|$)/.exec(location.search);
+        return m ? m[1] : null; })()`, 'replay-played-style');
       await page.press(rp.x, rp.y);
       // The press navigates (src/main.js:259 replay() rewrites location), so the probe is
       // gone: this waits on the plain DOM the entry screen paints.
@@ -431,6 +438,9 @@ async function main() {
               if (seed !== 2) return null;
               const picks = [...document.querySelectorAll('[name=sliceStyle]:checked')].map(r => r.value);
               return {seed, picks, url: location.search, styles: document.querySelectorAll('#sliceStyles input').length,
+                // body.slice-entry is what the entry screen sets to collapse the page to
+                // the slice intro (src/main.js:466). Reading it here is what lets the F5
+                // checks tell "came back to the slice" from "fell back to full setup".
                 sliceEntry: document.body.classList.contains('slice-entry'),
                 cta: (() => { const c = document.querySelector('#startSlice');
                   if (!c) return null; const r = c.getBoundingClientRect();
@@ -456,11 +466,14 @@ async function main() {
       results.replay = {at: rp, scroll: replayScroll, landed, ctaUsable,
         checks: {setupShown: !!landed, seedIs2: landed?.seed === 2,
           urlSeedIs2: /[?&]seed=2(&|$)/.test(landed?.url ?? ''), ctaUsable: ctaUsable === 'itself',
-          stylesOffered: (landed?.styles ?? 0) === 3},
-        // Recorded, not graded: replay() drops ?slice and ?style, so the second game starts
-        // from the plain setup screen with no opening pre-picked. That is one extra click
-        // for a returning player and is written into RESULT-3278.md rather than fixed here.
-        observed: {sliceEntryAfterReplay: landed?.sliceEntry ?? null,
+          stylesOffered: (landed?.styles ?? 0) === 3,
+          // Graded from now on: replay must come back to the slice entry WITH the starter
+          // it was played with. Old records have no `sliceEntry` evidence and read as SKIP
+          // in report-full.py, not as a pass (same three-state rule as F2/F6).
+          sliceEntry: landed?.sliceEntry === true,
+          styleKept: playedStyle ? (landed?.picks ?? []).includes(playedStyle) : null},
+        observed: {playedStyle,
+          sliceEntryAfterReplay: landed?.sliceEntry ?? null,
           stylePreselected: landed?.picks ?? null}};
       save('record-10-replay', results.replay);
       const shotReplay = await png('record-10-replay');

@@ -101,6 +101,12 @@ def main():
     checks['F5 replay advanced the seed'] = replay['checks']['seedIs2'] and replay['checks']['urlSeedIs2']
     checks['F5 replay offered all three styles'] = replay['checks']['stylesOffered']
     checks['F5 replay button pressable'] = replay['checks']['ctaUsable']
+    # 三态，与 F2/F6 同一条规矩：旧记录（本条判据存在之前跑的）没有这两项证据，
+    # 那时“落回完整设置页、起手不预选”是已知缺陷而非通过 —— 所以判 SKIP，不判 PASS。
+    for label, key in (('F5 replay returned to the slice entry', 'sliceEntry'),
+                       ('F5 replay kept the starter it was played with', 'styleKept')):
+        value = replay['checks'].get(key)
+        checks[label] = None if value is None else bool(value)
     # Housekeeping: the run released what it took.
     after = load('after.json')
     checks['X this run left no chrome'] = after['own_chrome'] == 0

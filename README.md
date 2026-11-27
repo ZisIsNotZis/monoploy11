@@ -46,6 +46,7 @@ python3 support/full-game/check-delivery.py   # 交付文件与锁字节是否�
 python3 support/full-game/clean-checkout.py   # 只复制交付文件到空目录，再从那里跑一局
 python3 support/full-game/make-candidate.py   # 只打印把交付集做成根提交的 id（不动任何分支、不 push）
 python3 support/full-game/make-candidate.py --branch candidate/3278-narrow-slice   # 同上，并把该分支指过去
+python3 support/full-game/make-receipt.py support/full-game/OUT-<那次运行>   # 把一次整局的原始帧裁成可复判的精简回执
 ```
 
 无浏览器调试（这两个脚本只依赖交付集里的模块，干净检出里可直接跑）：
@@ -55,7 +56,9 @@ python3 support/full-game/make-candidate.py --branch candidate/3278-narrow-slice
 `tools/verify-*.mjs` 三个旧脚本硬编码了 Windows Edge 安装路径与 `.scratch` profile，
 **不在交付集**，只适用于原来的开发机；窄屏整局的量具是 `support/full-game/`。
 
-排除 `report-full.py` 的整局记录不需要浏览器：`python3 support/full-game/report-full.py <那次运行的目录>`。
+复判一局记录不需要浏览器：`python3 support/full-game/report-full\.py <那次运行的目录>`。
+本次交付的那一局就在 `docs/evidence/receipt-3317-390/`（精简后的记录，257 KB 原始帧裁到 58 KB；
+原始帧不入库，provenance.json 记着文件的 sha256 与裁掉了哪些字段）。
 它会明确区分 PASS / FAIL / **SKIP**（这一局没走到那张屏，就不声称它被判过），例如 F6“可点 ⇔ 能接受回答”
 这一项只对动作屏发言。
 

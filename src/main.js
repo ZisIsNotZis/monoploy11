@@ -276,7 +276,21 @@ function plotAllowed(plot) {
 const actions = {
   supply(id) {answer(id);},
   discard(index) {answer(index);},
-  replay() {const url=new URL(location.href);url.searchParams.delete('slice');url.searchParams.delete('start');url.searchParams.set('seed',state.seed+1);location.href=url.href;},
+  // 结算屏的「换个打法，再开一局」要落回**能再开一局**的地方。以前它删掉 slice/style，
+  // 于是落到完整模式设置页（12 张地图、人数、地图下拉），而且三种起手一个都没预选：
+  // 第一次玩完的人想再来一局，先要在一堆完整模式选项里找到切片入口再重选起手。
+  // 390 整局实测就是这样（record-10-replay.json：sliceEntryAfterReplay=false, picks=[]）。
+  // 现在回到切片第一屏、保留刚才那手起手、只把种子 +1：换打法是一个选择，不是重新找路。
+  replay() {
+    const me = state.players?.find(p => p.controller === 'human');
+    const style = me?.style ?? state.config?.participants?.[0]?.style;
+    const url = new URL(location.href);
+    url.searchParams.delete('start');
+    url.searchParams.set('slice', '1');
+    if (style) url.searchParams.set('style', style); else url.searchParams.delete('style');
+    url.searchParams.set('seed', state.seed + 1);
+    location.href = url.href;
+  },
   preview(n) {
     const p=state.players.find(p=>p.id===state.order[state.turn]);
     const ids=new Set(n==null?[]:reachableLandings(state,p,n));

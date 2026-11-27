@@ -6,6 +6,12 @@
 
 本页回答四件事：**从哪个入口开始**、**证据在哪**、**相对 PROJECTS.md 的约定范围做到哪一步**、**什么还没被证明**。
 
+> **#3317 之后先看这里**：交付里那一局的可复判回执在 `docs/evidence/receipt-3317-390/`，
+> 一条命令就能重判：`python3 support/full-game/report-full.py docs/evidence/receipt-3317-390`
+> （24 PASS / 0 SKIP / `VERDICT: PASS`）。以前这里放的是整份原始帧（256 KB、11000+ 行），
+> 现在只留判据真读的字段（58 KB），仍是一个 `report-full.py` 能直接判的目录；
+> 裁剪前后判词由工具逐字比对，不同就拒写。原始帧不入库，`provenance.json` 记着它们的 sha256。
+
 ---
 
 ## 1. 真实入口
@@ -187,8 +193,13 @@ F6 也明确只对动作屏发言，报告里那句 `Non-action screens are NOT 
 - **有声音未验**：`src/ui/voice.js` 走系统语音或文字回退；`assets/voice/` 的本地 MP3 不在交付集内，**没有声称已交付原音频**。
 - **量具本身的代价**：页面没有 window 级 state 句柄，所以屏类型与「人类座位」全靠 DOM + 起手名单推断
   （`style=grow` ⇒ 人类必为「街角店主」）。若产品改起手名单，量具要同步改，这是量具的脆弱点，不是产品缺陷。
-- **replay 需再点一次**：结算屏「换个打法，再开一局」之后落在完整设置页，三种起手**未预选**（`?style=grow` 被删），
-  玩家要再点一次起手才能开局。这是多一次点击的成本，本轮未改产品。
+- **replay 落点已修（原为已知边界）**：结算屏「换个打法，再开一局」曾落在**完整设置页**、三种起手未预选
+  （旧记录 `OUT-W-390-gate/record-10-replay.json`：`sliceEntryAfterReplay=false, picks=[], url="?style=grow&seed=2"`）。
+  现在 `replay()` 写回 `slice=1` 与本局人类座位的 `style=`、种子 +1，回到切片第一屏且保留起手。
+  改后整局 `OUT-X390-replay`：**24 项全 PASS / 0 SKIP**，`url="?slice=1&style=grow&seed=2"`、`picks=["grow"]`、
+  `sliceEntry=true`；决定性数字（44 按 / 买地 2 / 差 27,800）与改前逐字相同。
+  这两项旧记录里没有证据 ⇒ 判 SKIP 并点名，不判 PASS。**已验的只是「回到入口、起手保留、种子 +1」**，
+  连续再开几局的节奏与疲劳属于体验判断，未验。
 - **交付有两种形状，回答两个不同的问题，别混用**。同一个工具 `make-candidate.py` 都能做，
   它们是**不同**的提交对象：
 
@@ -349,10 +360,12 @@ python3 support/full-game/report-full.py support/full-game/OUT-T-390-gate
 从**发布分支**复跑（不依赖当前工作树；`/tmp` 下任意空目录）：
 
 ```bash
-git worktree add --detach /tmp/try release/3278-narrow-slice
+git worktree add --detach /tmp/try <发布分支>
 cd /tmp/try
-mkdir -p .scratch && cp support/compare/* .scratch/   # 对照测试断言这个字面路径
 node --test test/*.test.js
+# 以前这一步要手工 `mkdir -p .scratch && cp support/compare/* .scratch/`。现在不需要了：
+# support/serve-variant.py 把字面 URL `/.scratch/…` 映到 support/compare/，
+# 所以在完全没有 .scratch 的树里套件仍然全绿（测试断言的是 URL，不是磁盘上的 .scratch）。
 OUT_NAME=OUT-a python3 support/full-game/run-full.py
 ```
 

@@ -226,11 +226,13 @@ def main(argv=None):
         print('        the root candidate (no --onto) has NONE of the `=` files; that shape is'
               ' for the file-set question, this one is for publishing.')
     # Printing only the archive line was a trap: the extracted tree plays fine but the
-    # compare suite asserts LITERAL `.scratch/...` paths, so a bare extract shows red
-    # tests that are missing fixtures, not product regressions.
+    # compare suite asserts LITERAL `.scratch/...` paths, so a bare extract showed red
+    # tests that were missing fixtures, not product regressions. That is FIXED at the
+    # root now (support/serve-variant.py maps those URLs onto support/compare/), so the
+    # instruction to stage fixtures by hand is gone -- it told readers to do work that
+    # is no longer needed, which reads as "the harness is fragile".
     print('next    replay from THIS commit, in an empty dir outside the worktree:')
     print(f'          git archive {commit} | tar -x -C /tmp/try')
-    print('          mkdir -p /tmp/try/.scratch && cp /tmp/try/support/compare/* /tmp/try/.scratch/')
     print('          (cd /tmp/try && node --test test/*.test.js)')
     print('          (cd /tmp/try && OUT_NAME=OUT-a python3 support/full-game/run-full.py)')
     if branch:
