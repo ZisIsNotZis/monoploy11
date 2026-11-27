@@ -132,9 +132,10 @@ sticky 条，任何长度都带在按钮上方。
 | 交付集 | `python3 support/full-game/check-delivery.py` | PASS（226 项 / 36 锁） |
 | 干净检出 | `python3 support/full-game/clean-checkout.py` | PASS |
 
-复现 supervisor 那两局：`node .scratch/3338/screens.mjs grow 9`（绕晕的那一局）、
-`node .scratch/3338/screens.mjs grow 19`（买不起）、`node .scratch/3338/repro.mjs grow 4`（终局停业），
-都打印两屏的真实文本。
+复现 supervisor 那两局（量具在 `support/probe-3338/`；本片原文写的是 `.scratch/3338/`，
+那是不入库的本机草稿目录，干净检出上跑不了 —— #3341 搬进来并改了这里）：
+`node support/probe-3338/screens.mjs grow 9`（绕晕的那一局）、
+`node support/probe-3338/screens.mjs grow 19`（买不起）、`node support/probe-3338/repro.mjs grow 4`（终局停业），
 
 ## 判据这次改在哪，为什么必须改
 

@@ -49,11 +49,32 @@ export function landingInfo(state, player, nodeId) {
     //   rentToMe = 0  自己的店 / 无主地：不收也不付
     const rentToMe = own || !owner ? 0 : -rentFor(state,id);
     // 自己停在自己店旁唯一真会发生的事：加盖（引擎在同一支里问）。
+    // 自己停在自己店旁唯一真会发生的事：加盖（引擎在同一支里问）。
     const canBuild = !!own && !(pr?.closed>0) && level>0 && level<maxLevel;
     const buildAskCost = canBuild ? Math.round((pr?.big?30000:buildCost(level+(state.slice?1:0)))*state.priceIndex) : null;
+    const price = buyPrice(state,id);
+    const rent = rentFor(state,id);
+    // #3341：这一屏是给玩家**挑落点**用的，所以每一行都必须回答「我这一刻做得到吗」。
+    // 起因：穿街高手 seed 1 第 13 天现金 20,000，定步 1 步写着「停在这里可加盖 30,000」——
+    // 到了那里按钮是按不动的（`buildPlot` 第一句 `if (p.cash < cost) return;`）。
+    // 三个「做得到吗」在引擎里有**两种**分母，不能合成一个数：
+    //   · 买地 / 加盖看 `p.cash`（buyPlot / buildPlot / 按钮禁用 `(p?.cash ?? 0) < pending.cost` 三处一致）
+    //   · 付租看 `p.cash + p.deposit`（pay() 里不够就是破产）
+    // 切片里 deposit 实测恒为 0（120 局 7,439 个人类帧，0 帧非零），口径仍按引擎写。
+    const cash = player?.cash ?? 0;
+    const funds = cash + (player?.deposit ?? 0);
+    // 引擎在对手店旁还有两条「根本不用付」的岔路：停业封租，和财神免租。
+    const rentWaived = (pr?.closed ?? 0) > 0 || player?.god === '财神' || pr?.bigType === 'park';
+    const affordable = !owner ? cash >= price
+      : own ? (!canBuild || cash >= buildAskCost)
+      : rentWaived || funds >= rent;
     return {id,name:plot?.name??id,street:plot?.street,level,owner:owner?.name??null,
-      own,price:buyPrice(state,id),rent:rentFor(state,id),closed:pr?.closed??0,inflate:pr?.inflate??0,availableFromDay:plot?.availableFromDay??1,
-      rentToMe,canBuild,buildAskCost};
+      own,price,rent,closed:pr?.closed??0,inflate:pr?.inflate??0,availableFromDay:plot?.availableFromDay??1,
+      rentToMe,canBuild,buildAskCost,affordable,
+      // 这一刻还差多少才做得到（0 = 做得到）。买/盖与付租两种分母，各算各的。
+      shortForBuild: canBuild ? Math.max(0, buildAskCost - cash) : 0,
+      shortForBuy: !owner ? Math.max(0, price - cash) : 0,
+      shortForRent: (!own && owner && !rentWaived) ? Math.max(0, rent - funds) : 0};
   });
   return {id:nodeId,label:node?.label??'街道',plots,effectDestination,facility,turnsLost,
     risk:plots.reduce((s,p)=>s+(!p.own&&p.owner?p.rent:0),0)};
@@ -69,22 +90,40 @@ export function landingInfo(state, player, nodeId) {
 // 在自家店上是假的。平均被印出来的数是 5,669。
 //
 // 自己的店改成说引擎真会问的事（加盖多少钱、封顶没封顶），不再报一个不会到账的租金。
+// 自己的店改成说引擎真会问的事（加盖多少钱、封顶没封顶），不再报一个不会到账的租金。
+//
+// #3341：上一版把三件事说对了（自己的店不收租、加盖价、对手付租），但**没说做不做得到**。
+// supervisor 在真局里就撞上：现金 20,000，屏上写「可加盖 30,000」，走过去按钮按不动。
+// 一屏用来挑落点，那「这一刻做不起」必须写在那一行上，而不是留给玩家自己减。
+// 实测（120 局，support/probe-3341/unaffordable.mjs，改前）：
+//   4,634 个点选项里 **223 行**在报一个此刻做不到的数：
+//     加盖 449 行里 176 行超出此刻现金（39.2%，其中 176/176 是该行最大、21 行是该点数下唯一信息）
+//     买地 211 行里 22 行超出（10.4%）；付租 410 行里 25 行付了直接破产（6.1%）
+//   2,490 个点数选项里有 751 个（30.2%）**每一行**都做不起 —— 这个按钮当时给不出一个真能做的选择。
+// 改法：做不到的那一行带「还差 N」/「会破产」，做得到的不加字（不把屏变吵）。
 export function plotVisitLine(p, state) {
   if (!p.owner) {
     if (state.day < p.availableFromDay) return `第 ${p.availableFromDay} 天开售`;
-    return `可买 ${p.price.toLocaleString()}`;
+    const price = `可买 ${p.price.toLocaleString()}`;
+    return p.affordable === false ? `${price}，还差 ${p.shortForBuy.toLocaleString()}` : price;
   }
   if (p.own) {
     // 停业这件事两侧必须是同一句话（test/closed-rent.test.js 钉的）：
     // 「不付租」对我自己的店同样成立 —— 我不付，也不收。
     if (p.closed) return '你的店 · 停业 · 不付租';
-    if (p.canBuild) return `你的店 Lv.${p.level} · 停在这里可加盖 ${p.buildAskCost.toLocaleString()}`;
+    if (p.canBuild) {
+      const cost = p.buildAskCost.toLocaleString();
+      return p.affordable === false
+        ? `你的店 Lv.${p.level} · 可加盖 ${cost}，还差 ${p.shortForBuild.toLocaleString()}`
+        : `你的店 Lv.${p.level} · 停在这里可加盖 ${cost}`;
+    }
     return `你的店 Lv.${p.level} · 自己停在自己的店旁不收租`;
   }
   if (p.closed) return `${p.owner} · 停业 · 不付租`;
-  return `${p.owner} · ${p.rentToMe < 0 ? `付租 ${p.rent.toLocaleString()}` : `租 ${p.rent.toLocaleString()}`}`;
+  const rent = `付租 ${p.rent.toLocaleString()}`;
+  // 付租走 pay()：付不出不是「按不动按钮」，是**破产**。这两个后果不能共用一个说法。
+  return p.affordable === false ? `${p.owner} · ${rent} · 现金不够，会破产` : `${p.owner} · ${rent}`;
 }
-
 export function landingText(state, player, id) {
   const info=landingInfo(state,player,id);
   if(info.facility) return `${info.label}：失去 ${info.turnsLost} 回合，结算后停在${info.facility==='hospital'?'医院':'监狱'}入口`;
@@ -159,18 +198,25 @@ export function routePreview(state, player, forkNode, id, remainingSteps) {
       for (const plot of info.plots) {
         if (!plot.street) continue;
         // 与 landingText 同形：己方/对手 + 停业 或 租 N；无主则 可买 N / 第 N 天开售
+        // 与 landingText 同形：己方/对手 + 停业 或 租 N；无主则 可买 N / 第 N 天开售。
+        // #3341：这一屏也是「挑落点」，所以做不起的那一行同样要标出来（与 landingText 同口径）。
+        // 多出的字数只加在做不起的那行上；做得到的不加字（本文件顶端有字数预算的来历）。
+        const short = n => `（还差 ${n.toLocaleString()}）`;
         let tag;
         // 停业 = 走过去不付租。只写“停业”会被读成“他的地盘（危险）”，那是反的。
         if (plot.owner) tag = plot.closed ? '停业 · 不付租' : `租 ${plot.rent.toLocaleString()}`;
         else if (plot.availableFromDay && state.day < plot.availableFromDay) tag = `第 ${plot.availableFromDay} 天开售`;
-        else tag = `可买 ${(plot.price ?? 0).toLocaleString()}`;
+        else tag = `可买 ${(plot.price ?? 0).toLocaleString()}` + (plot.affordable === false ? short(plot.shortForBuy) : '');
         // #3340：己方店不再印一个不会到账的租，改说走过去真能做的事（加盖）。
         const whom = plot.own ? '己方' : plot.owner ? plot.owner : '';
         // 到顶（或停业）时也不能回头写租金 —— 那条分支漏掉过一次，正是被本文件的判据咬出来的。
-        if (plot.own) tag = plot.canBuild ? `可加盖 ${plot.buildAskCost.toLocaleString()}` : '自己停在这里不收租';
+        if (plot.own) tag = plot.canBuild
+          ? `可加盖 ${plot.buildAskCost.toLocaleString()}` + (plot.affordable === false ? short(plot.shortForBuild) : '')
+          : '自己停在这里不收租';
+        // 对手的店：付了会破产的那一行要说出来，而不是只报一个数。
+        if (!plot.own && plot.owner && !plot.closed && plot.affordable === false) tag += ' · 会破产';
         push(`${plot.street}（${whom ? whom + ' · ' : ''}${tag}）`, outlookTier(plot, false));
-      }
-      if (info.facility) {
+      }      if (info.facility) {
         const f = info.facility === 'hospital' ? '医院' : '监狱';
         push(`${f}（失去 ${info.turnsLost} 回合）`, outlookTier(null, true));
       } else if (!info.plots.length && info.label !== '街道') {

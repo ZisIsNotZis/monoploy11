@@ -77,8 +77,8 @@
 | 单位改对、且没退回去 | `node --test test/midgame-buy.test.js` | 5/5 过（含「不许出现回合回本」） |
 | 账本本身没被动 | `node --test test/market-ledger.test.js` | 12/12 过 |
 | 买地屏 390×844 版面 | `node support/probe-3338/geom.mjs` | 4 个形状全 `noScroll` + `rowsInside` + `bothHit`；**负对照仍被咬住**（`controlCaught: true`） |
-| 真局文本 | `node .scratch/3338/screens.mjs grow 9` | 印出改后的两屏原文 |
-| 整局真鼠标（锁建干净树） | `OUT_NAME=OUT-3339-final python3 -B support/full-game/run-full.py` | `VERDICT: PASS`，416 帧 / 62 按 |
+| 真局文本 | `node support/probe-3338/screens.mjs grow 9`（#3341 把量具从 `.scratch/3338/` 搬进
+`support/probe-3338/`：那是不入库的本机草稿目录，干净检出上跑不了） | 印出改后的两屏原文 |
 | 回执自证 | `python3 -B support/full-game/verify-receipt.py docs/evidence/receipt-3339-final` | A–F 全过；36 个响应逐一 SEALED（tree `7f858af69a5c74fb`，lock sha `ab970660ee7f`） |
 | 交付集 | `python3 support/full-game/check-delivery.py` | PASS（234 项 / 36 锁 / 36 shipped） |
 | 全套 | `node --test` | 见下方「验收时读数」 |

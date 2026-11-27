@@ -51,7 +51,35 @@ lock src/ui/voice.js
 
 doc  README.md
 lock src/engine/market-ledger.js
-# #3340 的锁 = **当前**产品的描述（36 个产品文件）。
+# #3341 的锁 = **当前**产品的描述（36 个产品文件）。
+doc  docs/evidence/slice-entry-3341.sha256
+# 相对 3340 只改一个文件 src/engine/insight.js：选落点那一屏不再报「此刻做不起」的金额 ——
+# 做不到的那一行自己写「还差 N」/「会破产」，做得到的不加字。
+# 为什么：supervisor 的真局（穿街高手 seed 1 第 13 天，现金 20,000）屏上写着「停在这里可加盖
+# 30,000」，走过去按钮按不动。实测 120 局：4,634 个点选项里 223 行是这种（加盖 176 / 买地 22 /
+# 付租会破产 25），其中加盖那 176 行 176/176 是该行最大的数、21 行是该点数下唯一的信息。
+# 判据 test/landing-affordable.test.js（6 条，负对照会红 5 条），量具 support/probe-3341/unaffordable.mjs。
+doc  test/landing-affordable.test.js
+tool support/probe-3341/unaffordable.mjs
+# #3341 顺带修的第二处：交付文档里那些「照它敲」的命令，有三处指向干净检出上不存在的东西 ——
+#   README / RESULT-3338 / RESULT-3339 / RESULT-3340：`.scratch/…`（本机草稿目录，不入库）
+#   variant-entry-and-risk.md：`tools/verify-grow-panel.mjs`（**本仓历史上从未存在过**，整篇开头的复现承诺）
+# 改法：量具搬进 support/probe-3338/ 与 support/probe-3341/；那篇文档的「一条命令」拆成
+# 「今天能核的」与「历史读数，未复跑」。判据 test/shipped-doc-paths.test.js 咬住。
+tool support/probe-3341/variant-diff.mjs
+tool support/probe-3338/screens.mjs
+tool support/probe-3338/repro.mjs
+doc  test/shipped-doc-paths.test.js
+# #3341 的回执（跑在 3341 的锁上，当前产品）。
+doc  docs/evidence/receipt-3341-final/provenance.json
+doc  docs/evidence/receipt-3341-final/record-8-summary.json
+doc  docs/evidence/receipt-3341-final/record-10-replay.json
+doc  docs/evidence/receipt-3341-final/after.json
+doc  docs/evidence/receipt-3341-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3341-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3341-final/raw/after.json.gz
+doc  docs/evidence/RESULT-3341.md
+# #3340 的锁（仍可核，已不是当前产品）。
 doc  docs/evidence/slice-entry-3340.sha256
 # 相对 3339 只改一个文件 src/engine/insight.js：**自己的店**在落点屏/岔路屏上不再印「己方 · 租 N」。
 doc  docs/evidence/receipt-3340-final/provenance.json

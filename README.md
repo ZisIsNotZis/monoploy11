@@ -112,7 +112,16 @@ state/log 算，并且只说本局真发生过的那一种：破产了是哪一�
 但其中约 73% 是**自己**的地；收租 7,660/局、付租 7,395/局，租金几乎零和。
 补街 / 加盖 / 旺季自用 / 停业 / 定步跑现金格 五条配对臂全是 0 或负 ——
 这不是文案能修的，是结构问题，留给下一片。见 [RESULT-3340](docs/evidence/RESULT-3340.md)；
-复算：`node .scratch/3340/mislead-fixed.mjs 40`、`node --test test/landing-own-shop.test.js`。
+复算：`node support/probe-3340/mislead-fixed.mjs 40`、`node --test test/landing-own-shop.test.js`。
+
+**选落点那一屏：做不起的事，现在会自己说出来。** 上一版把「停在这里可加盖 30,000」写在落点上，
+而那一刻手上只有 20,000 —— 走过去按钮是按不动的（`buildPlot` 第一句 `if (p.cash < cost) return;`）。
+这一屏是给你**挑落点**用的，那它就欠你一句「还差多少」。现在做不到的那一行写成
+`你的店 Lv.1 · 可加盖 30,000，还差 10,000`（付租会破产的写 `· 现金不够，会破产`），做得到的不加字。
+实测 120 局：4,634 个点选项里原来有 **223 行**是这种说不出话的（加盖 176 / 买地 22 / 付租破产 25），
+其中加盖那 176 行有 176 行是**该行最大的数**、21 行是该点数下唯一的信息；改后 0 行。
+见 [RESULT-3341](docs/evidence/RESULT-3341.md)；复算：
+`node support/probe-3341/unaffordable.mjs 40`、`node --test test/landing-affordable.test.js`。
 
 - `slice=1` 进「街角生意」切片；`style=grow|take|cross` 预选起手；`seed` 固定随机序列。
 - 不带参数打开会落在完整设置页（完整模式 12 张地图仍在）。
