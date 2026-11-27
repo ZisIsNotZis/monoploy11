@@ -48,7 +48,12 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
-# #3334 的锁 = **当前**产品的描述（35 个产品文件）。
+# #3335 的锁 = **当前**产品的描述（35 个产品文件）。
+# 它相对 3334 只改了一个产品文件：src/ui/slice.js 的 buildOrderLine 在**本局最后一天**
+# 不再承诺「翻修卡下回合还能用」（90f15f9 的真机上，放弃之后直接结算，没有下回合）。
+# 其余 34 个产品文件逐字节未变，由 diff 两把锁直接可核；平衡表因此逐位不变。
+doc  docs/evidence/slice-entry-3335.sha256
+# #3334 的锁（仍可核，已不是当前产品）。
 # 它相对 3333 只改了两个文件，都是那一屏的字：
 #   src/ui/slice.js   新增 buildOrderLine（付/不付/顺序三条路的当场账）
 #   src/ui/render.js  在加盖屏上挂这一句；同屏「估值增加 4,000」删掉（它只是一半的账）
@@ -246,6 +251,25 @@ doc  support/probe-3334/geom.mjs
 doc  support/probe-3334/serve.mjs
 doc  support/probe-3334/geom-report.json
 doc  support/probe-3334/build-panel-390x844.png
+# #3335：同上一条的收尾 —— geom.mjs 改前从 `.scratch/3334/serve.mjs` 起静态服务，
+# 而那目录不入库，干净副本上照 RESULT-3334 的复跑命令跑会直接 ENOENT。
+# 现在它只用随仓库走的 support/probe-3334/serve.mjs；判据在 test/build-fork-lastday.test.js。
+doc  docs/evidence/RESULT-3335.md
+doc  support/probe-3335/lastday-hold.mjs
+doc  support/probe-3335/len.mjs
+doc  support/probe-3335/lastday.mjs
+doc  support/probe-3335/geom-lastday.mjs
+doc  support/probe-3335/serve.mjs
+doc  support/probe-3335/fixture.html
+doc  support/probe-3335/geom-lastday.json
+# 整局回执：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3335。
+doc  docs/evidence/receipt-3335-final/provenance.json
+doc  docs/evidence/receipt-3335-final/record-8-summary.json
+doc  docs/evidence/receipt-3335-final/record-10-replay.json
+doc  docs/evidence/receipt-3335-final/after.json
+doc  docs/evidence/receipt-3335-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3335-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3335-final/raw/after.json.gz
 # 整局回执：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3334。
 doc  docs/evidence/receipt-3334-final/provenance.json
 doc  docs/evidence/receipt-3334-final/record-8-summary.json

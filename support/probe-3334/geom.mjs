@@ -26,7 +26,10 @@ const CHROME = '/home/z/.cache/puppeteer/chrome/linux-157.0.8103.78/chrome-linux
 const URL_BASE = `http://127.0.0.1:${PORT}/index.html?slice=1&style=grow&seed=1`;
 const UD = `/tmp/edge-3334-${process.pid}`;
 
-const server = spawn('node', ['.scratch/3334/serve.mjs', '.', String(PORT)], { stdio: 'ignore' });
+// #3335：静态服务器必须来自**已提交的** support/probe-3334/serve.mjs。
+// 改前这里指向 .scratch/3334/serve.mjs —— 那是我的本机草稿目录（未跟踪、不在交付集里），
+// 干净副本上照 RESULT 跑这一行会 ENOENT。读者要能只靠仓库跑出同一张回执。
+const server = spawn('node', ['support/probe-3334/serve.mjs', '.', String(PORT)], { stdio: 'ignore' });
 const edge = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--mute-audio', '--no-first-run', '--no-default-browser-check',
   '--hide-scrollbars', '--force-device-scale-factor=1', '--window-size=390,844',

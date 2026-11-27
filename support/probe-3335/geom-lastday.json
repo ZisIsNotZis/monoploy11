@@ -1,0 +1,272 @@
+{
+ "cases": [
+  {
+   "style": "grow",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "day": 16,
+    "plot": "晨光街小店",
+    "cost": 10000,
+    "holdsWorker": true
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    351.2,
+    390,
+    844
+   ],
+   "heading": "加盖 小地产",
+   "forkRect": [
+    10,
+    496.6,
+    380,
+    534.9
+   ],
+   "forkText": "付这笔：现金 -10,000，标价 +4,000，总资产 -6,000。这是本局最后一天，没有下回合：不付就停在 1 级，翻修卡再也用不上。",
+   "forkLen": 70,
+   "scrollH": 492,
+   "clientH": 492,
+   "scrollTop": 0,
+   "buttons": [
+    {
+     "tag": "build",
+     "text": "加盖",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"build\">加盖</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "style": "take",
+   "ready": {
+    "style": "take",
+    "seed": 1,
+    "day": 16,
+    "plot": "晨光街小店",
+    "cost": 10000,
+    "holdsWorker": false
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    351.2,
+    390,
+    844
+   ],
+   "heading": "加盖 小地产",
+   "forkRect": [
+    10,
+    496.6,
+    380,
+    534.9
+   ],
+   "forkText": "付这笔：现金 -10,000，标价 +4,000，总资产 -6,000。这是本局最后一天，没有下回合：不付就停在 1 级。",
+   "forkLen": 61,
+   "scrollH": 492,
+   "clientH": 492,
+   "scrollTop": 0,
+   "buttons": [
+    {
+     "tag": "build",
+     "text": "加盖",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"build\">加盖</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "style": "cross",
+   "ready": {
+    "style": "cross",
+    "seed": 1,
+    "day": 16,
+    "plot": "晨光街小店",
+    "cost": 10000,
+    "holdsWorker": true
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    351.2,
+    390,
+    844
+   ],
+   "heading": "加盖 小地产",
+   "forkRect": [
+    10,
+    496.6,
+    380,
+    534.9
+   ],
+   "forkText": "付这笔：现金 -10,000，标价 +4,000，总资产 -6,000。这是本局最后一天，没有下回合：不付就停在 1 级，翻修卡再也用不上。",
+   "forkLen": 70,
+   "scrollH": 492,
+   "clientH": 492,
+   "scrollTop": 0,
+   "buttons": [
+    {
+     "tag": "build",
+     "text": "加盖",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"build\">加盖</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  }
+ ],
+ "control": {
+  "vw": 390,
+  "vh": 844,
+  "panel": [
+   0,
+   324,
+   390,
+   844
+  ],
+  "heading": "加盖 小地产",
+  "forkRect": [
+   10,
+   469.4,
+   380,
+   603.7
+  ],
+  "forkText": "付这笔：现金 -10,000，标价 +4,000，总资产 -6,000。这是本局最后一天，没有下回合：不付就停在 1 级，翻修卡再也用不上。再补一句用来撑高的长句子，让这一屏真的越过视口底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过视口底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过视口底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过视口底部，看看量具会不会红。",
+  "forkLen": 210,
+  "scrollH": 588,
+  "clientH": 519,
+  "scrollTop": 0,
+  "buttons": [
+   {
+    "tag": "build",
+    "text": "加盖",
+    "rect": [
+     10,
+     788,
+     191,
+     836
+    ],
+    "hit": true,
+    "at": "<button data-act=\"build\">加盖</button>",
+    "x": 100.5,
+    "y": 812,
+    "disabled": false
+   },
+   {
+    "tag": "skip",
+    "text": "放弃",
+    "rect": [
+     191,
+     788,
+     372,
+     836
+    ],
+    "hit": true,
+    "at": "<button data-act=\"skip\">放弃</button>",
+    "x": 281.5,
+    "y": 812,
+    "disabled": false
+   }
+  ]
+ },
+ "controlVerdict": {
+  "scrolls": true,
+  "anyButtonMissed": false
+ },
+ "verdict": [
+  {
+   "style": "grow",
+   "noScroll": true,
+   "bothHit": true,
+   "forkLen": 70
+  },
+  {
+   "style": "take",
+   "noScroll": true,
+   "bothHit": true,
+   "forkLen": 61
+  },
+  {
+   "style": "cross",
+   "noScroll": true,
+   "bothHit": true,
+   "forkLen": 70
+  }
+ ],
+ "controlCaught": true
+}

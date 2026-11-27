@@ -1021,9 +1021,18 @@ export function buildOrderLine(state, plotId, cost, viewer) {
   const head = `付这笔：现金 -${money(cost)}，标价 +${money(markGain)}，`
     + (net === 0 ? '总资产不变。' : `总资产 ${signed(net)}。`);
 
+  // #3335：本局最后一天没有「下回合」—— 放弃之后直接收摊，再没有出牌阶段。
+  // 主管在 90f15f9 的真机上抓到（seed 4 街角店主，第 16 天晨光街小店）：屏上仍写着
+  // 「翻修卡下回合免费升」，按放弃后直接结算，那句话承诺的动作永远不存在。
+  // 所以最后一天只说这局真的还能做的事，不写任何「下回合」。
+  const lastDay = state.day >= (state.config?.dayLimit ?? Infinity);
+
   // 第二段：不付会怎样。翻修卡是免费一级，但它只能在**下个回合的出牌阶段**用
   // （本回合出牌阶段已过：flow.js 的 playTurn 顺序是 出牌 → 移动 → 落地 → 这个提示）。
   if (!p.cards?.includes('worker')) {
+    if (lastDay) {
+      return head + `这是本局最后一天，没有下回合：不付就停在 ${lv} 级。`;
+    }
     const nextCost = after < max ? Math.round(buildCost(after + 1) * state.priceIndex) : null;
     return head + (nextCost
       ? `手上没有翻修卡，下一级还要付 ${money(nextCost)}。`
@@ -1043,6 +1052,10 @@ export function buildOrderLine(state, plotId, cost, viewer) {
   // 所以只留「打到哪、到几级」两个事实，不留那句「两间都往前走一步」的解释。
   const otherAfter = otherId ? (state.properties[otherId].level ?? 0) + 1 : null;
   const otherPart = otherPlot ? `卡也可留给${otherPlot.name}（到 ${otherAfter} 级）。` : '';
+  if (lastDay) {
+    // 最后一天：卡还在手上也用不出去了 —— 别写「下回合」。对手另一间同样来不及。
+    return head + `这是本局最后一天，没有下回合：不付就停在 ${lv} 级，翻修卡再也用不上。`;
+  }
   if (after >= max) {
     // 到顶：不付，卡下回合也能免费送到同一级 —— 差别只剩「早一回合」。
     return head + `不付，翻修卡下回合也能免费把它送到 ${max} 级：这一下买到的只是「早一回合」。` + otherPart;

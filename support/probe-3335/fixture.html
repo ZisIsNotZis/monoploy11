@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#3335 · 最后一天的加盖屏</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="slice-mode">
+<!-- #3335：只为一个问题存在 —— 本局最后一天那一屏，在 390×844 上还放不放得下两个提交键。
+     结构与 index.html 逐层一致（#desk > #board + #side > #sideGrip/#system/#players/#insight/#log/#hand），
+     否则量出来的几何不是同一个版面。它不跑对局：用**真的** createSliceConfig → startSession
+     造出第 dayLimit 天的真状态，再调**真的** render()，所以每个数仍来自引擎。 -->
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+<script type="module">
+import { createSliceConfig } from '/src/data/slice.js';
+import { startSession } from '/src/engine/flow.js';
+import { buildCost } from '/src/engine/economy.js';
+import { render } from '/src/ui/render.js';
+
+const qs = new URLSearchParams(location.search);
+const style = qs.get('style') || 'grow';
+const seed = Number(qs.get('seed') || 1);
+const state = startSession(createSliceConfig({ human: true, seed, style }));
+state.day = state.config.dayLimit;
+const p = state.players.find(q => q.controller === 'human');
+// 主管那一局：翻修卡还在手上，最后一天停在自己的小店。
+const plot = state.map.plots.find(x => x.id === p.properties[0]);
+state.phase = 'build';
+state.pending = { type: 'build', cellId: plot.id, cost: Math.round(buildCost(state.properties[plot.id].level + 1) * state.priceIndex) };
+
+const root = {
+  system: document.querySelector('#system'), players: document.querySelector('#players'),
+  board: document.querySelector('#board'), log: document.querySelector('#log'),
+  insight: document.querySelector('#insight'), dice: document.querySelector('#dice'),
+  cards: document.querySelector('#cards'), hand: document.querySelector('#hand'),
+  choice: document.querySelector('#choice'),
+};
+render(root, state, new Proxy({}, { get: () => () => {} }));
+window.__ready = { style, seed, day: state.day, plot: plot.name, cost: state.pending.cost,
+  holdsWorker: p.cards.includes('worker') };
+</script>
+</body>
+</html>
