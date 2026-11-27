@@ -51,7 +51,30 @@ lock src/ui/voice.js
 
 doc  README.md
 lock src/engine/market-ledger.js
-# #3341 的锁 = **当前**产品的描述（36 个产品文件）。
+# #3342 的锁 = **当前**产品的描述（36 个产品文件，与 3341 同一份清单）。
+# 相对 3341 只改三个文件：src/data/slice.js（新增 STARTS_CONTESTED，默认路径不动）、
+# src/main.js（?cross=1 接线与第一屏说明）、src/engine/economy.js（只加注释，代码行未变）。
+# 判据 test/contested-streets.test.js（4 条）；量具 support/probe-3342/。
+doc  docs/evidence/slice-entry-3342.sha256
+tool support/probe-3342/paired-plan.mjs
+tool support/probe-3342/layouts.mjs
+tool support/probe-3342/seat-check.mjs
+tool support/probe-3342/replay-digest.mjs
+tool support/probe-3342/ev-per-action.mjs
+tool support/probe-3342/rates.mjs
+tool support/probe-3342/entry-geom.py
+tool support/probe-3342/entry-geom.mjs
+tool support/full-game/make-lock.py
+doc  test/contested-streets.test.js
+doc  docs/evidence/receipt-3342-final/provenance.json
+doc  docs/evidence/receipt-3342-final/record-8-summary.json
+doc  docs/evidence/receipt-3342-final/record-10-replay.json
+doc  docs/evidence/RESULT-3342.md
+doc  docs/evidence/receipt-3342-final/after.json
+doc  docs/evidence/receipt-3342-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3342-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3342-final/raw/after.json.gz
+# 上一把锁（保留在库里，已不是当前产品）。
 doc  docs/evidence/slice-entry-3341.sha256
 # 相对 3340 只改一个文件 src/engine/insight.js：选落点那一屏不再报「此刻做不起」的金额 ——
 # 做不到的那一行自己写「还差 N」/「会破产」，做得到的不加字。
@@ -287,6 +310,10 @@ doc  docs/evidence/RESULT-3331.md
 # 旧表记的是改前的字节，新表记的是改后的 —— 只留一张就无法回答「修了什么」。
 doc  docs/evidence/balance-3331-300.json
 doc  docs/evidence/balance-3332-300.json
+# #3342：同一条命令在新字节上重跑。三格数字与上两张**逐位相同**（45.7 / 32.0 / 34.7）——
+# 默认开局没被动过，这一条是 300 局 × 3 起手量出来的，不是自述。
+# 重跑：node tools/balance-slice.mjs --seeds 150 --json > docs/evidence/balance-3342-300.json
+doc  docs/evidence/balance-3342-300.json
 # receipt-3330-final 跑在这把锁上（它的 slice.js 与现在只差注释，但字节不同）。
 # 之前这把锁只活在 git 历史 b8bc9cb 里 ⇒ 回执表点名的锁在干净检出中不存在，
 # 读者无从核对。收进来是为了让 RECEIPTS-VS-PRODUCT.md 的每一行都可核。

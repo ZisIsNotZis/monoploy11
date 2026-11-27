@@ -471,7 +471,11 @@ function startSlice() {
   }
   const style=picked;
   const seed=readSetupSeed();
-  state=startSession(createSliceConfig({style,seed}));
+  // #3342：判据入口。`?slice=1&cross=1` 用「争街」开局（每条街两家各占一间），
+  // 不写就还是原来的整条街开局 —— 默认路径逐字不变是一个被核过的事实，
+  // 不是「应该没差」。见 support/probe-3342/replay-digest.mjs。
+  const contested = new URLSearchParams(location.search).get('cross') === '1';
+  state=startSession(createSliceConfig({style,seed,sliceContestedStreets:contested}));
   lastMoney=null;lastSnap=null;lastNews=0;
   document.body.classList.add('slice-mode');
   $('#setup').hidden=true;
@@ -499,6 +503,23 @@ if (qs.get('testcards')) $('#testcards').checked = true;
 // 想直接指定起手可加 style=grow|take|cross，但仍需玩家点「开一局街角生意」。
 if (qs.get('slice')) {
   document.body.classList.add('slice-entry');
+  // 争街开局的地图卡片要在第一屏就说清「哪两间是你的」，否则玩家开局就看见两间不属于
+  // 同一条街的店，而介绍那句「每人两间小店」并没有骗人，但也没说出这条区别。
+  if (qs.get('cross') === '1') {
+    const note = $('#sliceStyleNote');
+    if (note) {
+      note.hidden = false;
+      // 照实写，不写「每条街对面那间都是对手的」—— 实测（cross=1, grow, seed 1）开局是：
+      //   晚风街、灯火街 1 对 1（对手占着另一半）
+      //   晨光街、月色街 你占一间、另一间无主
+      //   西巷、东巷 两间都无主
+      // 所以「买下另一半」在有些街要打对手，有些街只要掏钱。
+      // 实测（support/probe-3342/entry-geom.py，390×844）：上一版 4 行，把「开一局」
+      // 从 521.9 推到 654.4（+132.6px）。按钮仍可点，但第一屏被挤满 —— 提示不该比按钮重。
+      // 紧凑版压到 2 行；「每条街只归一半」是唯一必须留下的事实，其余细节在牌上看得见。
+      note.textContent = '争街开局：每家两间店分在两条街，每条街都只归一半。补齐另一半才独享整条街。';
+    }
+  }
   const preset = qs.get('style');
   if (SLICE_STYLES.some(s => s.id === preset)) {
     const radio = document.querySelector(`[name="sliceStyle"][value="${preset}"]`);

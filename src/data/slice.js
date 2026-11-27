@@ -1,4 +1,5 @@
 // 第一条体验切片：有限内容、公开规则、短局；不改变完整模式的数据。
+
 export const SLICE_CARDS = {
   worker: { name: '翻修', desc: '免费让己方一栋已建房屋升 1 级，最高 3 级。先升级，再涨价，制造收租窗口。' },
   inflate: { name: '旺季', desc: '一整条街租金翻倍，持续 3 天。对手可以封租，或改走另一条路。' },
@@ -70,8 +71,41 @@ export function createSliceConfig({ seed = 1, style = 'grow', human = true, ...o
     participants:styles.map((s,i)=>({name:s.name,charId:s.charId,style:s.id,team:`t${i+1}`,controller:i===0&&human?'human':'ai'})), ...overrides };
 }
 
+// #3342 开局所有权：本片最硬的一条结构事实。
+//
+// 现状每条街只有两间店（见 makeMap），而 starts 给每家**同一条街的两间**：
+//   街角店主 晨光街×2 / 机会买家 晚风街×2 / 穿街高手 灯火街×2。
+// 同街加成 `1 + 0.4 × (本队该街店数 − 1)` 因此开局就是 ×1.4 —— **满**。
+// 也就是说「凑齐一条街」这个最经典的计划，在 t=0 就已经完成了；
+// 玩家能做的只剩「再多买一间」，而收购也失去「把对手那条街抢成我的」这个理由。
+// 实测（support/probe-3342/spread-starts.mjs，30 seed × 3 起手 × 2 座位）：
+//   现状   收租 6,677/家 · 每局真付租 2.83 次 · 每局收购 0.08 次
+//   争街D  收租 9,004/家 · 每局真付租 3.99 次 · 每局收购 0.18 次
+// 争街 D 把每条街的两个位置分给两个人（旋转对称），于是每条街都是 1 对 1：
+// 「买下对面那半条」既是新的收租计划，也是收购卡的正当理由。
+//
+// 仍是**候选**：同一批量到 grow 54.4 / take 20.0 / cross 25.6（现状 38.9/36.7/24.4），
+// 起手差距被拉大到 34.4 个百分点（#3331 那片刚把它收到 13.7）。所以默认关，见 RESULT-3342。
+const STARTS_WHOLE_STREET = [['3,2','4,2',['3,1','4,1']], ['8,2','7,2',['8,1','9,1']], ['3,5','4,5',['3,9','4,9']]];
+// 争街：i 号玩家拿「第 i 条街的第 0 间」+「第 i+3 条街的第 1 间」。
+// 顺序与 makeMap 的 streets 数组一致：晨光/晚风/灯火/月色/西巷/东巷。
+const STREET_PAIRS = [['3,1','4,1'], ['8,1','9,1'], ['3,9','4,9'], ['8,9','9,9'], ['1,3','1,4'], ['11,6','11,7']];
+// 对称对角：每人拿「自家街第一间 + 正对面那条街第二间」。
+// 三种排法都量过（support/probe-3342/layouts.mjs，20 seed × 3 起手 × 2 座位）：
+//   现状  收租 7,069 · 真付租 3.07/局 · 起手差距 11.6pp
+//   对角  收租 8,371 · 真付租 4.05/局 · 起手差距 13.3pp   ← 采用
+//   邻接  收租 6,913 · 真付租 3.58/局 · 起手差距 35.0pp   ← 差距是**这种排法**造成的，不是争街本身
+// 我第一版随手写的「+3 偏移」排法就是邻接那类，量到 34.4pp 差距，差点以为争街必然拉爆平衡。
+// 必须与 support/probe-3342/layouts.mjs 里的 `diagonal` **逐项相同** —— 量的是哪一个，
+// 就用哪一个。我上一稿凭印象改写成「+3 偏移」，那既不是量过的排法也不是对称的。
+const STARTS_CONTESTED = [
+  ['3,2','4,2',[STREET_PAIRS[0][0], STREET_PAIRS[3][1]]],   // 晨光街小店 + 月色街茶铺
+  ['8,2','7,2',[STREET_PAIRS[1][0], STREET_PAIRS[2][1]]],   // 晚风街小店 + 灯火街茶铺
+  ['3,5','4,5',[STREET_PAIRS[2][0], STREET_PAIRS[1][1]]],   // 灯火街小店 + 晚风街茶铺
+];
+
 export function initializeSlice(state) {
-  const starts = [['3,2','4,2',['3,1','4,1']], ['8,2','7,2',['8,1','9,1']], ['3,5','4,5',['3,9','4,9']]];
+  const starts = state.config?.sliceContestedStreets ? STARTS_CONTESTED : STARTS_WHOLE_STREET;
   state.players.forEach((p,i)=> {
     const style = SLICE_STYLES.find(s=>s.id===state.config.participants?.[i]?.style) ?? SLICE_STYLES[i%3];
     p.style=style.id; p.talents=[]; p.cards=[...style.hand];
@@ -79,7 +113,7 @@ export function initializeSlice(state) {
     if (style.cash != null) p.cash = style.cash;
     const [position,facing,ids]=starts[i%starts.length]; p.position=position;p.facing=facing;p.lastNode=null;
     for(const id of ids) {state.properties[id].ownerId=p.id;p.properties.push(id);}
-    p.sliceStats={rentPaid:0,rentEarned:0,cardsPlayed:0,takeovers:0};
+    p.sliceStats={rentPaid:0,rentEarned:0,cardsPlayed:0,takeovers:0,tradeEarned:0};
   });
   state.slice={history:[],turnStart:null};
 }

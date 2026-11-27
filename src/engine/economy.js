@@ -34,6 +34,11 @@ export function rentFor(state, ref) {
   return Math.round(base * chain * big * inflate * state.priceIndex * mapRentMultiplier(state, { ...pr, id: cellId }));
 }
 
+// #3342 结论：这里曾实现过一条「停在自己店旁 = 营业/巡视」的新收入规则，**已删除**。
+// 它没通过自己的判据：任何能摊平 10,000 加盖的比例，都同时把营业抬到收租的数倍，
+// 于是「对手走过来」这个唯一的紧张感消失；按层计还会把街角店主抬到 80% 胜率。
+// 通过判据的是**开局所有权**（data/slice.js 的 STARTS_CONTESTED）。证据：support/probe-3342/。
+
 export function buyPrice(state, ref) {
   const cellId = plotIdOf(state, ref);
   const plot = state.map.plots.find(p => p.id === cellId);

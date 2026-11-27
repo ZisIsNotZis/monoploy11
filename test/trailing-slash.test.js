@@ -23,7 +23,8 @@ const ROOT = path.resolve(HERE, '..');
 // #3332 重签：收购卡改为只收「别人已开张的小店」（空地不再是合法目标），
 // 因为 125% 是付给原主人的溢价，空地上没有卖家。
 // 这里只验「301 后拿到的是我这份文件」，不验内容 —— 指纹跟着产品走。
-const SLICE_FP = 'c27f89d9658233de';
+// #3342：slice.js 新增了 STARTS_CONTESTED（`?cross=1` 才走），默认开头逐字未变。
+const SLICE_FP = 'fdb305bf3336da60';
 
 // 全量 `node --test` 会为每个测试文件开独立子进程，两份 HTTP 测试可能同时到位。
 // 曾用 listen(0) 申请瞬时端口：并发下两边拿到同一个号，后起的 serve.py 绑不上

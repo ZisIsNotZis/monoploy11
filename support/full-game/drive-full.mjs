@@ -31,7 +31,10 @@ const ENTRY_STYLE = process.env.ENTRY_STYLE || 'grow';
 // Number(): the env var arrives as a string, and '2' + 1 is '21' — which made the
 // replay expectation ('seed + 1') unreachable while looking like a product defect.
 const ENTRY_SEED = Number(process.env.ENTRY_SEED || 1);
-const ENTRY = `http://127.0.0.1:${HTTP}/index.html?slice=1&style=${ENTRY_STYLE}&seed=${ENTRY_SEED}`;
+// #3342：新增的入口参数（如 cross=1）必须**真的被打开**才算验过。
+// 写死 URL 时，「新入口能玩」只能靠嘴说 —— 这一跑就是那样：整局 PASS，但它开的是老入口。
+const ENTRY_EXTRA = process.env.ENTRY_EXTRA || '';
+const ENTRY = `http://127.0.0.1:${HTTP}/index.html?slice=1&style=${ENTRY_STYLE}&seed=${ENTRY_SEED}${ENTRY_EXTRA}`;
 // The human seat's name is whatever the chosen starter hands to participant #0.
 const HUMAN = ({grow: '街角店主', take: '机会买家', cross: '穿街高手'})[ENTRY_STYLE];
 if (!HUMAN) throw Error(`UNKNOWN-ENTRY-STYLE ${ENTRY_STYLE}`);

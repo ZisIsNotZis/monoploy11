@@ -34,8 +34,11 @@ const sha256 = rel => createHash('sha256')
 // #3332：产品字节变了（收购卡只收别人已开张的小店），所以入库的是新量出来的那份表。
 // 旧表 balance-3331-300.json 留着当历史：它记的是改前的字节，删掉就无法回答「改了什么」。
 // 两张表的胜率数字碰巧一样 —— 这正是这次要证明的事：修的是「目标合法性」，不是数值。
-const ARTIFACT = 'docs/evidence/balance-3332-300.json';
-const PREVIOUS_ARTIFACT = 'docs/evidence/balance-3331-300.json';
+// #3342：产品字节又变了（新增 `?cross=1` 争街开局；默认路径逐字未变），所以再入库一张表。
+// 这张表同时是最好的证据：**数字与上两张逐位相同**（45.7 / 32.0 / 34.7）——
+// 如果默认路径被我改动了，300 局 × 3 起手不可能一模一样。
+const ARTIFACT = 'docs/evidence/balance-3342-300.json';
+const PREVIOUS_ARTIFACT = 'docs/evidence/balance-3332-300.json';
 const artifact = () => JSON.parse(read(ARTIFACT));
 
 test('上一张表仍然能读出它量的是改前的字节（历史不能被新表顶掉）', () => {
@@ -51,7 +54,7 @@ test('上一张表仍然能读出它量的是改前的字节（历史不能被�
     assert.ok(prev, `旧表缺 ${b.id}`);
     assert.equal(b.winRatePct, prev.winRatePct,
       `${b.id} 的胜率变了（${prev.winRatePct} → ${b.winRatePct}）：`
-      + '本轮只改「收购只能收别人的店」，不应改变三条起手的强弱');
+      + '本轮只新增一个可选开局（cross=1），默认路径不应改变三条起手的强弱');
   }
 });
 
