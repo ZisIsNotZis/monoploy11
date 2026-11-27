@@ -49,6 +49,19 @@ function buyFixture(style = 'grow', seed = 7) {
   return { state, plot, me: human(state) };
 }
 
+// 小店夹子：C / C3 要看的是「路线 + 现金压力 + 走位」三种标签共存，
+// 而 buyFixture 给的是书屋（书屋没有同街邻居，路线那一行按设计不印）。
+function buyLedgerLinesFixture(style = 'cross', seed = 1) {
+  const state = startSession(createSliceConfig({ human: true, seed, style }));
+  state.day = 4;
+  const me = human(state);
+  // 挑一块真能在屏上出现的无主小店：开售了、买得起。
+  const plot = state.map.plots.find(x => !x.big && !state.properties[x.id].ownerId
+    && state.day >= (x.availableFromDay ?? 1) && buyLedgerFacts(state, x.id, me)?.cashAfter >= 0);
+  assert.ok(plot, '夹具里没有可买的小店');
+  return { state, plot, me };
+}
+
 function renderBuy(state, plot) {
   const root = mkRoot();
   const saved = state.pending;
@@ -150,17 +163,95 @@ test('B2 两屏都不再说「不够本钱」那套（那是花掉的口径，�
 // ── C. 口径不混 ───────────────────────────────────────────────────────────────
 // 这是 #1143 定下的纪律，也是 supervisor 被绕晕的真正原因：同一屏里若有「本局」与「72 局」
 // 两种数，各自必须带标签。买地屏现在两行都带（「本局账本：」「同规则 72 局」）。
+// #3343：行数从 3 行变多了（新增「这条路是补齐 / 开新的」一行），所以这里改成
+// **按标签找行**而不是按位置取行 —— 保留的是纪律（每行自报口径），不是行号。
+// 行序本身仍被 C3 钉着：记分 → 路线 → 现金压力 → 走位。
 test('C 买地屏每一行都自带口径标签', () => {
-  const { state, plot } = buyFixture();
+  const { state, plot } = buyLedgerLinesFixture();
   const lines = buyLedgerLines(state, plot.id);
-  assert.ok(lines.length >= 3, `应该有三行账，实际 ${lines.length}`);
-  assert.match(lines[0], /^本局账本：/, `第一行没有本局标签：${lines[0]}`);
-  assert.ok(lines[0].includes('总资产不变'), `第一行没说清资产换手：${lines[0]}`);
-  assert.match(lines[1], /买完剩/, `第二行没给现金压力：${lines[1]}`);
-  assert.match(lines[1], /此刻/, `第二行的租金是当场值，必须写「此刻」：${lines[1]}`);
-  assert.match(lines[2], /^同规则 72 局/, `第三行（常数字）没有自报来源：${lines[2]}`);
+  assert.ok(lines.length >= 3, `应该至少三行账，实际 ${lines.length}`);
+  const score = lines.find(l => /^本局账本：/.test(l));
+  assert.ok(score, `没有记分那一行：${JSON.stringify(lines)}`);
+  assert.ok(score.includes('总资产不变'), `记分行没说清资产换手：${score}`);
+  const cash = lines.find(l => /买完剩/.test(l));
+  assert.ok(cash, `没有现金压力那一行：${JSON.stringify(lines)}`);
+  assert.match(cash, /此刻/, `现金压力那行的租金是当场值，必须写「此刻」：${cash}`);
+  const walking = lines.find(l => /^同规则 72 局/.test(l));
+  assert.ok(walking, `常量那一行没有自报来源：${JSON.stringify(lines)}`);
   // 「本局账本」那一行里不许出现任何常数（它是本局的账）。
-  assert.equal(/72 局|seed/.test(lines[0]), false, `本局那行混进了常数口径：${lines[0]}`);
+  assert.equal(/72 局|seed/.test(score), false, `本局那行混进了常数口径：${score}`);
+});
+
+// C3 行序：记分在最前，走位（常数口径）在最后。数字读起来才不会把两本账混在一句里。
+test('C3 行序：本局账本在最前，72 局常数在最后', () => {
+  const { state, plot } = buyLedgerLinesFixture();
+  const lines = buyLedgerLines(state, plot.id);
+  assert.match(lines[0], /^本局账本：/);
+  assert.match(lines[lines.length - 1], /^同规则 72 局/);
+});
+
+// C4 「这条路是补齐」那一行的钱必须能自己回算：
+// 买下这块地后，我那条街的租金从 before 涨到 after，差就是它说的「每轮到手 +gain」。
+// 这是 #3343 的新行 —— 用户要的那条「补齐一条街」，在此之前屏上完全看不见。
+// C5 真入口撞到的那一屏：这条街**停业**时，买地屏原来整段只说「买下也收不到租」，
+// 「这条路是补齐还是开新的」一个字不提 —— 而停业正是最该说清路线的时候。
+// 判据：停业时仍要印出路线行，并且它用的是「开业时的价」，同时明写此刻在停业。
+test('C5 街道停业时，路线那一行照样在，并说明上面的价是开业价', () => {
+  const state = startSession(createSliceConfig({ human: true, seed: 1, style: 'cross', sliceContestedStreets: true }));
+  const me = human(state);
+  const target = state.map.plots.find(plot => !plot.big && !state.properties[plot.id].ownerId
+    && state.map.plots.some(x => x.id !== plot.id && !x.big && x.street === plot.street
+      && state.players.find(q => q.id === state.properties[x.id].ownerId)?.team === me.team));
+  assert.ok(target, '争街夹具里应当存在一块能补齐的空地');
+  // 把这条街整体停业。
+  const closedSaved = {};
+  for (const x of state.map.plots) if (x.street === target.street) {
+    closedSaved[x.id] = state.properties[x.id].closed;
+    state.properties[x.id] = { ...state.properties[x.id], closed: 2 };
+  }
+  try {
+    const lines = buyLedgerLines(state, target.id, me);
+    const route = lines.find(l => /^这条路是补齐/.test(l));
+    assert.ok(route, `停业时路线行不见了：${JSON.stringify(lines)}`);
+    // 停业时说的是「再次开业后」的价（supervisor 读不出「每轮到手」到底是哪一种）。
+    assert.match(route, /再次开业时/, `停业时没说清这是哪个时候的价：${route}`);
+    // 引擎真相：租金只在对手停过来时收。屏上不许出现「每轮 / 每回合到手」这种说法。
+    assert.equal(/每轮到手|每回合到手/.test(route), false, `又把租金说成每回合进账了：${route}`);
+    assert.match(route, /对手停到/, `没说清钱是什么时候到手：${route}`);
+    assert.match(route, /停业/, `停业这件事必须写在同一句里：${route}`);
+    // 真入口 OUT-3343-final 印过「再加上这间自己的 0」—— 0 不许当成一个数说出来。
+    assert.equal(/再加上这间自己的 0\b/.test(route), false, `把 0 当成涨租印出来了：${route}`);
+    // 而且那些数不能因为停业就变成 0 —— 0 → 0 等于什么都没说。
+    const nums = route.match(/[\d,]{3,}/g) ?? [];
+    assert.ok(nums.some(num => Number(num.replace(/,/g, '')) > 0), `停业把数字都抹成 0 了：${route}`);
+  } finally {
+    for (const [id, c] of Object.entries(closedSaved)) state.properties[id] = { ...state.properties[id], closed: c };
+  }
+});
+
+test('C4 补齐那一行的涨租额与 rentFor 直接算的一致', () => {
+  const state = startSession(createSliceConfig({ human: true, seed: 1, style: 'cross', sliceContestedStreets: true }));
+  const me = human(state);
+  const target = state.map.plots.find(plot => !plot.big && !state.properties[plot.id].ownerId
+    && state.map.plots.some(x => x.id !== plot.id && !x.big && x.street === plot.street
+      && state.players.find(q => q.id === state.properties[x.id].ownerId)?.team === me.team));
+  assert.ok(target, '争街夹具里应当存在一块能补齐的空地');
+  const f = buyLedgerFacts(state, target.id, me);
+  assert.ok(f.streetMineCount >= 1 && f.streetGain > 0, `夹具没有触发补齐行情：${JSON.stringify(f)}`);
+  const mine = state.map.plots.filter(x => x.id !== target.id && !x.big && x.street === target.street
+    && state.players.find(q => q.id === state.properties[x.id].ownerId)?.team === me.team);
+  const saved = { ...state.properties[target.id] };
+  let before = 0, after = 0;
+  for (const x of mine) before += rentFor(state, x.id);
+  state.properties[target.id] = { ...saved, ownerId: me.id };
+  for (const x of mine) after += rentFor(state, x.id);
+  state.properties[target.id] = saved;
+  assert.equal(f.streetBefore, before);
+  assert.equal(f.streetAfter, after);
+  const line = buyLedgerLines(state, target.id, me).find(l => /^这条路是补齐/.test(l));
+  assert.ok(line, '没有印出补齐那一行');
+  assert.ok(line.includes(money(before)) && line.includes(money(after)), `行里的两个数不是算出来的：${line}`);
+  assert.ok(line.includes(money(after - before)), `没把「多收多少」说出来：${line}`);
 });
 
 test('C2 现金压力那一行的钱能自己回算：剩多少 ÷ 对手最贵一租 = 够付几次', () => {

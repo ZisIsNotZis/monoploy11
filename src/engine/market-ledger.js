@@ -79,12 +79,47 @@ export function buyLedgerFacts(state, plotId, viewer) {
     const r = rentFor(state, other.id);
     if (r > rivalMaxRent) { rivalMaxRent = r; rivalName = other.name; }
   }
+  // #3343：这块地对**同街其他已开张的店**做了什么。
+  // 同街乘数是 1 + 0.4 × (本队该街已建店数 − 1)，所以买下这条街的第二间，
+  // 自己那条街的每一间都会涨 —— 这是「补齐一条街」真正的收益。
+  // 旧屏只印这一块自己的 rent，等于把这条计划的一半藏起来（实测 2,000 → 2,800）。
+  const sameStreet = state.map.plots.filter(x => x.id !== plotId && !x.big && x.street === plot.street);
+  const mineOnStreet = sameStreet.filter(x => {
+    const o = state.properties?.[x.id];
+    const owner = state.players.find(q => q.id === o?.ownerId);
+    return owner && owner.team === p.team && (o.level ?? 0) > 0;
+  });
+  let streetBefore = 0, streetAfter = 0, streetClosedNow = false;
+  if (mineOnStreet.length) {
+    // 量的是**结构上的**涨租：临时把这条街上各店的「停业」当 0，算完逐字段放回原对象。
+    // #3343 真入口撞到的缺陷就在这里：这条街**停业**时 rentFor 两侧都是 0，
+    // 于是「补齐」那一行被静默漏掉 —— 而停业恰恰是最需要说清「这条路是哪一种」的时候。
+    // 前后两次量都在同一前提下（本条街按开业计），否则会把停业差算成涨租。
+    const closedSaved = mineOnStreet.map(x => state.properties[x.id].closed);
+    const target = state.properties[plotId];
+    const targetClosed = target.closed;
+    try {
+      mineOnStreet.forEach(x => { state.properties[x.id].closed = 0; });
+      state.properties[plotId] = { ...target, closed: 0 };
+      for (const x of mineOnStreet) streetBefore += rentFor(state, x.id);
+      state.properties[plotId] = { ...target, closed: 0, ownerId: p.id };
+      for (const x of mineOnStreet) streetAfter += rentFor(state, x.id);
+    } finally {
+      state.properties[plotId] = target;
+      mineOnStreet.forEach((x, i) => { state.properties[x.id].closed = closedSaved[i]; });
+    }
+  }
+  // 这条街此刻是不是停业（只影响措辞：数字说的是开业时的账）。
+  streetClosedNow = (pr.closed ?? 0) > 0 || mineOnStreet.some(x => (state.properties[x.id].closed ?? 0) > 0);
   const cashAfter = (p.cash ?? 0) - price;
   return {
     id: plotId, name: plot.name, price, rent,
     cashBefore: p.cash ?? 0, cashAfter,
     assetsBefore: before, assetsAfter: after, assetsDelta: after - before,
-    rivalMaxRent, rivalName,
+    rivalMaxRent, rivalName, big: !!plot.big,
+    streetName: plot.street,
+    streetMineCount: mineOnStreet.length,
+    streetBefore, streetAfter, streetGain: streetAfter - streetBefore, streetClosedNow,
     // 买完的现金够被踩几次（只按此刻这一个租金档次算；租金会随等级和旺季涨，句中要写明「此刻」）。
     hitsCovered: rivalMaxRent > 0 ? Math.floor(cashAfter / rivalMaxRent) : null,
   };
@@ -112,6 +147,34 @@ export function buyLedgerLines(state, plotId, viewer) {
   // ① 记分：三个数并排写出来，玩家自己能加减。
   lines.push(`本局账本：现金 ${n0(f.cashBefore)} → ${n0(f.cashAfter)}，地产标价 +${n0(f.price)}，`
     + (f.assetsDelta === 0 ? '总资产不变。' : `总资产 ${f.assetsDelta > 0 ? '+' : ''}${n0(f.assetsDelta)}。`));
+
+  // ⓪′ 这条路是哪一种：补齐自己那条街，还是开一条新的。
+  // 这是 #3343 缺口：屏上原来只有「这一块自己的租金」，于是「补齐一条街」
+  // 与「买一块陌生的地」看起来一模一样 —— 而前者在引擎里还带着整条街的乘数。
+  // 数字全部现算（rentFor 前后差），不写常数。
+  if (f.big) {
+    // 书屋不属于任何一条小店街（street 就是「书屋」），说「这座城市你一间店都没有」是噪音。
+  } else if (f.streetMineCount > 0 && f.streetGain > 0) {
+    // #3343 supervisor 判据：一个没看过账本的人要能照这屏说对它。
+    // 上一版写「每轮到手 +800」是错的：引擎里租金只在**对手停到那块地上**时才收
+    // （flow.js 的「实付租金」行只在 landingPhase 写），没有每回合进账这回事。
+    // 所以这句必须说「谁」「什么时候」「多收多少」，而不是一个叫「每轮到手」的数。
+    // 停业时用的是「再次开业时」的价（否则两个数都是 0，等于什么都没说）。
+    const when = f.streetClosedNow ? '、这条街再次开业时' : '，现在';
+    const ownBit = f.rent > 0
+      ? `；这间自己也是一样，对手停到它上面付 ${n0(f.rent)}`
+      : '；这间自己此刻停业，收不到';
+    lines.push(`这条路是补齐：${f.streetName}你已有 ${f.streetMineCount} 间。`
+      + `补齐后${when}，对手停到你这条街的任一店，单次租金从 ${n0(f.streetBefore)} 涨到 ${n0(f.streetAfter)}`
+      + `（同一次多收 ${n0(f.streetGain)}）${ownBit}。`
+      + '租金只在对手停过来时收，不是每回合收。');
+  } else if (f.streetMineCount === 0) {
+    lines.push(`这条路是开新的：${f.streetName}上你一间店都没有，`
+      + (f.rent > 0
+        ? `对手停到这间付你 ${n0(f.rent)}，没有同街加成。`
+        : '这间此刻停业，买下也收不到租，没有同街加成。')
+      + '租金只在对手停过来时收；下次再买这条街的另一间，同街加成才会出现。');
+  }
 
   // ② 现金压力：这才是这笔钱真正的代价。
   if (f.rivalMaxRent > 0) {

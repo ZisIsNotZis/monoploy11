@@ -51,11 +51,37 @@ lock src/ui/voice.js
 
 doc  README.md
 lock src/engine/market-ledger.js
-# #3342 的锁 = **当前**产品的描述（36 个产品文件，与 3341 同一份清单）。
-# 相对 3341 只改三个文件：src/data/slice.js（新增 STARTS_CONTESTED，默认路径不动）、
-# src/main.js（?cross=1 接线与第一屏说明）、src/engine/economy.js（只加注释，代码行未变）。
-# 判据 test/contested-streets.test.js（4 条）；量具 support/probe-3342/。
-doc  docs/evidence/slice-entry-3342.sha256
+# #3343 的锁 = **当前**产品的描述（36 个产品文件，文件集与 3342 相同）。
+# 相对 3342 只改一个文件：src/engine/market-ledger.js —— 买地屏新增一行
+# 「这条路是补齐 / 开新的」，把「补齐自己那条街能多收多少」现算出来（rentFor 前后差）。
+# 这是本片唯一的产品字节改动；胜率、经济数值、开局表一个字未动。
+# 判据 test/market-ledger.test.js 的 C / C3 / C4（C4 逐数与 rentFor 对账）。
+doc  docs/evidence/slice-entry-3343.sha256
+doc  docs/evidence/RESULT-3343.md
+doc  docs/evidence/RECEIPTS-VS-PRODUCT.md
+doc  docs/evidence/current-lock.txt
+doc  docs/evidence/receipt-3343-ship/provenance.json
+doc  docs/evidence/receipt-3343-ship/record-8-summary.json
+doc  docs/evidence/receipt-3343-ship/record-10-replay.json
+doc  docs/evidence/receipt-3343-ship/after.json
+doc  docs/evidence/receipt-3343-ship/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3343-ship/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3343-ship/raw/after.json.gz
+# #3343 的量具：每一支都在结果里被引用，所以必须随交付走得动。
+tool support/probe-3343/plan-or-ledger.mjs
+tool support/probe-3343/which-plan.mjs
+tool support/probe-3343/two-plans.mjs
+tool support/probe-3343/ledger-lines.mjs
+tool support/probe-3343/street-traffic.mjs
+tool support/probe-3343/ident-swap.mjs
+tool support/probe-3343/order-only.mjs
+tool support/probe-3343/position-only.mjs
+tool support/probe-3343/plot-economics.mjs
+tool support/probe-3343/what-decides.mjs
+tool support/probe-3343/conserved.mjs
+tool support/probe-3343/fair-tables.mjs
+tool support/probe-3343/symmetric.mjs
+tool support/probe-3343/seat-decompose.mjs
 tool support/probe-3342/paired-plan.mjs
 tool support/probe-3342/layouts.mjs
 tool support/probe-3342/seat-check.mjs

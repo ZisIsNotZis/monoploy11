@@ -372,6 +372,9 @@ async function main() {
       rec.firstScroll = m.scroll;
       if (frames.length < 400) frames.push({kind: m.kind, heading: m.heading,
         firstUsable: rec.firstUsable, hint: m.hint, hintView: m.hintView,
+        // #3343：买地屏现在会多印一行「这条路是补齐 / 开新的」。记账要把玩家
+        // **真读到的那几行字**留下 —— 只存按钮，回执就没法说明屏上写了什么。
+        panelText: (m.choice?.text ?? null),
         choice: m.choice?.scroll ?? null, choiceFit: m.choice?.fit ?? null,
         panelButtons: (m.panelButtons ?? []).map(b => ({what: b.what, v: b.v, text: b.text,
           usable: b.usable, why: b.why, fit: b.fit?.visible})),
