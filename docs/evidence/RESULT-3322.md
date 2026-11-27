@@ -83,13 +83,23 @@ SMOKE: PASS
 node --test                                                   # 570/570
 python3 -B support/full-game/check-delivery.py                # DELIVERY: PASS（35 项字节锁未变）
 python3 -B support/compare-entry-smoke.py                     # SMOKE: PASS（31 个资源）
-CLEAN_TMPDIR=… python3 -B support/full-game/clean-checkout.py # CLEAN CHECKOUT: PASS
+CLEAN_TMPDIR=$HOME/tmp python3 -B support/full-game/clean-checkout.py # CLEAN CHECKOUT: PASS
 ```
 
-干净检出的关键行：`copied … named files + … test files`、
-`checkout holds only delivered files (… named, none extra)`、`suite failures reported: 0`、
-`VERDICT: PASS`（471 帧 / 61 按）。也就是说，本轮的证据脚本与结论文档
-在**只有交付文件**的目录里也能跑 —— 这是 #3319 判「不可核对」时缺的那一条。
+干净检出的关键行：`copied 105 named files + 78 test files + 0 compare fixtures`、
+`checkout holds only delivered files (183 named, none extra)`、`suite failures reported: 0`、
+`VERDICT: PASS`（实测三次：468 / 470 / 471 帧，61 按 —— 帧数随对局浮动，不作为锁）。
+
+**重跑时的一个坑（实测踩到）**：本机 `/tmp` 是别人占满的 tmpfs，而 `TMPDIR` 指到
+`/mnt/d/**`（drvfs）时 Chrome 的 zygote 起不来（`Failed sending zygote boot message:
+Broken pipe`），CDP 的 `/json/list` 返回空，驱动报 `NO-OWNED-ABOUT-BLANK`。
+那不是产品问题，也不是驱动问题 —— 换成 ext4 上的目录（`/tmp` 或 `$HOME` 下）
+同一命令就过。第一次 clean-checkout 正是这么红的：`suite 570/570`、
+`DELIVERY: PASS` 都过了，只有整局那步挂在启动上。所以清理目录用
+`CLEAN_TMPDIR=<ext4 路径>`，不要指到 `/mnt/d`。
+
+这样一来，本轮的证据脚本与结论文档在**只有交付文件**的目录里也能跑 ——
+这是 #3319 判「不可核对」时缺的那一条。
 
 `support/serve-variant.py` 不在 35 项字节锁里（`slice-entry-3278.sha256` 只锁
 `serve.py` 与 34 个产品文件），所以这一轮不需要重签交付锁。玩家看到的字节没有变化：
