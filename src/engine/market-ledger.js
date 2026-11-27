@@ -24,6 +24,7 @@
 // 表随 AI/棋盘/数值变化而失效；test/market-ledger.test.js 逐值重算，不读探针输出。
 import { assetsOf, rentFor, buyPrice } from './economy.js';
 import { RENT_POOL } from './payback.js';
+import { streetBusinessStatus } from './flow.js';
 
 export const MARKET_PLOT = 'market';
 export const MARKET_SOURCE = '同规则 72 局（grow/take/cross × seed 1–24）';
@@ -176,6 +177,14 @@ export function buyLedgerLines(state, plotId, viewer) {
       + '租金只在对手停过来时收；下次再买这条街的另一间，同街加成才会出现。');
   }
 
+  // ⓪‴ #3391t（supervisor 的真机反馈）：买地确认页整屏只说「踩中后收租」，
+  // 而「补齐这条街会新增每天的营业进项」是他入账后才从日志看到的。
+  // 规则开着时，这笔支出换来的另一半收益必须在**决定之前**说出来。
+  // 数字用引擎同一套条件现算（streetBusinessStatus），不看同一前提之外的东西：
+  // 先把「买下这一块」当作已发生的局面试算，算完逐字恢复。
+  const businessLine = streetBusinessIncrement(state, f, plotId);
+  if (businessLine) lines.push(businessLine);
+
   // ② 现金压力：这才是这笔钱真正的代价。
   if (f.rivalMaxRent > 0) {
     // 「够付 0 次」在算术上对，但读起来像个 bug（supervisor 在 grow/4 上也提到了）。
@@ -192,6 +201,59 @@ export function buyLedgerLines(state, plotId, viewer) {
   // ③ 对手走位：不由我决定的那一半，用局数说（与结算屏同一份表）。
   pushWalkingLine(lines, f);
   return lines;
+}
+
+// #3391t：买下这一块会让「整条街营业进项」每天多多少。
+//
+// 为什么要试算而不是直接读现有值：玩家要的是「这笔钱换来什么」，而进项的条件是
+// 「这条街每一间都归我、都开张、都没停业」—— 买下前一间还差一间时，现在的进项是 0，
+// 光印 0 等于什么都没说。所以临时把这块地记给自己试算一次，再逐字段放回。
+// 同时必须说清它什么时候**不会**入账（停业期间不结算），否则玩家会按月预期一笔不来的钱。
+export function streetBusinessIncrement(state, facts, plotId) {
+  const perShop = state.config?.streetBusinessPerShop ?? 0;
+  if (!perShop || !state.slice || !facts || facts.big) return '';
+  const p = state.players?.find(q => q.controller === 'human');
+  if (!p) return '';
+  const before = streetBusinessStatus(state, p).find(r => r.street === facts.streetName);
+  const saved = state.properties[plotId];
+  // #3424（复核）：`p.properties` 之前用 `p.properties = savedMine` 恢复 —— 内容对了，
+  // **数组身份换了**。目前所有读取点都是当场 reduce/map/length，所以没有活 bug；
+  // 但这条函数每次渲染都跑，而「恢复」不恢复同一个对象，是给后来人埋的雷。
+  // 现在记长度、就地 push、按长度截断：内容与身份都还原。
+  const mineLen = p.properties.length;
+  let after = null;
+  try {
+    state.properties[plotId] = { ...saved, ownerId: p.id, closed: 0,
+      level: saved.level > 0 ? saved.level : 1 };
+    if (!p.properties.includes(plotId)) p.properties.push(plotId);
+    after = streetBusinessStatus(state, p).find(r => r.street === facts.streetName);
+  } finally {
+    state.properties[plotId] = saved;
+    p.properties.length = mineLen;
+  }
+  if (!after) return '';
+  const a = (before?.qualifies ? before.payout : 0) * perShop;
+  const b = (after.qualifies ? after.payout : 0) * perShop;
+  // #3391t 自测抓到的缺陷：这条街此刻停业时，`after.qualifies` 为假 ⇒ b = 0 ⇒
+  // 这一行被静默漏掉 —— 而停业恰恰是最需要说清「买下会多多少、什么时候才到账」的时候
+  // （与 #3343 同一个坑，只是换了位置）。所以把「所有权凑齐」与「此刻能否结算」分开。
+  const ownsAll = after.owned === after.total && after.unbuilt === 0;
+  if (!ownsAll) {
+    const short = after.total - after.owned;
+    return `营业进项：买下后还差 ${short} 间才能凑齐${facts.streetName}，那时每店每天 ${perShop}。`;
+  }
+  if (b <= a && !after.closed) return '';
+  // 这时刻到底能不能结算：两家都开张且不停业才算。
+  const blocked = after.closed > 0;
+  if (blocked) {
+    // 停业时按「开业后会拿到多少」说，并明确它现在不入账。
+    const full = after.ids.reduce((s, id) => s + perShop * Math.max(1, state.properties[id].level), 0);
+    return `营业进项：买下后${facts.streetName}就凑齐了，开业后每天结算 ${n0(full)}`
+      + `（比现在多 ${n0(full - a)}，每店每天 ${perShop}×等级）；但这条街现在停业，停业期满前不入账。`;
+  }
+  return `营业进项：买下后${facts.streetName}就凑齐了，每天结算 ${n0(b)}`
+    + `（比现在多 ${n0(b - a)}，每店每天 ${perShop}×等级）`
+    + (blocked ? '；但这条街现在停业，停业期满后才开始入账。' : '；需要两间都开着张，停业期间不入账。');
 }
 
 // 走位那一行：买得起、买不起两种局面都说同一件事，所以单独拆出来。

@@ -11,6 +11,7 @@
 //   node support/probe-3338/geom.mjs
 // 输出：support/probe-3338/OUT-geom/geom-buy.json + 截图
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { findChrome } from '../find-chrome.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -25,7 +26,8 @@ const PORT = await freePort(), CDP = await freePort();
 const OUT = new URL('.', import.meta.url).pathname + (process.env.OUT_NAME || 'OUT-geom');
 mkdirSync(OUT, { recursive: true });
 // 与 #3264/#3334/#3335 回执同一颗 Linux Chrome。
-const CHROME = process.env.CHROME || '/home/z/.cache/puppeteer/chrome/linux-157.0.8103.78/chrome-linux64/chrome';
+// #3391v: shared chrome discovery (support/find-chrome.mjs); no host-private path.
+const CHROME = findChrome();
 const UD = `/tmp/chrome-3338-${process.pid}`;
 
 // 静态服务器随仓库走（support/probe-3338/serve.mjs，与 3334/3335 同一份实现）。

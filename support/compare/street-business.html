@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>街角生意 · 开一条街 vs 抢高地（试玩对照）</title>
+<!-- #3391n：本页在 support/compare/ 下，根目录的 styles.css 要退两级。
+     上一版写 ../styles.css ⇒ 手机上打开是无样式的一页（supervisor 报的）。 -->
+<link rel="stylesheet" href="../../styles.css">
+<script type="module" src="./street-business-inject.js"></script>
+</head>
+<body>
+<div id="setup">
+  <h1>Monopoly 11</h1>
+  <section class="slice-intro">
+    <span class="eyebrow">试玩对照 · 不是正式规则</span>
+    <h2>两条赚钱的路子：抢一块高地，或把一条街收齐。</h2>
+    <p>本页在正式盘上只多开一条规则：<b>一条街的小店全归你时，每天结算营业进项</b>（本页设为每店每天 250）。<br>其余规则、地图、起手与正式入口完全相同，所以两次开局可以直接对照。</p>
+    <ul class="twin-plans">
+      <li><b>抢高地</b>：第 4 天凑到 26,000 就把街心书屋买下来。收入靠对手路过，8 个贴边路口，
+        <b>上限高、方差大</b>；<b>代价</b>是一次把钱压进去，之后踩到别人的店容易付不出租。</li>
+      <li><b>开一条街</b>：把一条街的两间小店都收下（无主的按标价买，各 8,000），再从第 2 天起
+        每天收营业进项。<b>上限低、但它是固定的</b>，不看对手掷出什么；<b>代价</b>是前 1–2 天完全没有这笔钱，
+        而且要先把两间都拿到手才开始结算。</li>
+    </ul>
+    <p class="hint measures"><b>实测（改正后的说法）：这条规则现在还不是「两种打算」，它更像给一个座位发钱。</b>
+    按座位拆（n=180/格）：争街开局下 0 号位（= 你坐的那张椅子）每局拿到 <b>12,943</b>，
+    两个 AI 平均 <b>2,894</b> —— <b>4.5 倍</b>。原因是发牌几何：你手上那两条街的另一半是<b>无主空地</b>（按标价走就能买齐），
+    两位 AI 的另一半互为对方，只能靠收购卡（实测负期望、AI 从不选）。所以「凑齐一条街」在人类手上可行，在 AI 手上几乎不可行。</p>
+    <p class="hint measures">同一支量具的两张表对照：换成「整条街」开局（三家开局都独享一条街，对称）后，
+    进项对「照常打」的整体影响是 <b>−3.9pp</b> [−11.7, 4.4]（不再是一边倒的 +17.8pp），
+    而之前那句「符号随起手翻」也消失了（小店路 − 书屋路：grow −6.7 / take −28.3 / cross −26.7）。
+    ⇒ 之前那一版把「座位红利」当成了「起手偏好」，现已撑销。</p>
+    <p class="hint measures">另一条现在就能确认的：进项要「整条街都开着张」。停业 2 天期间<b>不结算</b> ——
+    所以穿街高手用停业卡封对手时，自己的那条街也领不到（真机 seed 2 就发生了这件事，侧栏会写出原因）。</p>
+    <p class="hint caveat"><b>为什么这算不上「已经平衡」：</b>争街表下加进项把三起手差距从 10.8pp 拉宽到 30.0pp，
+    「照常打」整体 +17.8pp [11.1, 24.4] —— 而这 +17.8pp 几乎全部来自上面那张「0 号位 4.5 倍」的座位红利（
+    等额白给现金的对照格只有 +0.6pp [−7.8, 8.9]）。整条街表（对称几何）上是 −3.9pp。
+    ⇒ 不发布的理由比之前更硬：它不是「量级没调好」，而是**效果来源是座位，不是玩法**。
+    所以这条规则<b>默认关闭</b>，只在本页（和 `?business=250`）开启；下一步该改的是发牌几何，不是系数。</p>
+    <!-- #3391t：本页以前没有开局单选（只有正式盘有），于是没法在「同一种自选开局」下对照。
+         现在与正式入口同一套控件：开局布局 + 规则量级。 -->
+    <div id="sliceOpening" class="slice-openings"></div>
+    <div id="sliceBusiness" class="slice-business"></div>
+    <div id="sliceStyles" class="slice-styles"></div>
+    <p id="sliceStyleNote" class="hint" hidden></p>
+    <button id="startSlice">开一局街角生意</button>
+    <p class="hint">不用先读规则。卡片效果、地产租金与每回合发生的事都会直接显示。<br>正式盘（没有营业进项）：<a id="backToReal" href="../../index.html?slice=1">打开正式入口</a> —— 回来时用这里同一套界面读同一批信息。</p>
+  </section>
+  <details class="advanced-setup"><summary>完整模式与自定义设置</summary>
+  <div class="setup-grid">
+    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option></select></label>
+    <label>地图 <select id="map"><option value="grand-hotel" selected>大酒店</option>
+      <option value="snow">雪国</option>
+      <option value="sky">云上庭院</option>
+      <option value="machine">机械迷宫</option>
+      <option value="night">不夜天</option>
+      <option value="water">水乡</option>
+      <option value="mountain">山城</option>
+      <option value="angel">天使岛</option>
+      <option value="festival">狂欢节</option>
+      <option value="music">音乐之都</option>
+      <option value="season">锦绘时代</option>
+      <option value="volcano">火山古迹</option></select></label>
+    <label>种子 <input id="seed" type="number" value="1"></label>
+    <label>初始现金 <input id="startingCash" type="number" value="100000" step="10000"></label>
+    <label>初始存款 <input id="startingDeposit" type="number" value="100000" step="10000"></label>
+    <label>金钱格上限 <input id="moneyCap" type="number" value="30000" step="1000"></label>
+    <label>初始手牌 <input id="startingCards" type="number" value="4" min="0"></label>
+    <label>手牌上限 <input id="handLimit" type="number" value="8" min="1"></label>
+    <label>天数上限 <input id="dayLimit" type="number" value="50" min="1"></label>
+    <label>物价起始 <input id="priceStart" type="number" value="1" step="0.1"></label>
+    <label>物价步长 <input id="priceStep" type="number" value="0.1" step="0.05"></label>
+    <label>物价间隔 <input id="priceEvery" type="number" value="15" min="1"></label>
+    <label>银行利率% <input id="interestRate" type="number" value="10" step="1"></label>
+    <label>结息天数 <input id="interestEvery" type="number" value="30" min="1"></label>
+    <label>医院天数 <input id="hospitalDays" type="number" value="2" min="1"></label>
+    <label>监狱天数 <input id="jailDays" type="number" value="2" min="1"></label>
+    <label>乐透票价 <input id="lotteryTicket" type="number" value="2000" step="100"></label>
+    <label>开奖天数 <input id="lotteryEvery" type="number" value="10" min="1"></label>
+    <label>初始奖池 <input id="lotteryBase" type="number" value="200000" step="10000"></label>
+    <label>小地产价 <input id="smallPrice" type="number" value="8000" step="1000"></label>
+    <label>大地产价 <input id="bigPrice" type="number" value="20000" step="1000"></label>
+    <label class="check"><input type="checkbox" id="testcards"> 测试卡组</label>
+  </div>
+  <div id="setupRows"></div>
+  <div class="setup-row"><button id="start">开始</button></div>
+  <p class="hint">队伍选同一个编号就是组队；每名参赛者可选人类或 AI。角色就是身份，不再单独命名。</p>
+  <div class="setup-help">
+    <b>这一局怎么玩</b>
+    <span>目标：50 天内队伍总资产最高，或让对手先破产。</span>
+    <span>中心大酒店有 12 个入口，抢到它租金最凶；标“无主已建”的地产买下即继承等级，普通小地产买下仍是空地。</span>
+    <span>移动进岔路时自己选方向；右侧栏可以拖动调宽。</span>
+  </div>
+  </details>
+</div>
+
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="../../src/main.js?v=150"></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>街角生意 · 两块高地（试玩对照）</title>
+<!-- #3391n：本页在 support/compare/ 下，根目录的 styles.css 要退两级。
+     上一版写 ../styles.css ⇒ 手机上打开是无样式的一页（supervisor 报的）。 -->
+<link rel="stylesheet" href="../../styles.css">
+<script type="module" src="./twin-center-inject.js"></script>
+</head>
+<body>
+<div id="setup">
+  <h1>Monopoly 11</h1>
+  <section class="slice-intro">
+    <span class="eyebrow">试玩对照 · 不是正式规则</span>
+    <h2>两块高地，第 4 天你只买得起一块。</h2>
+    <p>这张盘比正式入口多一处 <b>东街书屋</b>（地图东侧，第 4 天开售，26,000，8 个邻街格，与街心书屋<b>同价同收益</b>）。<br>开工现金 42,000–46,000 <b>只够买一块</b>。</p>
+    <ul class="twin-plans">
+      <li><b>抢早</b>：第 4 天凑到 26,000 就把高地买下来（引擎会先报离你最近/排在前面那一块，你无法指定）。买到 = 对手每次路过都付你租；<b>代价</b>是现金抽干，之后踩到别人的店容易付不出租。</li>
+      <li><b>养店</b>：不抢高地，把钱翻修两间小店、买齐同街另一半。
+        <b>已测，这条现在不成立</b>：放松加盖门槛后胜率只变 −0.3pp（同局配对 360 局，
+        现状本来就每局加盖 1.18 次）；买齐同街另一半更差（#3346 量过）。
+        所以它不是「另一种打算」，只是把钱放在收益更低的地方。</li>
+    </ul>
+    <p class="hint measures">实测（120 局/格）：一块都占不到的局从 84%→73%（街角店主）、58%→41%（机会买家）、54%→34%（穿街高手），三起手差距 10.8→5.8 个点；但破产率 3–9% 升到 12–14%。<b>它只是让「谁拿到高地」这件事变弱，还没变成两种打算</b>——占一块仍有 68–90% 的胜率，街角店主仍有七成局一块都占不到。</p>
+    <p class="hint caveat"><b>再往后一步量到的结论（#3391q，360 局/臂，同一局内配对）：多一块高地不是第二种打法，
+    是同一个计划买第二次。</b>「买第二块地」相对「把这笔钱留在现金」永远为正：
+    13,000／第 9 天 +16.9pp [10.0, 24.4]；20,000／第 7 天 +17.9pp [9.8, 26.8]（<b>价钱不是变量</b>）；
+    把第二块做到与书屋同大（8 个临街格）+34.9pp [25.5, 44.3]（<b>frontage 才是变量</b>）。
+    连<b>「我已经有街心书屋」时买它仍然 +14.8pp</b> [4.9, 24.6] —— 一个座位可以两块都吃下。
+    加一条「一家只能持一块大地」的稀缺规则后，只抢北 49.4% vs 只抢南 29.4%（−20.0pp [−25.6, −14.2]），
+    失败方式也没分开。<b>所以本页只当「多一块高地会怎样」的实物对照，不是新玩法提案。</b></p>
+    <p class="hint caveat"><b>为什么两处不算一个选择（实测 360 局）：</b>两块被踩的次数几乎一样（28.51 对 28.29 次/局，0.99×），
+    所以「买哪一块」在收益上没有区别；真正决定归属的是<b>先报价的那一块先被买走</b>——
+    把东块排到前面，只归属东块的局就从 14% 翻到 36%。两块中间那列共享路面还会让落点者
+    <b>给两位房东各付一次</b>（一次落点 8,000）。本页因此只用来比较「有两处高地 / 只有一处」的差别，
+    <b>不要把它当成「选哪一块」的玩法</b>。</p>
+    <div id="sliceStyles" class="slice-styles"></div>
+    <p id="sliceStyleNote" class="hint" hidden></p>
+    <button id="startSlice">开一局街角生意</button>
+    <p class="hint">不用先读规则。卡片效果、地产租金与每回合发生的事都会直接显示。<br>正式盘（只有街心书屋）：<a id="backToReal" href="../../index.html?slice=1">打开正式入口</a> —— 回来时用这里同一套界面读同一批信息。</p>
+  </section>
+  <details class="advanced-setup"><summary>完整模式与自定义设置</summary>
+  <div class="setup-grid">
+    <label>人数 <select id="count"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option></select></label>
+    <label>地图 <select id="map"><option value="grand-hotel" selected>大酒店</option>
+      <option value="snow">雪国</option>
+      <option value="sky">云上庭院</option>
+      <option value="machine">机械迷宫</option>
+      <option value="night">不夜天</option>
+      <option value="water">水乡</option>
+      <option value="mountain">山城</option>
+      <option value="angel">天使岛</option>
+      <option value="festival">狂欢节</option>
+      <option value="music">音乐之都</option>
+      <option value="season">锦绘时代</option>
+      <option value="volcano">火山古迹</option></select></label>
+    <label>种子 <input id="seed" type="number" value="1"></label>
+    <label>初始现金 <input id="startingCash" type="number" value="100000" step="10000"></label>
+    <label>初始存款 <input id="startingDeposit" type="number" value="100000" step="10000"></label>
+    <label>金钱格上限 <input id="moneyCap" type="number" value="30000" step="1000"></label>
+    <label>初始手牌 <input id="startingCards" type="number" value="4" min="0"></label>
+    <label>手牌上限 <input id="handLimit" type="number" value="8" min="1"></label>
+    <label>天数上限 <input id="dayLimit" type="number" value="50" min="1"></label>
+    <label>物价起始 <input id="priceStart" type="number" value="1" step="0.1"></label>
+    <label>物价步长 <input id="priceStep" type="number" value="0.1" step="0.05"></label>
+    <label>物价间隔 <input id="priceEvery" type="number" value="15" min="1"></label>
+    <label>银行利率% <input id="interestRate" type="number" value="10" step="1"></label>
+    <label>结息天数 <input id="interestEvery" type="number" value="30" min="1"></label>
+    <label>医院天数 <input id="hospitalDays" type="number" value="2" min="1"></label>
+    <label>监狱天数 <input id="jailDays" type="number" value="2" min="1"></label>
+    <label>乐透票价 <input id="lotteryTicket" type="number" value="2000" step="100"></label>
+    <label>开奖天数 <input id="lotteryEvery" type="number" value="10" min="1"></label>
+    <label>初始奖池 <input id="lotteryBase" type="number" value="200000" step="10000"></label>
+    <label>小地产价 <input id="smallPrice" type="number" value="8000" step="1000"></label>
+    <label>大地产价 <input id="bigPrice" type="number" value="20000" step="1000"></label>
+    <label class="check"><input type="checkbox" id="testcards"> 测试卡组</label>
+  </div>
+  <div id="setupRows"></div>
+  <div class="setup-row"><button id="start">开始</button></div>
+  <p class="hint">队伍选同一个编号就是组队；每名参赛者可选人类或 AI。角色就是身份，不再单独命名。</p>
+  <div class="setup-help">
+    <b>这一局怎么玩</b>
+    <span>目标：50 天内队伍总资产最高，或让对手先破产。</span>
+    <span>中心大酒店有 12 个入口，抢到它租金最凶；标“无主已建”的地产买下即继承等级，普通小地产买下仍是空地。</span>
+    <span>移动进岔路时自己选方向；右侧栏可以拖动调宽。</span>
+  </div>
+  </details>
+</div>
+
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="../../src/main.js?v=150"></script>
+</body>
+</html>

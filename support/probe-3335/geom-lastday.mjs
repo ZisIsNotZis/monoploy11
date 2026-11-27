@@ -6,6 +6,7 @@
 // 另带一条负对照：把一句明显更长的分叉句塞进同一屏（模拟旧文案再加长），
 // 量具必须报红（不滚或键点不到）。否则「通过」只说明我没量到东西。
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { findChrome } from '../find-chrome.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -19,7 +20,8 @@ const freePort = () => new Promise((ok, bad) => {
 const PORT = await freePort(), CDP = await freePort();
 const OUT = new URL('.', import.meta.url).pathname + (process.env.OUT_NAME || 'OUT-geom');
 mkdirSync(OUT, { recursive: true });
-const CHROME = '/home/z/.cache/puppeteer/chrome/linux-157.0.8103.78/chrome-linux64/chrome';
+// #3391v: shared chrome discovery (support/find-chrome.mjs); no host-private path.
+const CHROME = findChrome();
 const UD = `/tmp/chrome-3335-${process.pid}`;
 
 // 静态服务器随仓库走（同一个文件，不依赖任何本机草稿目录）。

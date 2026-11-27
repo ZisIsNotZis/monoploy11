@@ -466,8 +466,13 @@ function showSetup() { $('#setup').hidden = false; }
 // 这块牌只能吃掉 ~80px，否则就把按钮推出视口 —— 所以它是一排**单行**的选择，
 // 不做两行卡片。第一版做成两张牌（各 2 行）实测把开始键推到 700–737，判红后改小。
 const OPENINGS = [
+  // #3391：原文「有一半是别人的，买下另一半这条街就归你一个人」——两处不准：
+  //   ① 玩家座位那两条街的另一半**开局 100% 是无主空地**（support/probe-3346/half-owners.mjs），
+  //      「买下」是走过去按标价 8,000 买，不是收购；
+  //   ② 「归你一个人」带来的同街加成最多 ×1.4，而补齐整条街实测是负期望
+  //      （take 38.3%→11.7%，plans-vs-control.mjs）。不把它写成值得做的计划。
   { id: 'contested', name: '争街', tail: '每条街各占一半',
-    line: '有一半是别人的，买下另一半这条街就归你一个人' },
+    line: '每家两间店分在两条街；另一半通常是空地，可按标价买齐' },
   { id: 'whole', name: '整条街', tail: '一条街两间都你的',
     line: '开局就独享，没有「补齐」这件事，只能往上盖' },
 ];
@@ -480,6 +485,19 @@ function readOpening() {
   const picked = document.querySelector('[name="sliceOpening"]:checked')?.value;
   return OPENINGS.some(o => o.id === picked) ? picked : 'contested';
 }
+// #3391v：营业进项是**试验档**，只由地址栏 `?business=N` 打开，不占首屏。
+//
+// 为什么不给它首屏控件（上一版给过）：首屏高度已被窄视口卡过两次 ——
+// 390×844 加这一排实测把「开一局」从 757 顶到 854（视口 844），360×640 从基线 773 到 813
+// （support/compare/layout-smoke.mjs 的读数）。而这条规则在 RESULT-3391u 里已经判定：
+// 它不是第二条打法，只在人类那张椅子上有效（三把椅子平均 0.0pp）。
+// 它不配占首屏最贵的位置，所以退回地址栏：
+//   ?slice=1&cross=1&business=250   开进项；省略或 business=0 就是正式规则。
+// 换来的是入口屏与已发布版逐字节相同（index.html / styles.css 一个字没改）。
+function readBusiness() {
+  const picked = Number(new URLSearchParams(location.search).get('business') ?? 0);
+  return Number.isFinite(picked) && picked > 0 ? picked : 0;
+}
 $('#count').onchange = renderSetupRows;
 $('#start').onclick = startGame;
 // 三种起手强度不同，默认不勾任何一项：必须由玩家选一手再开局。
@@ -487,7 +505,18 @@ $('#start').onclick = startGame;
 // 而影响最大的是屏上没写的那个数。定金不写，因为它三家相同（都是 0）。
 // 现金写在**名字同一行**：单独一行在 360×640 上把「开一局」从看得见（bottom 561）
 // 顶到视口外（643）。这一行不加高度，实测两种画幅的底边逐像素不变。
-$('#sliceStyles').innerHTML=SLICE_STYLES.map(s=>`<label class="style-choice"><input type="radio" name="sliceStyle" value="${s.id}"><span class="style-head"><strong>${s.name}</strong><b class="style-cash">开工现金 ${s.cash.toLocaleString()}</b></span><span>${s.hook}</span></label>`).join('');
+// #3391v：三句起手说明写在这里，不写进 src/data/slice.js 的 `hook` 字段。
+//
+// 为什么搬：slice.js 是产品字节，改它会让 test/trailing-slash.test.js 里的 sha16
+// 常量与 balance 表绑定的 sha 一起漂 —— 这两处与本次玩法交付无关，而候选只该含
+// 玩法、说明与相应证据。文案本身要说的还是同一件事：只说手上真有的卡，
+// 不写结果承诺、不做拿钱数的比较。
+const HOOKS = {
+  grow: '翻修 + 旺季：把自己的店升上去，让整条街收得更贵。',
+  take: '收购 + 定步：别人的店能出价，自己的落点能自己挑。',
+  cross: '停业 + 定步：压住一条街的租，再挑自己的落点。',
+};
+$('#sliceStyles').innerHTML=SLICE_STYLES.map(s=>`<label class="style-choice"><input type="radio" name="sliceStyle" value="${s.id}"><span class="style-head"><strong>${s.name}</strong><b class="style-cash">开工现金 ${s.cash.toLocaleString()}</b></span><span>${HOOKS[s.id] ?? s.hook}</span></label>`).join('');
 function startSlice() {
   clearRollFocus();
   const picked=document.querySelector('[name="sliceStyle"]:checked')?.value;
@@ -502,17 +531,31 @@ function startSlice() {
   // 为什么做成选择而不是直接换默认：两张表各自养着一批评据（旧表上跑真实整局建立的
   // grow/19 出局原因、收购目标扫描），换掉它们的前提会让那些结论不再描述玩家看到的东西。
   const contested = readOpening() === 'contested';
-  state=startSession(createSliceConfig({style,seed,sliceContestedStreets:contested}));
+  // #3391s：「整条街营业进项」**默认关闭**，只有显式带 `?business=250` 才开。
+  // 为什么不用一个开关默认打开：这条规则的量级还没定下来（RESULT 3d：
+  // 200–350/店/天 能造出「两种打算」，但也把三起手差距从 10.8pp 拉宽到 24–33pp）。
+  // 没定下来的东西不该改默认玩法，所以先做成可亲手试的一条，与 #3344 的开局选择同一个规矩。
+  // 从**当前这一屏的选择**读，不从 qs：qs 是进场那一刻的快照，玩家可能在屏上改过它，
+  // 那样「开局用的规则」与「地址栏记的规则」会静默分叉。
+  const business = readBusiness();
+  state=startSession(createSliceConfig({style,seed,sliceContestedStreets:contested,
+    ...(Number.isFinite(business) && business > 0 ? {streetBusinessPerShop: business} : {})}));
   // #3344b：把**实际开局用的那张盘**写回地址栏。
   // 根因不是 replay() 漏了一个参数，是第一屏的单选从来不落到 URL 上：
   // 玩家手选「整条街」开局，地址栏里却什么都没有；于是重开时无据可循，
   // 只能回默认，而屏上没有任何一处说这件事（supervisor 当场撞到）。
   // 用 replaceState 而不是改 href：不产生历史记录，也不重新加载。
+  // #3391t 修：上一版这里**只造了 URL、没有写回去** —— `const u = ...` 之后什么都没做，
+  // 于是 supervisor 手选「整条街」开局，地址栏里根本没有 cross，再打开就回到默认争街。
+  // 注释写着「用 replaceState」，代码里却一次都没调用；这正是「注释声称的行为 ≠ 代码」。
+  // 现在真的写回，且把布局与规则一次写全（两者都是本局真实生效的东西）。
   try {
     const u = new URL(location.href);
     u.searchParams.set('slice', '1');
     u.searchParams.set('cross', contested ? '1' : '0');
-    history.replaceState(null, '', u.href);
+    if (business > 0) u.searchParams.set('business', String(business));
+    else u.searchParams.delete('business');
+    if (u.href !== location.href) history.replaceState(null, '', u.href);
   } catch { /* 老浏览器或 file:// 下没有 history，不影响开局 */ }
   lastMoney=null;lastSnap=null;lastNews=0;
   document.body.classList.add('slice-mode');
@@ -554,10 +597,10 @@ if (qs.get('slice')) {
     const contested = readOpening() === 'contested';
     note.hidden = !contested;
     if (contested) {
-      // 照实写，不写「每条街对面那间都是对手的」—— 实测（争街, grow, seed 1）开局是：
-      //   晚风街、灯火街 1 对 1（对手占着另一半）；晨光街、月色街 你占一间、另一间无主；
-      //   西巷、东巷 两间都无主。所以「买下另一半」有些街要跟对手抢，有些街只要掏钱。
-      note.textContent = '争街开局：每家两间店分在两条街，每条街都只归一半。补齐另一半才独享整条街。';
+      // #3391：原来写「补齐另一半才独享整条街」，实测（support/probe-3346/half-owners.mjs，
+      // 三个起手各 120 条「另一半」样本）你手上那两条街的另一半**100% 是无主空地**，
+      // 走过去按标价 8,000 就能买 —— 跟收购卡无关。照实陈述，不暗示它值得做。
+      note.textContent = '争街开局：每家两间店分在两条街。你那条街的另一半通常是空地，走过去按标价就能买齐。';
     }
   };
 

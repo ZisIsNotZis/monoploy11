@@ -1,6 +1,7 @@
 // #3334：390×844 上，加盖屏多了一行之后，两个提交键还在不在可点范围。
 // 真 Edge + 真 CDP 鼠标输入（不是模拟点击）。沿用 #3264 的几何判定，不另写一套。
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { findChrome } from '../find-chrome.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -22,7 +23,8 @@ const OUT = new URL('.', import.meta.url).pathname + (process.env.OUT_NAME || 'O
 mkdirSync(OUT, { recursive: true });
 // 用仓库里已验证的那颗 Linux Chrome（#3264 的 390×844 回执就是它跑的），
 // 不用 Windows Edge 的 exe —— headless 下它不在这条 CDP 路径上起页面。
-const CHROME = '/home/z/.cache/puppeteer/chrome/linux-157.0.8103.78/chrome-linux64/chrome';
+// #3391v: shared chrome discovery (support/find-chrome.mjs); no host-private path.
+const CHROME = findChrome();
 const URL_BASE = `http://127.0.0.1:${PORT}/index.html?slice=1&style=grow&seed=1`;
 const UD = `/tmp/edge-3334-${process.pid}`;
 

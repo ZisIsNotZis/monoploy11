@@ -10,6 +10,7 @@
 //
 // 复跑：node support/probe-3338/settlement.mjs
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { findChrome } from '../find-chrome.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -23,7 +24,8 @@ const freePort = () => new Promise((ok, bad) => {
 const PORT = await freePort(), CDP = await freePort();
 const OUT = new URL('.', import.meta.url).pathname + (process.env.OUT_NAME || 'OUT-settle');
 mkdirSync(OUT, { recursive: true });
-const CHROME = process.env.CHROME || '/home/z/.cache/puppeteer/chrome/linux-157.0.8103.78/chrome-linux64/chrome';
+// #3391v: shared chrome discovery (support/find-chrome.mjs); no host-private path.
+const CHROME = findChrome();
 const UD = `/tmp/chrome-3338s-${process.pid}`;
 
 const server = spawn('node', ['support/probe-3338/serve.mjs', '.', String(PORT)], { stdio: 'ignore' });

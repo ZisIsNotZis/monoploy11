@@ -108,6 +108,67 @@ function advanceDay(state) {
   }
   if(!state.slice) spawnOccupants(state);
   tickTimers(state);
+  settleStreetBusiness(state);
+}
+
+// #3391s：「整条街都是你的」每天给一笔营业进项 —— 小店这条路**自己的**收入来源。
+//
+// 为什么要这条规则（证据见 support/probe-3391/RESULT.md 3d）：
+// slice 里小店的收入只有「对手踩上来付租」，而落点由骰子决定；街心书屋有 8 个贴边路口、
+// 小店只有 1–2 个，收租机会差 4–6 倍。于是「把钱换成贴边路口最多的地块」永远最优，
+// 支出只有一种用途，就不可能有第二种打算（#3391q 把加地这条路量死了）。
+//
+// 所以补的不是系数，是**收入的来源**：让「把一条街凑齐」这件事本身每天产生进项，
+// 与对手的骰子无关。两条路因此有不同条件与不同失败方式：
+//   · 抢书屋：一次付 26,000、第 4 天、收入靠对手路过（高上限、高方差、现金抽干）
+//   · 凑一条街：8,000×2 + 加盖、收入每天固定（低方差，但要熬，且先期无进项）
+//
+// 默认关闭（perShop = 0 ⇒ 这里什么都不做），所以正式入口的行为一个字节没变；
+// 开启由入口/对照页用 config.streetBusinessPerShop 显式选择。
+// #3391t：一条街归不归某人（以及卡在哪一步），只在这里定义一次。
+// 为什么抽出来：真机现场里 0 号位的两间店都挂着停业（`closed: 1`），规则因此没发一分钱，
+// 而侧栏却写「还没凑齐过一条街」—— 那句话是错的，玩家会以为自己该买地。
+// 结算与解释必须问同一个函数，否则两份真相一定分叉（这一片已经为此栽过多次）。
+export function streetBusinessStatus(state, player) {
+  const shops = new Map();
+  for (const pl of state.map.plots) {
+    if (pl.big) continue;
+    const cur = shops.get(pl.street) ?? [];
+    cur.push(pl.id);
+    shops.set(pl.street, cur);
+  }
+  const rows = [];
+  for (const [street, ids] of shops) {
+    const props = ids.map(id => state.properties[id]).filter(Boolean);
+    const owned = props.filter(pr => pr.ownerId === player.id).length;
+    const closed = props.filter(pr => pr.ownerId === player.id && pr.closed > 0).length;
+    const unbuilt = props.filter(pr => pr.ownerId === player.id && !(pr.level > 0)).length;
+    // 「整条街归我」= 每一间都我的、都开张、都没被停业。三个条件分别记账，
+    // 这样侧栏能说出到底差在哪，而不是一句「没凑齐」。
+    const qualifies = owned === props.length && closed === 0 && unbuilt === 0;
+    const payout = qualifies
+      ? props.reduce((a, pr) => a + Math.max(1, pr.level), 0) : 0;
+    rows.push({ street, ids, owned, total: props.length, closed, unbuilt, qualifies, payout });
+  }
+  return rows;
+}
+
+export function settleStreetBusiness(state) {
+  const perShop = state.config?.streetBusinessPerShop ?? 0;
+  if (!perShop || !state.slice || state.over) return;
+  for (const p of state.players) {
+    if (!p.alive) continue;
+    let total = 0;
+    for (const row of streetBusinessStatus(state, p)) {
+      if (!row.qualifies) continue;
+      // 按等级线性：加盖仍然有意义，但不像租金那样靠同街乘数放大。
+      total += perShop * row.payout;
+    }
+    if (!total) continue;
+    p.cash += total;
+    if (p.sliceStats) p.sliceStats.business = (p.sliceStats.business ?? 0) + total;
+    log(state, `${p.name} 的整条街营业进项 ${total}`);
+  }
 }
 
 function nextPlayer(state) {

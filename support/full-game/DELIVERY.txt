@@ -13,6 +13,36 @@
 #
 # 校验：python3 support/full-game/check-delivery.py
 
+# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3400.sha256（#3391v）。
+# 相对 3345 的玩家可见改动（其余是注释与证据）：
+#   ① src/data/slice.js —— 三句起手 hook 只写手上真有的卡；sliceStats 多一个 business 计数；
+#   ② src/main.js     —— 开局说明照实写（你那条街的另一半是空地，两个对手才互为另一半）；
+#                        开局与规则都写回地址栏；规则档只由 `?business=N` 打开（不占首屏）；
+#   ③ src/engine/flow.js —— 默认关闭的 settleStreetBusiness（一条街全归你时每天进项）；
+#   ④ src/ui/slice.js、src/engine/market-ledger.js —— 侧栏与买地屏在决定之前说清这笔进项。
+# index.html / styles.css **逐字节未改**：规则单选渲染进已有的 #sliceOpening，不新增容器，
+# 所以五个 HTTP 路径测试（尾斜杠 301、变体白名单、内部目录拦截）的指纹常量一个字没动。
+# 相对 3398 的产品字节差别只有 src/main.js：开场说明按座位讲准、规则档改由地址栏打开、
+# 三句起手文案从 slice.js 的 hook 字段搬进 main.js（所以 slice.js 与 3345 逐字节相同，
+# test/trailing-slash.test.js 那条 HTTP 用例与 balance 表都不用跟着动）。
+# 相对 3397 只改一处产品字节：src/engine/market-ledger.js 的 streetBusinessIncrement
+# 用 `p.properties = saved` 恢复数组 —— 内容对了、**数组身份换了**。它每次渲染都跑。
+# 改为记长度、就地截断。除此之外本片只加探针、文档与交付链修复，没有新玩法。
+# 复核 #3424 抓到并已修的三处：
+#   ① support/probe-3391/income-by-seat.mjs 按文档命令跑会抛（KNOWN.contested 从未定义）；
+#   ② support/full-game/drive-full.mjs 的 ev() 在导航瞬间解引用 r.result（null）⇒
+#     clean-checkout 有 1/3 概率假红；现在 NO-RESULT 重试 3 次才判红。
+#   ③ 上面那处 market-ledger 的数组身份。
+# 相对 3393：① 修了「开局选择不进地址栏」的真回归（startSlice 造了 URL 却没 replaceState）；
+# ② 首屏新增「规则」单选（无进项 / 250），与开局单选成对持久化到地址栏；
+# ③ 侧栏与买地屏在**决定之前**说清营业进项（含「停业期间不入账」与卡在哪一步）；
+# ④ 进项查询抽成 streetBusinessStatus，规则与解释共用一份。规则仍默认关闭。
+# 相对 3391 只多了一条**默认关闭**的规则：src/engine/flow.js 的 settleStreetBusiness
+# （整条街归你时每天结算营业进项；config.streetBusinessPerShop 不设就什么都不做），
+# src/data/slice.js 的 sliceStats.business 计数，以及 src/main.js 读 `?business=N`
+# 把这条规则显式打开的入口。默认关闭的证据：重跑 balance-slice --seeds 150 的胜局数
+# 与上一张逐位相同（161 / 109 / 133）。为何这么做、两档量级与代价见
+# support/probe-3391/RESULT.md 3d；可亲手玩的对照页 support/compare/street-business.html。
 lock index.html
 lock serve.py
 lock styles.css
@@ -53,9 +83,117 @@ doc  README.md
 lock src/engine/market-ledger.js
 # #3345 的锁（= #3344b 的同一份字节；换名是因为项目约定锁名是
 # `slice-entry-<数字>.sha256`，test/current-lock.test.js 会咬这条命名）。
-# 这份锁 = **当前**产品的描述：36 个产品文件，文件集未变。
+# 这份锁 = #3345 的产品描述（**已不是当前**）：36 个产品文件，文件集未变。
 # 指针点名的就是下面这把（test/current-lock.test.js 只在这个距离内找它：
 # 「当前」两处说法必须是同一份文件，不是两段各自维护的注释）。
+# #3391 的锁与证据。
+# #3391t 的锁（**已不是当前**）：36 个文件，文件集与 3393 相同。
+doc  docs/evidence/slice-entry-3400.sha256
+# #3391v 的整局回执（跑在 3400 这把锁上）：默认争街入口，VERDICT PASS。
+# 它同时证明「规则档默认关」没改玩法：同一套动作、同一结局、同一差额（51,600）。
+doc  docs/evidence/receipt-3400-full/provenance.json
+doc  docs/evidence/receipt-3400-full/record-8-summary.json
+doc  docs/evidence/receipt-3400-full/record-10-replay.json
+doc  docs/evidence/receipt-3400-full/after.json
+doc  docs/evidence/receipt-3400-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3400-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3400-full/raw/after.json.gz
+doc  docs/evidence/slice-entry-3398.sha256
+# #3391u：本片的边界研究 + 一份整局回执（默认入口，496 帧 / 66 按 / 3 次买地，VERDICT PASS）。
+doc  docs/evidence/RESULT-3391u.md
+doc  docs/evidence/receipt-3398-full/provenance.json
+doc  docs/evidence/receipt-3398-full/record-8-summary.json
+doc  docs/evidence/receipt-3398-full/record-10-replay.json
+doc  docs/evidence/receipt-3398-full/after.json
+doc  docs/evidence/receipt-3398-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3398-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3398-full/raw/after.json.gz
+# #3391u 的六支探针：每支都在 RESULT-3391u 里被点名引用。
+tool support/probe-3391/business-tier.mjs
+tool support/probe-3391/seat-or-behaviour.mjs
+tool support/probe-3391/symmetric-deal.mjs
+tool support/probe-3391/two-routes.mjs
+tool support/probe-3391/income-shape.mjs
+tool support/probe-3391/free-owned.mjs
+tool support/probe-3391/seat0-candidates.mjs
+tool support/probe-3391/deal-sweep.mjs
+# #3391v：check-delivery 现在会跟 tool 的相对 import 闭包（复核 #3425 第 3 条）。
+# 它立刻抓出十支探针都 import 了 ./stats.mjs 而清单没登记 —— 按清单重建的树里它们全会
+# ERR_MODULE_NOT_FOUND。这一行是那次扫描的直接产物。
+tool support/probe-3391/stats.mjs
+# #3391v：README 现在按「你坐的那张椅子」讲开局，两支探针各自咬住一半：
+# human-half.mjs 证明真实入口下人类固定坐 0 号位、那两条街的另一半 15/15 局为空地；
+# 五个对照脚本共用一处浏览器发现（CHROME= 优先，再 PATH，再 puppeteer 缓存），
+# 交付集里不再出现任何本机私有路径。
+tool support/probe-3391/human-half.mjs
+# #3391v：营业进项那族函数的负对照 —— 把三处实现各自改坏，证明新测试真的会红
+# （3 / 3 / 5 条），跑完按 sha256 断言产品字节已复原。RESULT-3391v §5 引用它。
+tool support/probe-3391/neg-control.sh
+# #3391v：三句起手文案搬进 main.js 的 HOOKS 后，靠 `HOOKS[s.id] ?? s.hook` 渲染。
+# 这一行读屏：新的必须在、旧的一条都不能在 —— 字节级断言证明不了渲染结果。
+tool support/probe-3391/hook-render.mjs
+# 它的负对照：删掉 HOOKS 里一个 id，屏上真的回退到旧文案，探针必须红。
+tool support/probe-3391/hook-render-neg.sh
+tool support/find-chrome.mjs
+doc  docs/evidence/RESULT-3391v.md
+doc  docs/evidence/slice-entry-3393.sha256
+# #3393 回执：索引自上一轮起就点它的名，但交付集一直没登记它 —— 于是干净检出里
+# 那份回执根本不存在，test/receipt-product-binding.test.js 在那边报「表比库还旧」。
+# 这不是本轮引入的，是这一轮跑 clean-checkout 才现形的。
+doc  docs/evidence/receipt-3393-full/provenance.json
+doc  docs/evidence/receipt-3393-full/record-8-summary.json
+doc  docs/evidence/receipt-3393-full/record-10-replay.json
+doc  docs/evidence/receipt-3393-full/after.json
+doc  docs/evidence/receipt-3393-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3393-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3393-full/raw/after.json.gz
+doc  docs/evidence/slice-entry-3397.sha256
+# #3391t 的整局回执：默认争街入口，494 帧 / 66 按 / 3 次买地，VERDICT PASS。
+# 它同时留下 supervisor 报过的那两项：F5 replay kept the opening (same board)
+# / F5 the opening is still switchable after replay。
+doc  docs/evidence/receipt-3397-full/provenance.json
+doc  docs/evidence/receipt-3397-full/record-8-summary.json
+doc  docs/evidence/receipt-3397-full/record-10-replay.json
+doc  docs/evidence/receipt-3397-full/after.json
+doc  docs/evidence/receipt-3397-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3397-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3397-full/raw/after.json.gz
+# #3391t 的两支真浏览器探针：一支量首屏能不能真的按到开局按钮，
+# 一支从正式入口真点击验「开局/规则选择被记住」与「两档进项是否入账」。
+tool support/compare/layout-smoke.mjs
+tool support/compare/entry-opening-smoke.mjs
+tool support/compare/contested-fill-smoke.mjs
+doc  docs/evidence/RESULT-3391t.md
+# #3391t 的引擎探针：按座位拆进项、对照组（等额白给）、座位隔离验。
+tool support/probe-3391/income-control.mjs
+tool support/probe-3391/income-by-seat.mjs
+tool support/probe-3391/income-seat0.mjs
+doc  docs/evidence/slice-entry-3391.sha256
+doc  docs/evidence/RESULT-3391.md
+doc  docs/evidence/balance-3391-300.json
+doc  docs/evidence/receipt-3391-full/provenance.json
+doc  docs/evidence/receipt-3391-full/record-8-summary.json
+doc  docs/evidence/receipt-3391-full/record-10-replay.json
+doc  docs/evidence/receipt-3391-full/after.json
+doc  docs/evidence/receipt-3391-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3391-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3391-full/raw/after.json.gz
+tool support/probe-3346/race-conditional.mjs
+tool support/probe-3346/frontage-audit.mjs
+tool support/probe-3346/plans-vs-control.mjs
+tool support/probe-3346/deepen-plan.mjs
+tool support/probe-3346/denial-plan.mjs
+tool support/probe-3346/street-completion.mjs
+tool support/probe-3346/take-back.mjs
+tool support/probe-3346/half-owners.mjs
+tool support/probe-3346/how-streets-complete.mjs
+tool support/probe-3346/complete-payback.mjs
+tool support/probe-3346/bookhouse-takeover.mjs
+tool support/probe-3346/book-takeover-verify.mjs
+tool support/probe-3346/takeover-transfer.mjs
+tool support/probe-3346/two-plans.mjs
+tool support/probe-3346/street-plan.mjs
+tool support/probe-3346/frontage.mjs
 doc  docs/evidence/slice-entry-3345.sha256
 # 相对 3343 改了四个文件，只为一件事：把「开局发给你哪几间店」变成第一屏上的一个选择，
 # 默认是争街，`?cross=0` 可回旧表。

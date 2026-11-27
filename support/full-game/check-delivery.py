@@ -12,9 +12,17 @@ Two independent questions, both answered here:
      file the list forgot. A silent extra file is how a pass gets propped up by something
      the delivery does not actually contain.
 
+  3. DO THE LISTED TOOLS IMPORT WHAT THE LIST CONTAINS?  Follow every relative import
+     (`./x.mjs`, `../y.js`) out of each `tool *.mjs` and report any hop that lands outside
+     the list. Without this, a helper that is imported but never named passes here and
+     fails only when someone rebuilds a tree from the manifest (#3391v: five browser
+     smokes died on ERR_MODULE_NOT_FOUND while this script said PASS). The product-dir
+     walk above cannot see it: it only covers `src/` and the root product files.
+
 It does NOT play the game (run-full.py does that, from a tree built out of the lock) and
 it does not run the suite. Its one job is the file-set question, kept cheap.
 """
+import re
 import sys
 from pathlib import Path
 
@@ -46,6 +54,58 @@ def read_list():
         kind, _, target = line.partition(' ')
         kinds.append((kind, target.strip()))
     return kinds
+
+
+REL_IMPORT = re.compile(r'''(?:from|import)\s*\(?\s*['"](\.[^'"]*)['"]''')
+
+
+def import_closure_problems(kinds, named):
+    """Follow relative imports out of listed JS/MJS tools; report unlisted hops.
+
+    Only relative specifiers are followed: a bare name (`node:fs`, `zod`) is either a
+    builtin or a dependency this repo does not ship, and neither can be "forgotten" from
+    the manifest. Extensionless specifiers resolve to `.mjs` / `.js`, which is how the
+    tools in this repo are written.
+    """
+    out = []
+    seen = set()
+    queue = [(t, t) for k, t in kinds if k == 'tool' and '*' not in t
+             and t.endswith(('.mjs', '.js'))]
+    while queue:
+        owner, rel = queue.pop()
+        if rel in seen:
+            continue
+        seen.add(rel)
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        for spec in REL_IMPORT.findall(text):
+            target = (path.parent / spec).resolve()
+            cands = [target, target.with_suffix('.mjs'), target.with_suffix('.js'),
+                     target / 'index.mjs', target / 'index.js']
+            # 浏览器夹具（support/compare/*.js 由 HTML 以 <script type=module> 加载）里的
+            # `../src/...` 是按**服务器根**解析的，不是按文件位置。两种解释都认，
+            # 只要有一种落在清单里就算可复取 —— 这不是放宽，是这条 specifier 的真实语义。
+            root_rel = (ROOT / spec.lstrip('./')).resolve()
+            cands += [root_rel, root_rel.with_suffix('.mjs'), root_rel.with_suffix('.js')]
+            hit = next((c for c in cands if c.is_file()), None)
+            if hit is None:
+                # 引用了仓库里不存在的相对文件：这是作者的错误，直接报，别静默。
+                out.append(f'{owner} imports {spec} but no such file exists '
+                           f'({path.parent.name}/{spec})')
+                continue
+            relhit = str(hit.relative_to(ROOT))
+            if relhit not in named:
+                out.append(f'{owner} imports {spec} = {relhit}, which DELIVERY.txt does not name '
+                           f'(a tree rebuilt from the manifest would fail with '
+                           f'ERR_MODULE_NOT_FOUND)')
+                continue
+            queue.append((owner, relhit))
+    return out
 
 
 def main():
@@ -85,6 +145,9 @@ def main():
     for rel in sorted(lock):
         if rel not in lock_named:
             problems.append(f'lock names {rel} but DELIVERY.txt forgot it')
+
+    # 3. every relative import out of a listed tool must itself be listed.
+    problems += import_closure_problems(kinds, named)
 
     if problems:
         for p in problems:

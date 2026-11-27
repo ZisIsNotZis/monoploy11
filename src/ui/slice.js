@@ -2,6 +2,7 @@ import { SLICE_CARDS } from '../data/slice.js';
 import { assetsOf, rentFor, buyPrice, buildCost, cheapestBuyable } from '../engine/economy.js';
 import { poolShareLine, poolKLine } from '../engine/payback.js';
 import { supplyWorth } from '../engine/insight.js';
+import { streetBusinessStatus } from '../engine/flow.js';
 import { MARKET_LEDGER, MARKET_PLOT as LEDGER_MARKET_PLOT, holdLeversFacts, bigBuildCost } from '../engine/market-ledger.js';
 
 export const money = n => Math.round(n).toLocaleString();
@@ -284,6 +285,38 @@ export function turnCauseLine(last, humanName) {
   return rest > 0 ? `${shown} 等 ${items.length} 笔` : shown;
 }
 
+// #3391t：玩家要能看见「营业进项真的入账了」。
+// 判据必须来自引擎的累计（sliceStats.business，只有 settleStreetBusiness 会写），
+// 而不是我从地图重算 —— 重算会掩盖「规则没开/没发」这种沉默（我在这一片反复犯的错）。
+// 规则未开启时返回 ''，所以正式盘的侧栏逐字不变。
+export function businessLine(state, human) {
+  if (!state?.slice || !human) return '';
+  const gained = human.sliceStats?.business ?? 0;
+  const perShop = state.config?.streetBusinessPerShop ?? 0;
+  if (!perShop) return '';
+  // 已入账就先把数报出来；下面再补这一回合为什么可能没增加。
+  const head = gained
+    ? `营业进项已入 ${money(gained)}（每店每天 ${perShop}）`
+    : `本页开着营业进项（每店每天 ${perShop}），你还没拿到过`;
+  // 卡在哪一步，必须说清楚。真机现场：两间店都挂着停业，却没解释，
+  // 屏上写着「还没凑齐过一条街」—— 玩家会去补地，而真正的原因是一张停业卡。
+  const rows = streetBusinessStatus(state, human);
+  if (rows.some(r => r.qualifies)) return `<p class="hint">${head}。</p>`;
+  // 只挑最接近的那一条街来说，避免把六条街都列出来。
+  // #3391t 自测抓到的错：第一版按「已持有 − 停业」排序，于是玩家刚花钱补齐的晨光街
+  // （2/2 但两张停业卡正在生效）被排到了一条 1/2 的街后面，屏上提的是后者 ——
+  // 玩家会以为自己买错了。排序必须先看**所有权进度**，停业只影响「什么时候到账」。
+  const best = [...rows].sort((a, b) => b.owned - a.owned
+    || Number(a.closed > 0) - Number(b.closed > 0)
+    || b.total - a.total)[0];
+  if (!best || !best.owned) return `<p class="hint">${head}：要先拿到一整条街（同一街的两间小店都归你）。</p>`;
+  const gap = [];
+  if (best.owned < best.total) gap.push(`还差 ${best.total - best.owned} 间`);
+  if (best.closed) gap.push(`${best.closed} 间停业中（停业期满才结算）`);
+  if (best.unbuilt) gap.push(`${best.unbuilt} 间还没开张`);
+  return `<p class="hint">${head}：${best.street} ${best.owned}/${best.total} 间，${gap.join('、') || '条件已满足'}。</p>`;
+}
+
 export function renderSliceInsight(el,state,p) {
   if(!el)return;
   el.hidden=!state.slice;
@@ -320,6 +353,7 @@ export function renderSliceInsight(el,state,p) {
   const heading=state.over?'收摊结算':out?'你已出局 · 剩下的回合只能看':p.controller==='ai'?`${p.name} 正在行动…`:'轮到你了';
   el.innerHTML=`<div class="turn-heading">${heading} <span>第 ${Math.min(state.day,state.config.dayLimit)} / ${state.config.dayLimit} 天</span></div>
     <p>你的资产 <b>${money(assetsOf(state,human))}</b> · 当前第 ${human.alive?rank.indexOf(human)+1:'—'} 名<br>已收租 ${money(human.sliceStats.rentEarned)} · 已付租 ${money(human.sliceStats.rentPaid)}</p>
+    ${businessLine(state,human)}
     ${state.day<4?'<p class="hint">街心书屋第 4 天开售，标价 26,000。先经营，或留钱抢位置。</p>':bookHint}
     ${!state.over&&p.controller==='human'&&state.phase==='action'?`<p class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡，随后掷骰。下次补给：${state.day>=16?'本局最后一天':`第 ${1+3*Math.ceil(state.day/3)} 天`}。<br>翻修 → 旺季；停业 → 定步。也可以留牌等时机。</p>`:''}${report}`;
 }
