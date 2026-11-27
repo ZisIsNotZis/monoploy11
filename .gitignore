@@ -3,3 +3,11 @@ node_modules/
 *.log
 
 assets/
+
+# 本机草稿目录：探针、截图、一次性反事实。**不入库**，也不该被 `git add -A` 带进去。
+# 它此前从来没有被忽略过（`git check-ignore .scratch` 退出码 1）—— 每一轮「可重跑」的证据里
+# 都写着 `.scratch/…` 路径，而 git 一直把它当普通未跟踪目录。#3341 收尾时 `git add -A`
+# 真的一次性暂存了 144 个草稿文件；发现得早，但那只是运气。
+# 忽略它不改变任何产品字节（docs/evidence/current-lock.txt 只锁 src/ 与三个根文件），
+# 只是让「哪些东西会随仓库走」这件事不再取决于我敲的是 `git add -A` 还是 `git add <路径>`。
+.scratch/
