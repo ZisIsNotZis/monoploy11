@@ -1,0 +1,8 @@
+{
+ "own_chrome": 0,
+ "ports_free": {
+  "http": true,
+  "cdp": true,
+  "verify": true
+ }
+}

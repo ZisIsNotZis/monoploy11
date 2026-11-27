@@ -50,10 +50,16 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
-# #3335 的锁 = **当前**产品的描述（35 个产品文件）。
+# #3337 的锁 = **当前**产品的描述（35 个产品文件）。
+# 相对 3335 只改两个文件：src/ui/slice.js（结算屏那句「下局试试」从三条按起手写死的
+# 推销句改成 nextGameLine(state)，数全从本局 state/log 算；实测旧句里那条「去收购」是最差
+# 的一条路：300 seed 配对胜 126→60、资产 −20,945、chi²=34.63）与 styles.css（结算屏底部
+# 留白 62→116px：那句话原本被 sticky 的「再开一局」盖住，真 390×844 句 754–792 / 按钮
+# 734–782，旧文案也一样，只是没判据在读）。引擎与平衡未动，故平衡表不重跑。
+doc  docs/evidence/slice-entry-3337.sha256
+# #3335 的锁（仍可核，已不是当前产品）。
 # 它相对 3334 只改了一个产品文件：src/ui/slice.js 的 buildOrderLine 在**本局最后一天**
 # 不再承诺「翻修卡下回合还能用」（90f15f9 的真机上，放弃之后直接结算，没有下回合）。
-# 其余 34 个产品文件逐字节未变，由 diff 两把锁直接可核；平衡表因此逐位不变。
 doc  docs/evidence/slice-entry-3335.sha256
 # #3334 的锁（仍可核，已不是当前产品）。
 # 它相对 3333 只改了两个文件，都是那一屏的字：
@@ -259,6 +265,15 @@ doc  support/probe-3334/build-panel-390x844.png
 # 现在它只用随仓库走的 support/probe-3334/serve.mjs；判据在 test/build-fork-lastday.test.js。
 doc  docs/evidence/RESULT-3335.md
 doc  docs/evidence/RESULT-3336.md
+doc  docs/evidence/RESULT-3337.md
+# #3337 的量具与负对照（入库，因为干净检出要能重算那张表与那次负对照）。
+# 每个都能直接跑：node support/probe-3337/<name>.mjs [seeds]
+tool support/probe-3337/plans.mjs
+tool support/probe-3337/big.mjs
+tool support/probe-3337/market.mjs
+tool support/probe-3337/levers.mjs
+tool support/probe-3337/line.mjs
+tool support/probe-3337/negctl2.mjs
 # #3336：当前锁的唯一指针。run-full / check-delivery / verify-http 都读它，
 # 不许再各自写死锁名；test/current-lock.test.js 咬住。
 doc  docs/evidence/current-lock.txt
@@ -269,8 +284,16 @@ doc  support/probe-3335/geom-lastday.mjs
 doc  support/probe-3335/serve.mjs
 doc  support/probe-3335/fixture.html
 doc  support/probe-3335/geom-lastday.json
-# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3335，
+# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3337，
 # 并带 seal（35 个响应逐一比对，verify-receipt.py F 项可重算）。
+doc  docs/evidence/receipt-3337-final/provenance.json
+doc  docs/evidence/receipt-3337-final/record-8-summary.json
+doc  docs/evidence/receipt-3337-final/record-10-replay.json
+doc  docs/evidence/receipt-3337-final/after.json
+doc  docs/evidence/receipt-3337-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3337-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3337-final/raw/after.json.gz
+# #3336 的回执（仍可核，已不是当前产品）。
 doc  docs/evidence/receipt-3336-final/provenance.json
 doc  docs/evidence/receipt-3336-final/record-8-summary.json
 doc  docs/evidence/receipt-3336-final/record-10-replay.json

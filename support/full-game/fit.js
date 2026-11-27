@@ -54,6 +54,17 @@ export const FIT = String.raw`(async () => {
       rowsFull: perRow.every(r => r.fit === 'full'),
       // F4(f) replay usable BEFORE the driver scrolls anything
       replayUsable: m.replay?.usable === true,
+      // F4(g) #3337: the one sentence that says what to try next is on screen and readable.
+      // A line a player cannot see is the same as no line; and an empty one would mean the
+      // product gave up while still painting the paragraph.
+      // 两件事都要：在可读带内（fit），且中心点真命中它自己（usable）。
+      // 只看 fit 不够 —— 负对照证明过：撤掉遮挡修复后按钮仍盖住这句话，而 fit 照旧报 full。
+      // 只看 usable 也不够 —— 它不告诉你这句话是否有一部分落在窗外。
+      // fit() 返回 {rect, band, visible} 对象（lib.js），所以要比 fit.visible，不是拿对象比字符串。
+      nextGameVisible: m.nextGame
+        ? (m.nextGame.visible === true && m.nextGame.fit?.visible === 'full' && m.nextGame.usable === true)
+        : false,
+      nextGameNotEmpty: !!(m.nextGame && m.nextGame.text && m.nextGame.text.length > 8),
     },
     raw: {claimed, expect, gapBranch: expect === null ? 'unknown' : (expect === 0 ? 'human-won' : 'human-behind'),
       winnerTotal: winner?.total ?? null, meTotal: me?.total ?? null,

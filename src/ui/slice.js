@@ -1088,6 +1088,158 @@ export function stepPaybackSection(state) {
     + `<p class="hint">一步只算它之后、同一间店下次升级之前的租金；升级前那间店收的租不算在这一步里。`
     + `注意：一局只有 ${state.config.dayLimit} 天，很多店只是没等到人来，不一定是这一步选错。这里说的是本局实况，不是评价。</p></details>`;
 }
+// #3337：结算屏最后那句「下局试试」曾经是**三条按起手写死的推销句**，与本局发生了什么无关。
+//
+// 实测那三条里有一条是坑（300 seed 配对，真入口、同一套 AI）：
+//   街角店主被建议「带现金收购别人养好的店」→ 强制第一次补给选收购并在之后用掉这张卡，
+//   胜 126→60/300（McNemar onlyArm/onlyBase 28/94，chi²=34.63），终局资产均值 −20,945。
+//   机会买家自己的招牌包同样：117→17/300（chi²=79.04）。
+//   原因是引擎算术：收购价 = 标价 ×1.25，且全款进对手口袋（economy.acquisitionPrice），
+//   而对手的店在整局里只被踩到 0.94 次。
+//
+// 更糟的是这三条**从来不提本局真正的杠杆**。整局事实（900 局，3 起手 × 300 seed）：
+//   · 街心书屋（26,000，第 4 天开售）：45.6% 的局被人买下，47% 的局最后在对手手里，
+//     7.4% 全程没人买；对手持有时每踩到一次收 9,374。
+//     同 seed 配对：原本没买、这一臂买了的 40 局里，胜 12→32，终局资产 +19,805（chi²=15.04）。
+//   · 80% 的局结束时有一条「只拿一半」的街；同街两间把 Lv1 的单次租金 2,000→2,800。
+//   这两条都比「收购」值钱，而旧文案一个字都没提。
+//
+// 所以这里换成**一句话，全部数从本局 state/log 算**：本局把钱漏在哪、下一局那一步怎么不一样。
+// 不给推荐口气，不预测输赢，不写本局没发生的事；数字一律来自引擎状态或日志原文。
+// 判据：test/next-game-line.test.js（每个分支的数都可回算；「收购」不得出现在这句里）。
+const MARKET_PLOT = 'market';
+
+// 本局谁在哪天买下了某块地（日志原文，不是推算）。
+function boughtLog(state, name) {
+  for (const entry of state.log ?? []) {
+    const m = /^(\S+) 买下 (.+?)（支付 (\d+)）/.exec(entry.text);
+    if (!m || m[2] !== name) continue;
+    return { by: m[1], day: entry.day, price: Number(m[3]) };
+  }
+  return null;
+}
+
+// 人类为某间店实付过的租金合计（与 rentRowsFor 同一口径：只认实付行）。
+function rentPaidOn(state, human, name) {
+  let sum = 0, hits = 0;
+  for (const entry of state.log ?? []) {
+    const m = /^(\S+) 实付租金 (\d+)（([^）]+)），(\S+) 收到 (\d+)/.exec(entry.text);
+    if (!m || m[1] !== human.name || m[3] !== name) continue;
+    sum += Number(m[2]); hits += 1;
+  }
+  return { sum, hits };
+}
+
+// 人类从某间店实收过的租金合计（同样的实付行口径，只看收款方是不是我）。
+function rentEarnedOn(state, human, name) {
+  let sum = 0;
+  for (const entry of state.log ?? []) {
+    const m = /^(\S+) 实付租金 (\d+)（([^）]+)），(\S+) 收到 (\d+)/.exec(entry.text);
+    if (!m || m[4] !== human.name || m[3] !== name) continue;
+    sum += Number(m[5]);
+  }
+  return sum;
+}
+
+// 人类付过的最大一笔租（破产那一刻常常就是它）。
+function biggestRentPaid(state, human) {
+  let best = null;
+  for (const entry of state.log ?? []) {
+    const m = /^(\S+) 实付租金 (\d+)（([^）]+)），(\S+) 收到 (\d+)/.exec(entry.text);
+    if (!m || m[1] !== human.name) continue;
+    const amount = Number(m[2]);
+    if (!best || amount > best.amount) best = { amount, plot: m[3], day: entry.day };
+  }
+  return best;
+}
+
+export function nextGameLine(state) {
+  const human = state.players?.find(q => q.controller === 'human');
+  const plots = state.map?.plots ?? [];
+  if (!human || !plots.length) return '';
+  const props = state.properties ?? {};
+
+  // ① 破产：说出把它击穿的那一笔（本局日志原文），而不是泛泛「注意现金」。
+  if (!human.alive) {
+    const bust = biggestRentPaid(state, human);
+    if (bust) {
+      return `在这笔之前留够现金：第 ${bust.day} 天你为${bust.plot}一次付了 ${money(bust.amount)}，付不出就出局了。`;
+    }
+    return '先留住一次租金的现金再买地：这一局你的资金先耗尽了。';
+  }
+
+  // ② 街心书屋：本片测到最大的正杠杆（同 seed 配对 40 局：胜 12→32，资产 +19,805）。
+  const market = plots.find(x => x.id === MARKET_PLOT);
+  if (market) {
+    const pr = props[MARKET_PLOT];
+    const owner = state.players.find(q => q.id === pr?.ownerId);
+    const name = market.name;
+    const price = market.price ?? 0;
+    const fromDay = market.availableFromDay ?? 1;
+    const took = boughtLog(state, name);
+    if (owner && owner.team === human.team) {
+      // 我拿到了：本局拿到的不再是问题，下一局的问题是「拿到之后拿它做什么」。
+      // 所以这里给下一个真实动作：还能升就说到顶的价钱与租金，到顶就说再加一级值多少。
+      // 两个数都走引擎（buildCost / rentFor），不写死。
+      const max = state.config?.maxLevel ?? 3;
+      const lv = pr?.level ?? 0;
+      if (lv > 0 && lv < max) {
+        const cost = Math.round(buildCost(lv + 1) * (state.priceIndex ?? 1));
+        const saved = pr.level;
+        let now = 0, top = 0;
+        try {
+          now = rentFor(state, MARKET_PLOT);
+          pr.level = max;
+          top = rentFor(state, MARKET_PLOT);
+        } finally { pr.level = saved; }
+        return `拿到${name}之后接着往上盖：从 ${lv} 级到 ${max} 级要花 ${money(cost)}，`
+          + `它每次被踩到的租金 ${money(now)} → ${money(top)}。`;
+      }
+      const earned = rentEarnedOn(state, human, name);
+      const when = took ? `第 ${took.day} 天用 ${money(took.price)} 买下` : '买下';
+      return `这么用${name}：本局你${when}它，${earned ? `它替你收了 ${money(earned)}` : '它一次也没被踩到'}。`;
+    }
+    if (owner) {
+      const paid = rentPaidOn(state, human, name);
+      // economy.log 有 400 条上限（economy.js:241），真局最长 271 条（180 局实测），
+      // 但一旦真的截断，从日志求和就会漏掉前面的行 —— 这时的「一次也没踩到」可能是假话。
+      // 所以截断时改成不绝对的说法，宁少说一句也不说假话。
+      const truncated = (state.log?.length ?? 0) >= 400;
+      const mine = paid.sum
+        ? `你踩到它 ${paid.hits} 次、付了 ${money(paid.sum)}`
+        : truncated ? '' : '你一次也没踩到它';
+      const who = took ? `${took.by}第 ${took.day} 天` : '对手';
+      return `第 ${fromDay} 天就去拿${name}：本局${who}用 ${money(price)} 拿走了它`
+        + (mine ? `，${mine}。` : '。');
+    }
+    // 全程没人买：把它值多少用引擎自己的 rentFor 算出来，不用记忆里的「近一万」。
+    const hypothetical = { ...state, properties: { ...props,
+      [MARKET_PLOT]: { ...pr, ownerId: human.id, level: Math.max(1, pr?.level ?? 0) } } };
+    const rent = rentFor(hypothetical, MARKET_PLOT);
+    return `第 ${fromDay} 天带 ${money(price)} 走到${name}旁边：本局它全程没人买，`
+      + (rent ? `买下后每次被踩到你收 ${money(rent)}。` : '而它整局没人接手。');
+  }
+
+  // ③ 兜底：本局我为对手那间店付租最多，而它本来只是标价。
+  //
+  // 这里原来还有一支「补齐只占一半的街」。删掉了：切片地图**永远**有街心书屋，
+  // 所以上面 ② 总先命中，这一支在真局里一次也到不了 —— 留着的是一段永远不会执行的
+  // 声称，而它在本片测到的证据里确实是第二好的杠杆（80% 的局结束时有半条街，
+  // 同街两间把 Lv1 从 2,000 抬到 2,800）。要在屏上说它，得先让它在真局里能被选中
+  // （例如书屋已归我时改说半条街），那是下一片的事，不是这一片的判据能盖住的。
+  const top = biggestRentPaid(state, human);
+  if (top) {
+    const plot = plots.find(x => x.name === top.plot);
+    const owned = plot && props[plot.id]?.ownerId;
+    if (plot && !owned && plot.price) {
+      return `在别人买之前拿下${top.plot}：它标价 ${money(plot.price)}，本局你为它付了 ${money(top.amount)}（第 ${top.day} 天）。`;
+    }
+    return `绕开${top.plot}：本局你为它付了 ${money(top.amount)}（第 ${top.day} 天，你付租最多的一笔）。`;
+  }
+
+  return '这一局你既没付过租也没收过租：换个起手，走一条会踩到别人地盘的路。';
+}
+
 export function sliceResults(state) {
   const rank=[...state.players].sort((a,b)=>assetsOf(state,b)-assetsOf(state,a));
   const human=state.players.find(p=>p.controller==='human')??rank[0];
@@ -1104,6 +1256,6 @@ export function sliceResults(state) {
     <p>你收租 ${money(human.sliceStats.rentEarned)}，付租 ${money(human.sliceStats.rentPaid)}，用了 ${human.sliceStats.cardsPlayed} 张卡，完成 ${human.sliceStats.takeovers} 次接盘。</p>
     ${stepPaybackSection(state)}
     <details><summary>回看你改变局面的回合</summary>${state.slice.history.filter(h=>h.playerId===human.id&&(h.cardsPlayed||h.money!==0)).map(h=>`<p>第 ${h.day} 天 · 资金 ${signed(h.money)} / 资产 ${signed(h.assets)}<br>${h.lines.filter(t=>!/回合|掷出|方向/.test(t)).join('<br>')}</p>`).join('')}</details>
-    <p class="hint">下局试试：${human.style==='grow'?'带现金收购别人养好的店，原主人拿钱后会怎样反击？':human.style==='take'?'先把自己的两间店升起来，再抓一轮旺季。':'留住停业卡，等对方开旺季，再选择安全的落点。'}</p>
+    <p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p>
     <button data-replay>换个打法，再开一局</button>`;
 }

@@ -829,7 +829,15 @@ button { font: inherit; }
   /* #3278：结算屏同样被 #hand 裁掉，但它的「下一步」只有一颗「再开一局」。
      把按钮钉在滚动区底边，让玩家在读完名次表后不必再找它；
      另给面板留出按钮高度（结算屏不挂溢出提示，padding 不会影响提示计数）。 */
-  #choice:not([hidden]):has([data-replay]) { padding-bottom: 62px; }
+  /* #3337：结算屏底部是「一句话 + 一个提交」。真 390×844 实测（run-full OUT-3337b）：
+     那句「下局试试」在 754–792，而 sticky 的「再开一局」在 734–782 —— 按钮把它整块盖住。
+     这个遮挡在旧文案上就有，只是那句旧文案没有任何判据在读，所以一直没人看见
+     （读不到的一句建议等于没有）。
+     修法只动一处：把底部留白从 62px 抬到 116px，让那句话排在按钮下面而不是被它压住。
+     我先写过一个更重的版本（把句子自己也 position:sticky 钉到 bottom:56px），
+     负对照证明它不必要：撤掉那条规则、只留这份留白，句子仍在 754–792 且点得到。
+     实测代价：面板内容高 625、可视 519，本来就要滚 —— 留白增加不改变这一点。 */
+  #choice:not([hidden]):has([data-replay]) { padding-bottom: 116px; }
   #choice:not([hidden]):has([data-replay]) [data-replay] {
     display: block;
     width: 100%;

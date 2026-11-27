@@ -95,6 +95,13 @@ def main():
     for key in ('rowsFull', 'sumsOk', 'titleNamesWinner', 'replayUsable',
                 'threeRows', 'headerOrder'):
         checks[f'F4 {key}'] = judge['checks'][key]
+    # #3337 新增：结算屏那句「下局试试」自己也是被量的对象（读不到等于没说）。
+    # 只在这次运行真的记过它时才判 —— #3337 之前的回执（含 3319 那份交付回执）跑的是
+    # 还没有这一行的产品，那时既没有这一行也没有它的证据。凭空补两项 SKIP 只是把
+    # 「那时候没有这个问题」写成「这一局没判过」，对读者没有信息量。
+    for key in ('nextGameVisible', 'nextGameNotEmpty'):
+        if key in judge['checks']:
+            checks[f'F4 {key}'] = judge['checks'][key]
     # F5: replay lands somewhere a human can start again from.
     replay = load('record-10-replay.json')
     checks['F5 replay landed on setup'] = replay['checks']['setupShown']

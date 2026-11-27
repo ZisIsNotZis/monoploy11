@@ -2,4 +2,4 @@
 # 不再各自写死锁名（#3336：上一轮 verify-http.py 停在 3334，回执里的 SEALED 因此
 # 比的是旧字节，而它 5 个样本里又没有 3335 唯一改过的 src/ui/slice.js）。
 # 改产品字节 = 签新锁 + 改这一行，两件事一起做；test/current-lock.test.js 守着。
-docs/evidence/slice-entry-3335.sha256
+docs/evidence/slice-entry-3337.sha256

@@ -224,6 +224,17 @@ export const LIB = String.raw`(async () => {
       resultsGap: kind === 'results' ? ((q('#choice h3')?.nextElementSibling)?.textContent ?? '').trim() : null,
       replay: kind === 'results' ? (() => { const b = q('#choice [data-replay]');
         return b ? {usable: usable(b), why: why(b), fit: fit(b), rect: rect(b)} : null; })() : null,
+      // #3337：结算屏最后那句「下局试试」现在是算出来的一句话（src/ui/slice.js nextGameLine）。
+      // 它自己也要被量：一句读不到的话等于没说，而它是这一屏唯一「下一局做什么」的入口。
+      // #3337：fit() 只说明它落在可读带内，**看不出它是否被别的东西盖住**。
+      // 实测（负对照）：把「下句和按钮一起钉底」的修法撤掉，按钮（sticky, z-index:2）
+      // 仍会在 734–782 压住这句话（754–792），而 fit 依旧报 full —— 判定恒绿。
+      // 所以这里额外要 usable()：中心点 elementFromPoint 命中的必须是它自己。
+      // 那句建议读不到就等于没有，这一点不能用几何带位来充数。
+      nextGame: kind === 'results' ? (() => { const e = q('#choice [data-next-game]');
+        return e ? {text: e.textContent.trim(), fit: fit(e), rect: rect(e),
+          usable: usable(e), why: why(e),
+          visible: (() => { const f = fit(e); return !!(f && f.visible !== 'none'); })()} : null; })() : null,
       // Seat ownership is fixed by the entry screen: style=grow puts 街角店主 in seat 1 and
       // createSliceConfig makes index 0 the human (src/data/slice.js:50-53). No player card
       // carries a controller field, so that name is the only DOM-side witness; the driver
