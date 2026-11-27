@@ -60,6 +60,10 @@ async function play({ style, seed, order, rot, arm, perShop }) {
   // 不动引擎：在 advanceDay 之后由探针自己发钱 —— 这样产品字节保持 0 改动，
   // 而「规则会长什么样」是能亲手量的。真要做成产品，这段会进 flow.js。
   const tick = () => {
+    if (arm === 'incomeFlat') {
+      const FIXED = 1500;
+      me.cash += FIXED; income += FIXED; return;
+    }
     if (arm !== 'income' && arm !== 'incomeNoBook') return;
     const shops = me.properties.filter(id => {
       const pr = state.properties[id];
@@ -126,12 +130,14 @@ async function runArm(arm) {
 const control = await runArm('control');
 const income = await runArm('income');
 const noBook = await runArm('bookOnly');
+const flat = await runArm('incomeFlat');
 const incomeNoBook = await runArm('incomeNoBook');
 
 const arms = [
   ['照常打', control],
   [`经营进项 ${PER_SHOP}`, income],
   ['只押书屋（不经营）', noBook],
+  ['对照：每天固定 1500（不随小店数）', flat],
   [`只经营（进项 + 不抢书屋）`, incomeNoBook],
 ];
 
@@ -147,7 +153,7 @@ for (const [label, rows] of arms) {
 }
 
 console.log('\n=== ① 座位差（同一臂在 3 把椅子上的胜率）===');
-for (const [label, rows] of [arms[0], arms[1]]) {
+for (const [label, rows] of arms) {
   const per = [0, 1, 2].map(rot => rate(rows.filter(r => r.rot === rot)));
   console.log(`  ${label.padEnd(28)} ${per.map(x => pct(x)).join('  ')}   最大差 ${((Math.max(...per) - Math.min(...per)) * 100).toFixed(1)}pp`);
 }

@@ -95,6 +95,10 @@ doc  docs/evidence/receipt-3401-full/raw/record-8-summary.json.gz
 doc  docs/evidence/receipt-3401-full/after.json
 doc  docs/evidence/receipt-3401-full/record-10-replay.json
 doc  docs/evidence/receipt-3401-full/record-8-summary.json
+# #3391y: income control (fixed vs per-shop) - negative result
+tool support/probe-3391/active-income.mjs
+tool support/probe-3391/_stats-rot.mjs
+doc  docs/evidence/RESULT-3391y.md
 doc  docs/evidence/receipt-3401-full/provenance.json
 doc  docs/evidence/slice-entry-3400.sha256
 # #3391v 的整局回执（跑在 3400 这把锁上）：默认争街入口，VERDICT PASS。
