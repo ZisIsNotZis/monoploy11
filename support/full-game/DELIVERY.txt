@@ -13,7 +13,11 @@
 #
 # 校验：python3 support/full-game/check-delivery.py
 
-# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3402.sha256（#3391z）。
+# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3404.sha256（#3391zp2）。
+# 相对 3402 只改 player-visible 字节一处：src/engine/payback.js 的 poolKLine ——
+# 那是三个句子的拼接，上一版只有第一句带句末标点，屏上读成
+# 「…满 4 次一定回本升级后全额租金 5,600/次」（屏幕检查抓到的）。现在每句自带句号。
+# 另加 test/payback-pool.test.js 的 ⑧b（带负对照：上一版真实出现过的黏连串必须不存在）。
 # 相对 3345 的玩家可见改动（其余是注释与证据）：
 #   ① src/data/slice.js —— 三句起手 hook 只写手上真有的卡；sliceStats 多一个 business 计数；
 #   ② src/main.js     —— 开局说明照实写（你那条街的另一半是空地，两个对手才互为另一半）；
@@ -88,6 +92,14 @@ lock src/engine/market-ledger.js
 # 「当前」两处说法必须是同一份文件，不是两段各自维护的注释）。
 # #3391 的锁与证据。
 # #3391t 的锁（**已不是当前**）：36 个文件，文件集与 3393 相同。
+doc  docs/evidence/slice-entry-3404.sha256
+doc  docs/evidence/receipt-3404-full/provenance.json
+doc  docs/evidence/receipt-3404-full/record-8-summary.json
+doc  docs/evidence/receipt-3404-full/record-10-replay.json
+doc  docs/evidence/receipt-3404-full/after.json
+doc  docs/evidence/receipt-3404-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3404-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3404-full/raw/after.json.gz
 doc  docs/evidence/slice-entry-3402.sha256
 doc  docs/evidence/receipt-3402-full/provenance.json
 doc  docs/evidence/receipt-3402-full/record-8-summary.json
@@ -107,6 +119,9 @@ doc  docs/evidence/receipt-3401-full/record-8-summary.json
 tool support/probe-3391/active-income.mjs
 tool support/probe-3391/_stats-rot.mjs
 doc  docs/evidence/RESULT-3391y.md
+# #3391zp：确认框那三句各自成句（屏幕检查抓到的黏连）。只加句号，不改任何数。
+tool support/probe-3391z/dump-forward.mjs
+doc  docs/evidence/RESULT-3391zp2.md
 doc  docs/evidence/receipt-3401-full/provenance.json
 doc  docs/evidence/slice-entry-3400.sha256
 # #3391v 的整局回执（跑在 3400 这把锁上）：默认争街入口，VERDICT PASS。

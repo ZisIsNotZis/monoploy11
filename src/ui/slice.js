@@ -937,9 +937,11 @@ export function buildForwardLine(state, plotId, cost) {
   // K 句逐字保留在上界的位置（#993 已签的不变量：不许写成「才够本/至少要」，
   // 因为 grow/7 街心书屋 K=4 却在 2 次足额 + 1 次少付时就收回 37,000）。
   const share = poolShareLine(cost, plot.name);
-  const kLine = poolKLine(info.unit, info.K, info.after);
+  // #3391zp2：把 cost 传进去 —— 确认框里那句除法（花费 ÷ 每次多收）与流水行同源。
+  // 上一版只传 (unit, K, full)，于是屏上有全额、却没有「拿哪个数去除」；
+  // supervisor 重走 seed 3 时正是拿 4,000 去除了 10,000。
+  const kLine = poolKLine(info.unit, info.K, info.after, cost);
   return `${share}${dist}${kLine}`
-    + `K 只数真收到钱的那几次，上面“被踩到”含撞上停业、没收到钱的次数。`
     + `这句不是“会有人来”的预测。`;
 }
 

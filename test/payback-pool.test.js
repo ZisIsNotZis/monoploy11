@@ -5,8 +5,11 @@ import { startSession, runGame, buildPlot } from '../src/engine/flow.js';
 import { sliceAnswer } from '../src/engine/slice-ai.js';
 import { rentFor } from '../src/engine/economy.js';
 import { render } from '../src/ui/render.js';
-import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, POOL_SOURCE } from '../src/engine/payback.js';
+import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, paybackAccount, POOL_SOURCE } from '../src/engine/payback.js';
 import { buildForwardLine, buildForwardK } from '../src/ui/slice.js';
+
+// n0 是 payback.js 内部的格式化函数；测试只需要一致地把 10000 印成「10,000」。
+const n0 = n => Math.round(n).toLocaleString();
 
 // #1044：付费加盖/买地那句
 //
@@ -106,8 +109,68 @@ test('#1044 三个打印点的池子句与回合数来自同一个实现', () =>
   const rline = roundsLine(cost, gain);
   const n = Math.max(1, Math.ceil(cost / gain));
   assert.ok(rline.startsWith(`${n} 次回本`), `回本次数不对：${rline}`);
-  assert.ok(/收到全额/.test(rline) && /停业/.test(rline) && /不算/.test(rline),
-    `没写清什么条件下才算回本：${rline}`);
+  // #3391zp2（第四轮收紧了这一条的口径，#3391z 的判据不变）：
+  // 原来的写法要求 roundsLine **自己**写出「停业/少付/不算」。但那会让一屏上说两遍同一句
+  //（升级行紧跟在账行后面，第一版屏上真的出现了两遍「停业那次收 0」）。
+  // 「能单独读懂」的对象是**流水这一屏**，不是这一行：紧邻的上一条就是那段账。
+  // 所以改成屏级判据，且仍然是可判的：账行必须在，且本轮不许自己漏掉条件。
+  p.cash = 999_999;
+  buildPlot(s, p, id);
+  const rows2 = s.log.map(e => e.text);
+  // 紧邻：升级行的**上一行**就是那段账（读者从下往上读会先看到次数）。
+  // 取「最后一次升级的那一行」，再取它前一行 —— 两边同一个索引，不会像上一版那样把
+  // 「最后一次账」与「第一次升级」拿来比（那是测试自己的错，不是产品的）。
+  const upIdx = rows2.map(t => t.includes('次回本')).lastIndexOf(true);
+  assert.ok(upIdx > 0, `流水里没有升级行：${rows2.slice(-3).join(' / ')}`);
+  const account2 = rows2[upIdx - 1];
+  assert.ok(/这笔怎么算/.test(account2) && /÷/.test(account2),
+    `升级行的上一行不是那段账（那「按上一条算」就是假指引）：${account2}`);
+  assert.ok(/收到全额/.test(account2) && /停业/.test(account2) && /不算/.test(account2),
+    `账行没写清什么条件下才算回本：${account2}`);
+  // 一屏上不许把三种情形重复两遍（第一版屏上真出现过两遍「停业那次收 0」）。
+  const screen = rows2.slice(upIdx - 2, upIdx + 1).join('\n');
+  assert.equal(screen.split('停业那次收 0').length - 1, 1,
+    `同一屏把三种情形说了不止一遍：${screen}`);
+});
+
+// ②b #3391zp2（supervisor 第四轮）：「确认和流水当成同一笔账」。
+// 他的原话：拿着流水单仍会用 4,000 去除成本。根因是**两处各说各的**，屏上没有除法。
+// 现在除法只在 paybackAccount 里写一次，两个打印点都调它。这条钉三件事：
+//   ① 确认框与流水行包含**同一句**账（逐字相等，不是各写一句像的）；
+//   ② 那句账里有除法本身（花费 ÷ 每次多收 = N 次），且 N 与 buildForwardK 现算的 K 一致；
+//   ③「少付」与「抬价」分成两句 —— 抬价是多收（一次算两次），上一版写成「不足」是反的。
+// 负对照：把旧句子塞回去，① 与 ③ 必须同时红。
+test('#3391zp2 确认框与流水单是同一笔账，且抬价不被说成少付', () => {
+  const s = slice();
+  const [p] = s.players;
+  const id = p.properties[0];
+  s.properties[id].level = 1;
+  p.cash = 999_999;
+  const cost = 10000;
+  const info = buildForwardK(s, id, cost);
+  assert.ok(info.unit > 0 && info.K > 0, '这条判据需要一个能算出的账');
+  const account = paybackAccount(cost, info.unit, info.K, info.after);
+  // ① 两块屏都说同一句
+  const confirm = buildForwardLine(s, id, cost);
+  assert.ok(confirm.includes(account), `确认框没有那句共用的除法：${confirm}`);
+  buildPlot(s, p, id);
+  const rows = s.log.map(e => e.text);
+  const ledger = rows.find(t => t.includes(account));
+  assert.ok(ledger, `流水单没有那句共用的除法（两处必须逐字相同）：${rows.slice(-3).join(' / ')}`);
+  // ② 除法在里面，且次数与现算一致
+  // 按**含义**判：两个操作数与结果都对，且写明分母是「每次多收」。
+  // 不按一句具体措辞判 —— 上一版就因此把「措辞一改就红」写进了判据。
+  assert.match(account, new RegExp(`${n0(cost)} ÷ [^÷=]{0,12}${n0(info.unit)} = ${info.K} 次`),
+    `账里没有除法或次数不对：${account}`);
+  assert.match(account, /每次多收/, `账里没点名分母是每次多收：${account}`);
+  // ③ 三种情形分开写：抬价是多收
+  assert.match(account, /旺季那次租金翻倍/, `没写旺季是多收：${account}`);
+  assert.match(account, /不是少付/, `没把抬价与少付区分开：${account}`);
+  assert.equal(/被抬价那次不足/.test(account), false, `抬价被说成不足（反了）：${account}`);
+  assert.match(account, /对手付不出/, `少付那一种没写：${account}`);
+  assert.match(account, /停业那次收 0/, `停业那一种没写：${account}`);
+  // 负对照：上一版的黏连串 + 上一版的错说法，必须真的不存在
+  assert.equal(account.includes('一定回本升级后全额租金'), false, `旧黏连串又回来了：${account}`);
 });
 
 // ③ 日志里「；」之后仍然只有 rentFor 一个金额（#807 已签，不许被新句撞坏）。
@@ -228,8 +291,26 @@ test('#1044 尾部上限句只在 unit 与 K 都算得出时出现', () => {
   const s = poolKLine(2800, 4, 5600);
   assert.ok(s.includes('2,800'), `K 句没写增量：${s}`);
   assert.ok(s.includes('5,600'), `K 句没写全额（两种账要并列）：${s}`);
-  assert.ok(s.includes('满 4 次一定回本'), s);
+  assert.ok(s.includes('满 4 次一定回本。'), `${s}`);
   assert.ok(s.includes('不是回合'), `K 句没说清单位是次数不是回合：${s}`);
+});
+
+// ⑧b #3391zp（屏幕检查抓到）：这一行是**三个句子**拼起来的。上一版只拼串、不带句末标点，
+// 屏上读成「…一定回本升级后全额租金 5,600/次」—— 一句里塞了两件事，读者会把「回本」后面
+// 那个数当成回本条件的一部分。这条钉的是**标点**，不是措辞：
+//   ① 「一定回本」后面必须是句末标点；
+//   ② full 缺省时也不许把「不算回本单位：」黏起来；
+//   ③ 负对照用上一版真实出现过的黏连串 —— 否则这条判据是空跑。
+test('#3391zp K 句的每一句自带句末标点，拼接处不黏连', () => {
+  const withFull = poolKLine(2800, 4, 5600);
+  const noFull = poolKLine(2800, 4, 0);
+  for (const [name, s] of [['full', withFull], ['no-full', noFull]]) {
+    assert.match(s, /一定回本[。；]/, `${name}：「一定回本」后面没有句末标点：${s}`);
+    assert.equal(s.includes('回本升级'), false, `${name}：还是黏在一起：${s}`);
+    assert.equal(s.includes('回本单位'), false, `${name}：「不算回本」与单位句黏连：${s}`);
+  }
+  // 有 full 时那一句也要自带句号，否则和最后的单位句黏。
+  assert.match(withFull, /不算回本。/, `full 句没有句末标点：${withFull}`);
   assert.equal(roundsToRecover(10000, 0), null);
   assert.equal(roundsLine(10000, 0), '');
 });

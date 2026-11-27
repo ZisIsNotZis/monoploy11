@@ -4,7 +4,7 @@ import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } fro
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, bossRentMultiplier, incomeBonus, cheapestBuyable, cheapestAcquirable } from './economy.js';
 import { tickMap, mapExtraSteps, mapShopMultiplier } from './map-runtime.js';
 import { SUPPLIES, SLICE_CARDS } from '../data/slice.js';
-import { poolShareLine, roundsLine } from './payback.js';
+import { poolShareLine, roundsLine, paybackAccount } from './payback.js';
 import { sliceTargetIds } from './insight.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
@@ -769,12 +769,15 @@ export function buildPlot(state, p, id) {
   // 所以用「升级后租金 × 0.5」？不行 —— 小店每层翻倍但同街加成与旺季也会乘。
   // 可靠做法：先算出升级后的单价，再算把 level 降一级后的值的差，再恢复。
   let paybackText='';
+  // #3391zp2：gain 要活到下面那句「这笔怎么算」—— 两处必须用同一个增量。
+  let paybackGain=0;
   if(state.slice&&pr){
     const lv=pr.level;
     let prevRent;
     try { pr.level=lv-1; prevRent=rentFor(state,id); }
     finally { pr.level=lv; }  // 先恢复再做事：rentFor 抛错也不能把等级停在低级
     const gain=rentFor(state,id)-prevRent;
+    paybackGain=gain;
     // #1044：回合数不再就地 ceil —— 全仓只有 payback.roundsLine 一个实现。
     // 「回合回本」这句本身保留（#570 签过），降为尾部；主句由 poolShareLine 出。
     if(gain>0) paybackText=`, ${roundsLine(cost,gain)}`;
@@ -798,7 +801,17 @@ export function buildPlot(state, p, id) {
   //   ① test/q3-events.test.js:59-62 断言升级日志里第一个「；」之后**只能出现 rentFor 那一个金额**；
   //   ② 一批已签断言用 lastLog(s) 取「最后一条日志」当那道升级行本身。
   // 接在后面会破 ①，另起后一行会破 ②。放在前一行两条都保住，且顺序读起来是「先算账，再升级」。
-  if (state.slice) log(state, `${plot?.name ?? '这间店'} 这笔账：${poolShareLine(cost, plot?.name)}`);
+  if (state.slice) {
+    log(state, `${plot?.name ?? '这间店'} 这笔账：${poolShareLine(cost, plot?.name)}`);
+    // #3391zp2（supervisor 第四轮）：「拿流水单看仍会用 4,000 去除成本」。
+    // cost / gain / 全额在这一行都已现成，所以在这里补同一句除法。
+    // 升级行本身仍不印增量（slice-build-rent.test.js:55：日志里不得出现升级前租金，
+    // 而增量常常正好等于升级前租金）—— 所以除法放在紧邻的**上一行**。
+    if (paybackGain > 0) {
+      const k = Math.max(1, Math.ceil(cost / paybackGain));
+      log(state, `这笔怎么算：${paybackAccount(cost, paybackGain, k, rentFor(state, id))}`);
+    }
+  }
   log(state, `${p.name} 将 ${state.slice?plot.name:plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）${state.slice?`，${pr.inflate>0?'旺季 ':''}租 ${rentFor(state,id).toLocaleString()}${paybackText}`:''}${q3Text}`);
 }
 
