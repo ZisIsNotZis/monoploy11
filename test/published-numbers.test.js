@@ -37,8 +37,12 @@ const sha256 = rel => createHash('sha256')
 // #3342：产品字节又变了（新增 `?cross=1` 争街开局；默认路径逐字未变），所以再入库一张表。
 // 这张表同时是最好的证据：**数字与上两张逐位相同**（45.7 / 32.0 / 34.7）——
 // 如果默认路径被我改动了，300 局 × 3 起手不可能一模一样。
-const ARTIFACT = 'docs/evidence/balance-3342-300.json';
-const PREVIOUS_ARTIFACT = 'docs/evidence/balance-3332-300.json';
+// #3344：本片的默认开局换了（争街），所以入库的是**在争街表上量出来的**新表。
+// 上一张（balance-3342-300）留在库里作为历史：它量的是旧默认（每人整条街）。
+// 两张表的数字**不该再相同** —— 这正是本片要证明的事：换的不只是屏上一句话，
+// 是引擎真的发不同的牌。它们不同的幅度写在 RESULT-3344 里。
+const ARTIFACT = 'docs/evidence/balance-3344-300.json';
+const PREVIOUS_ARTIFACT = 'docs/evidence/balance-3342-300.json';
 const artifact = () => JSON.parse(read(ARTIFACT));
 
 test('上一张表仍然能读出它量的是改前的字节（历史不能被新表顶掉）', () => {
@@ -48,13 +52,16 @@ test('上一张表仍然能读出它量的是改前的字节（历史不能被�
   const now = artifact();
   assert.notEqual(old.product['src/data/slice.js'], now.product['src/data/slice.js'],
     '两张表量的是同一版字节 —— 那旧表就没在记录历史');
-  // 余额不变本身就是本轮的结论：改的是合法性，不是力度。
+  // #3344：这一轮的差别**应该**存在（换的是默认发牌表），所以这里不再断言相等，
+  // 而是断言「两张表各自记着自己量的是哪一种开局」—— 读者必须能分辨它们。
+  // 旧表**当时只有一张发牌表**，所以它没有 opening 字段 —— 不替它补写一个它当时
+  // 没记的字段（那是伪造元数据）。它的口径由代码位置与 RESULT 记录，由下面这条钉住：
+  // 「它没标 → 它量的是那时唯一的那张表」。
+  assert.equal(old.config.opening, undefined,
+    '旧表里出现了 opening 字段 —— 那要么是事后补写的，要么是量具变了却没说明');
+  assert.equal(now.config.opening, 'contested', '新表必须标着自己量的是争街（入口的默认）');
   for (const b of now.byStyle) {
-    const prev = old.byStyle.find(x => x.id === b.id);
-    assert.ok(prev, `旧表缺 ${b.id}`);
-    assert.equal(b.winRatePct, prev.winRatePct,
-      `${b.id} 的胜率变了（${prev.winRatePct} → ${b.winRatePct}）：`
-      + '本轮只新增一个可选开局（cross=1），默认路径不应改变三条起手的强弱');
+    assert.ok(old.byStyle.find(x => x.id === b.id), `旧表缺 ${b.id}`);
   }
 });
 

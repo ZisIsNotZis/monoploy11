@@ -305,6 +305,12 @@ const actions = {
     url.searchParams.set('slice', '1');
     if (style) url.searchParams.set('style', style); else url.searchParams.delete('style');
     url.searchParams.set('seed', state.seed + 1);
+    // #3344b：**开局也得带过去**。supervisor 在真入口手选「整条街」打完后点重开，
+    // 起手与种子都对，发牌方式却悄悄回到了默认的争街 —— 于是他想「重开对比玩法」
+    // 时比较的根本不是同两张盘，而屏上没有任何一处说这件事。
+    // 这里把本局实际用的那张盘写进 URL；第一屏读它并把单选框拨到那边（见下面的 qs 分支），
+    // 所以玩家既看得出沿用哪张，也能在开之前主动换掉。
+    url.searchParams.set('cross', state.config?.sliceContestedStreets ? '1' : '0');
     location.href = url.href;
   },
   preview(n) {
@@ -453,6 +459,27 @@ function startGame() {
 }
 
 function showSetup() { $('#setup').hidden = false; }
+
+// #3344：发牌表选择。两块牌各写自己的实测后果 —— 不给「A / B」这种空名字，
+// 因为玩家要选的是「哪条计划能成立」，而这句话本身就是两块牌的区别。
+// 两行以内的提示：360×640 实测基线（没有这块牌时）开始键在 518–554，视口 640。
+// 这块牌只能吃掉 ~80px，否则就把按钮推出视口 —— 所以它是一排**单行**的选择，
+// 不做两行卡片。第一版做成两张牌（各 2 行）实测把开始键推到 700–737，判红后改小。
+const OPENINGS = [
+  { id: 'contested', name: '争街', tail: '每条街各占一半',
+    line: '有一半是别人的，买下另一半这条街就归你一个人' },
+  { id: 'whole', name: '整条街', tail: '一条街两间都你的',
+    line: '开局就独享，没有「补齐」这件事，只能往上盖' },
+];
+function renderOpeningChoice() {
+  const box = $('#sliceOpening');
+  if (!box) return;
+  box.innerHTML = OPENINGS.map(o => `<label class="opening-choice" title="${o.name}：${o.line}"><input type="radio" name="sliceOpening" value="${o.id}"${o.id === 'contested' ? ' checked' : ''}><b>${o.name}</b><span>${o.tail}</span></label>`).join('');
+}
+function readOpening() {
+  const picked = document.querySelector('[name="sliceOpening"]:checked')?.value;
+  return OPENINGS.some(o => o.id === picked) ? picked : 'contested';
+}
 $('#count').onchange = renderSetupRows;
 $('#start').onclick = startGame;
 // 三种起手强度不同，默认不勾任何一项：必须由玩家选一手再开局。
@@ -471,11 +498,22 @@ function startSlice() {
   }
   const style=picked;
   const seed=readSetupSeed();
-  // #3342：判据入口。`?slice=1&cross=1` 用「争街」开局（每条街两家各占一间），
-  // 不写就还是原来的整条街开局 —— 默认路径逐字不变是一个被核过的事实，
-  // 不是「应该没差」。见 support/probe-3342/replay-digest.mjs。
-  const contested = new URLSearchParams(location.search).get('cross') === '1';
+  // #3344：发牌表是入口上的一个选择，存在那一排单选框里（默认＝争街）。
+  // 为什么做成选择而不是直接换默认：两张表各自养着一批评据（旧表上跑真实整局建立的
+  // grow/19 出局原因、收购目标扫描），换掉它们的前提会让那些结论不再描述玩家看到的东西。
+  const contested = readOpening() === 'contested';
   state=startSession(createSliceConfig({style,seed,sliceContestedStreets:contested}));
+  // #3344b：把**实际开局用的那张盘**写回地址栏。
+  // 根因不是 replay() 漏了一个参数，是第一屏的单选从来不落到 URL 上：
+  // 玩家手选「整条街」开局，地址栏里却什么都没有；于是重开时无据可循，
+  // 只能回默认，而屏上没有任何一处说这件事（supervisor 当场撞到）。
+  // 用 replaceState 而不是改 href：不产生历史记录，也不重新加载。
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('slice', '1');
+    u.searchParams.set('cross', contested ? '1' : '0');
+    history.replaceState(null, '', u.href);
+  } catch { /* 老浏览器或 file:// 下没有 history，不影响开局 */ }
   lastMoney=null;lastSnap=null;lastNews=0;
   document.body.classList.add('slice-mode');
   $('#setup').hidden=true;
@@ -492,6 +530,7 @@ function startSlice() {
   });
 }
 $('#startSlice').onclick=startSlice;
+renderOpeningChoice();
 renderSetupRows();
 showSetup();
 
@@ -503,26 +542,40 @@ if (qs.get('testcards')) $('#testcards').checked = true;
 // 想直接指定起手可加 style=grow|take|cross，但仍需玩家点「开一局街角生意」。
 if (qs.get('slice')) {
   document.body.classList.add('slice-entry');
-  // 争街开局的地图卡片要在第一屏就说清「哪两间是你的」，否则玩家开局就看见两间不属于
-  // 同一条街的店，而介绍那句「每人两间小店」并没有骗人，但也没说出这条区别。
-  if (qs.get('cross') === '1') {
+
+  // #3344b：这段短提示以前只在**带参数**时出现，于是玩家从第一屏直接开局
+  // （默认争街）时，屏上没有任何一处说「你现在拿到的是争街那张盘」。
+  // 现在它跟着**单选**走，不是跟着 URL：选争街就出现，选整条街就隐藏。
+  // 一条街道的几何约束仍成立（实测 390×844：这块先出现后按钮 576–612，视口 844；
+  // 360×640：同一位置，视口 640，仍可点）。
+  const syncOpeningNote = () => {
     const note = $('#sliceStyleNote');
-    if (note) {
-      note.hidden = false;
-      // 照实写，不写「每条街对面那间都是对手的」—— 实测（cross=1, grow, seed 1）开局是：
-      //   晚风街、灯火街 1 对 1（对手占着另一半）
-      //   晨光街、月色街 你占一间、另一间无主
-      //   西巷、东巷 两间都无主
-      // 所以「买下另一半」在有些街要打对手，有些街只要掏钱。
-      // 实测（support/probe-3342/entry-geom.py，390×844）：上一版 4 行，把「开一局」
-      // 从 521.9 推到 654.4（+132.6px）。按钮仍可点，但第一屏被挤满 —— 提示不该比按钮重。
-      // 紧凑版压到 2 行；「每条街只归一半」是唯一必须留下的事实，其余细节在牌上看得见。
+    if (!note) return;
+    const contested = readOpening() === 'contested';
+    note.hidden = !contested;
+    if (contested) {
+      // 照实写，不写「每条街对面那间都是对手的」—— 实测（争街, grow, seed 1）开局是：
+      //   晚风街、灯火街 1 对 1（对手占着另一半）；晨光街、月色街 你占一间、另一间无主；
+      //   西巷、东巷 两间都无主。所以「买下另一半」有些街要跟对手抢，有些街只要掏钱。
       note.textContent = '争街开局：每家两间店分在两条街，每条街都只归一半。补齐另一半才独享整条街。';
     }
-  }
+  };
+
   const preset = qs.get('style');
   if (SLICE_STYLES.some(s => s.id === preset)) {
     const radio = document.querySelector(`[name="sliceStyle"][value="${preset}"]`);
     if (radio) radio.checked = true;
   }
+  // `?cross=0|1` 与第一屏的选择是同一件事：带参数进来时把单选拨过去。
+  // 顺序很要紧 —— 先拨单选，再让提示跟着它走；反过来会出现「选的是整条街、
+  // 提示却说争街」那一帧。
+  if (qs.get('cross') === '1' || qs.get('cross') === '0') {
+    const want = qs.get('cross') === '1' ? 'contested' : 'whole';
+    const radio = document.querySelector(`[name="sliceOpening"][value="${want}"]`);
+    if (radio) radio.checked = true;
+  }
+  for (const radio of document.querySelectorAll('[name="sliceOpening"]')) {
+    radio.addEventListener?.('change', syncOpeningNote);
+  }
+  syncOpeningNote();
 } else if (qs.get('start')) startGame();

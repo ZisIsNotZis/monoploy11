@@ -8,7 +8,17 @@
 .slice-intro h2 { font-size:clamp(24px,3vw,36px); margin:8px 0; color:#f3e4bd; }
 .slice-intro p { line-height:1.7; color:#c3c7cb; }
 .eyebrow { color:var(--gold); letter-spacing:2px; font-size:12px; }
-.slice-styles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:18px 0; }
+.slice-styles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:6px 0 18px; }
+/* #3344 开局选择。它与下面三张起手是**两件事**：这条决定「哪条计划在局里能成立」，
+   下面那排决定「你手里有什么」。放在起手之上、另用边框色区分。
+   高度很贵：360×640 实测基线（无此块时）开始键在 top 518–554，视口 640。
+   第一版做成两张各 2 行的牌，实测把开始键推到 700–737（出视口，判红）。
+   现在是一排**单行**：左边名字、右边一句后果，细节放在 title 里。 */
+.slice-openings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:16px 0 0; }
+.opening-choice { display:flex; align-items:baseline; gap:8px; padding:8px 10px; border:1px solid #3f4a58; border-radius:9px; cursor:pointer; background:#1d2530; }
+.opening-choice:has(input:checked) { border-color:var(--gold); background:#d8a13f12; }
+.opening-choice b { color:#f0e2c2; font-size:13px; white-space:nowrap; }
+.opening-choice span { color:#a9b2bd; font-size:11px; line-height:1.4; }
 .style-choice { display:grid; grid-template-columns:18px 1fr; gap:8px; padding:14px; border:1px solid #464a50; border-radius:10px; cursor:pointer; }
 .style-choice:has(input:checked) { border-color:var(--gold); background:#d8a13f12; }
 .style-choice span { grid-column:2; color:#b3bbc5; font-size:12px; line-height:1.6; }
@@ -69,6 +79,9 @@
 .slice-mode .pmeta { font-size:12px; }
 @media(max-width:760px) {
   .slice-styles { grid-template-columns:1fr; gap:6px; }
+  .slice-openings { gap:6px; }
+  .opening-choice { padding:6px 8px; }
+  .opening-choice span { font-size:11px; }
   .style-choice { padding:8px; }
   .slice-intro { padding:16px; }
   .slice-mode #insight { padding:7px; font-size:12px; }

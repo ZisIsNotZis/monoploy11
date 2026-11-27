@@ -105,6 +105,23 @@ const STARTS_CONTESTED = [
 ];
 
 export function initializeSlice(state) {
+  // #3344：两张发牌表的差别不是「公平不公平」，而是**哪条计划真的能在局里发生**。
+  //
+  // 整条街表：每家从 t=0 就占满自己那条街的两间，同街乘数一开局就是满的，
+  //   于是「买下另一间补齐」从来不发生 —— support/probe-3344/openings.mjs 的 fill 臂
+  //   60 局买地 **0.00 次**。这正是 #3343 量不出「补齐是否值得」的原因：不是它不值，
+  //   是它在那张表上根本不存在。
+  // 争街表：每条街只归一半，同一支、同一种意图每局买 **1.2–1.3 次**。
+  //
+  // 两张表的实测（同一支量具，60 seed/格 × 2 座位排列，被量起手固定在 0 号位）：
+  //   整条街  grow 40.0 / take 33.3 / cross 30.0  差距 10.0pp  破产 13.3/13.3/11.7%  付租 3.10/局
+  //   争街    grow 49.2 / take 38.3 / cross 45.0  差距 10.8pp  破产  3.3/ 9.2/ 5.0%  付租 3.58–3.72/局
+  // 争街不是更公平（差距只差 0.8pp，三对 95% 区间全重叠），而是三条路线都更能施展、
+  // 破产少三分之二。
+  //
+  // 这里**不在没有配置时自作主张换表**：引擎默认仍是旧表，因为十几条判据是在旧表上跑
+  // 真实整局建立起来的（grow/19 的出局原因、收购目标扫描等），换掉它们的前提会让那些
+  // 判据不再描述玩家看到的东西。换表是**入口上的一个选择**，见 src/main.js。
   const starts = state.config?.sliceContestedStreets ? STARTS_CONTESTED : STARTS_WHOLE_STREET;
   state.players.forEach((p,i)=> {
     const style = SLICE_STYLES.find(s=>s.id===state.config.participants?.[i]?.style) ?? SLICE_STYLES[i%3];

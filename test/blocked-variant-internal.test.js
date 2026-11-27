@@ -25,7 +25,9 @@ const ROOT = path.resolve(HERE, '..');
 const VARIANT = path.join(ROOT, 'support', 'serve-variant.py');
 
 const PAGE_FP = '3d51b9d013370a81';
-const INDEX_FP = '6f320608f37f1e9d';
+// #3344：首页多了 #sliceOpening 一块容器，指纹 6f320608… → b09ba9e3…。
+// 它咬的是「8001 发的是原版首页」，不是「首页不许改」（见 test/trailing-slash-variant.test.js）。
+const INDEX_FP = 'b09ba9e3403ab60d';
 const INJECT_FP = 'e8b1148546523c6b';
 
 // 与 trailing-slash-variant.test.js 同款：按 pid 派生端口 + 真实绑定探测，
@@ -183,7 +185,8 @@ test('8001 的 .scratch 仍可达（不能为了安全把对照页一起堵掉�
 test('8001 根路径仍发原版首页（白名单没误杀玩家入口）', async () => {
   const res = await get(port, '/');
   assert.equal(res.status, 200);
-  assert.equal(res.len, 5108);
+  // #3344：首页多了 #sliceOpening 一块容器，长度 5108 → 5165。
+  assert.equal(res.len, 5165);
   assert.equal(res.sha16, INDEX_FP);
 });
 

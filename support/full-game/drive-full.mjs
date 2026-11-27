@@ -461,6 +461,15 @@ async function main() {
       const playedStyle = await ev(`(() => {
         const m = /[?&]style=(grow|take|cross)(&|$)/.exec(location.search);
         return m ? m[1] : null; })()`, 'replay-played-style');
+      // #3344b：supervisor 在真入口手选「整条街」打完后点重开，起手与种子都对，
+      // 发牌方式却悄悄回到了默认的争街。旧记录里根本看不到这件事 —— 它不记盘。
+      // 所以这一跑也把「本局用的是哪张盘」与「落地后第一屏选中哪张」一起读下来。
+      // 盘是由引擎真发的牌反推的：起始两家店是不是同一条街 —— 不读 cookie、不猜参数。
+      const playedOpening = await ev(`(() => {
+        const radios = [...document.querySelectorAll('[name=sliceOpening]')];
+        const picked = document.querySelector('[name=sliceOpening]:checked')?.value ?? null;
+        const m = /[?&]cross=([01])(&|$)/.exec(location.search);
+        return {checked: picked, urlCross: m ? m[1] : null, radios: radios.length}; })()`, 'replay-played-opening');
       await page.press(rp.x, rp.y);
       // The press navigates (src/main.js:259 replay() rewrites location), so the probe is
       // gone: this waits on the plain DOM the entry screen paints.
@@ -477,7 +486,9 @@ async function main() {
               const seed = document.querySelector('#seed')?.valueAsNumber ?? null;
               if (seed !== ${ENTRY_SEED + 1}) return null;
               const picks = [...document.querySelectorAll('[name=sliceStyle]:checked')].map(r => r.value);
-              return {seed, picks, url: location.search, styles: document.querySelectorAll('#sliceStyles input').length,
+              const opening = document.querySelector('[name=sliceOpening]:checked')?.value ?? null;
+              return {seed, picks, opening, url: location.search, styles: document.querySelectorAll('#sliceStyles input').length,
+                openings: document.querySelectorAll('[name=sliceOpening]').length,
                 // body.slice-entry is what the entry screen sets to collapse the page to
                 // the slice intro (src/main.js:466). Reading it here is what lets the F5
                 // checks tell "came back to the slice" from "fell back to full setup".
@@ -513,10 +524,19 @@ async function main() {
           // it was played with. Old records have no `sliceEntry` evidence and read as SKIP
           // in report-full.py, not as a pass (same three-state rule as F2/F6).
           sliceEntry: landed?.sliceEntry === true,
-          styleKept: playedStyle ? (landed?.picks ?? []).includes(playedStyle) : null},
-        observed: {playedStyle,
+          styleKept: playedStyle ? (landed?.picks ?? []).includes(playedStyle) : null,
+          // #3344b：重开必须沿用本局那张盘，且玩家能看见它被沿用（单选拨到了那边）。
+          // 老记录没有这两个字段 → SKIP，不当成通过（与 F2/F6 同一套三态规则）。
+          openingKept: playedOpening?.checked
+            ? landed?.opening === playedOpening.checked
+              && new RegExp('[?&]cross=' + (playedOpening.checked === 'contested' ? '1' : '0') + '(&|$)')
+                .test(landed?.url ?? '')
+            : null,
+          openingSwitchable: (landed?.openings ?? 0) === 2},
+        observed: {playedStyle, playedOpening,
           sliceEntryAfterReplay: landed?.sliceEntry ?? null,
-          stylePreselected: landed?.picks ?? null}};
+          stylePreselected: landed?.picks ?? null,
+          openingAfterReplay: landed?.opening ?? null}};
       save('record-10-replay', results.replay);
       const shotReplay = await png('record-10-replay');
       results.replay.png = shotReplay;

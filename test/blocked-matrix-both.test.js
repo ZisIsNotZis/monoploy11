@@ -37,7 +37,9 @@ const PLAIN = path.join(ROOT, 'serve.py');
 // 已搬到 support/，并在下面加了一条前置断言。
 const VARIANT = path.join(ROOT, 'support', 'serve-variant.py');
 
-const INDEX_FP = '6f320608f37f1e9d';
+// #3344：首页多了 #sliceOpening（第一屏的开局选择），指纹 6f320608… → b09ba9e3…，
+// 长度 5108 → 5165。同一轮还改了 src/main.js / styles.css / src/data/slice.js。
+const INDEX_FP = 'b09ba9e3403ab60d';
 // styles.css 随授权改动：#776 39394 `6084098d4a7eb14d` → 40779 `d6ffc9539a6ca449`，
 // #786 → 41969 `7155f4bdf4cc4941`，#1255 决策面板改抽屉 → 43439 `a8e6b886fdcf330b`，
 // #1478b → 44072 `1c9bd9d74ba3cce5`（#insight summary 强制单行 + 省略号）。

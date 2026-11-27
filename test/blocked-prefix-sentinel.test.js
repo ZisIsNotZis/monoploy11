@@ -109,7 +109,9 @@ for (const p of TARGETS) {
 test('哨兵存在时正向资源不受影响', async () => {
   const res = await get(port, '/index.html');
   assert.equal(res.status, 200);
-  assert.equal(res.body.length, 5108);
+  // #3344：首页多了 #sliceOpening 一块容器，长度 5108 → 5165。
+  // 这条咬的是「哨兵文件存在时，正向资源照旧发得出去」，不是「首页不能改」。
+  assert.equal(res.body.length, 5165);
 });
 
 test('直接请求 /__invalid_path__ 也不该发出内容', async () => {

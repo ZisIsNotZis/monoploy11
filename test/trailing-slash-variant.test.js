@@ -120,8 +120,11 @@ test.after(() => {
 // 若有人把根路径也接进 ALIASES，或让 normalize 把 '/' 映射到对照页，
 // 现有测试全部照旧绿 —— 而人打开 8001 首页就会以为自己在玩对照版。
 // 这与 8000 泄漏是对称的陷阱：方向相反，后果一样（玩错版本而不自知）。
-const PLAIN_INDEX_FP = '6f320608f37f1e9d';
-const PLAIN_INDEX_LEN = 5108;
+// #3344：首页多了「开局」选择那块容器（#sliceOpening，一行 div），于是长度与指纹都变了。
+// 这两个常数咬的不是「首页不能改」，而是「8001 根路径发的是原版首页、不是对照页」。
+// 所以产品改了就更新它们 —— 不更新就没法分辨「我改了原版」与「路由退了」。
+const PLAIN_INDEX_FP = 'b09ba9e3403ab60d';
+const PLAIN_INDEX_LEN = 5165;
 
 test('8001 根路径发原版，不是对照页（用首页当对照版会玩错版本）', async () => {
   for (const p of ['/', '/index.html']) {

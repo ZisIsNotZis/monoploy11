@@ -47,6 +47,15 @@ const arg = (key, fallback) => {
 const SEEDS = arg('seeds', 150);
 const SEED_START = arg('seed', 1);
 const AS_JSON = args.includes('--json');
+// #3344：张发牌表现在都是产品的一部分（第一屏可选），所以量具也得能分别量。
+// `--opening contested|whole`；不写默认量**入口的默认**（争街）。
+const OPENING = (() => {
+  const i = args.indexOf('--opening');
+  const v = i < 0 ? 'contested' : args[i + 1];
+  if (!['contested', 'whole'].includes(v)) throw new Error('Use --opening contested|whole.');
+  return v;
+})();
+const CONTESTED = OPENING === 'contested';
 if (!Number.isInteger(SEEDS) || SEEDS < 1 || SEEDS > 2000) throw new Error('Use integer --seeds 1–2000.');
 if (!Number.isInteger(SEED_START) || SEED_START < 1) throw new Error('Use integer --seed ≥ 1.');
 const DECISION_LIMIT = 5000;
@@ -91,7 +100,7 @@ let ties = 0;
 for (const style of SLICE_STYLES) {
   const bucket = buckets.get(style.id);
   for (const order of opponentOrders(style.id)) for (let seed = SEED_START; seed < SEED_START + SEEDS; seed++) {
-    const config = createSliceConfig({ human: false, seed, style: style.id });
+    const config = createSliceConfig({ human: false, seed, style: style.id, sliceContestedStreets: CONTESTED });
     const wanted = [style.id, ...order];
     config.participants = wanted.map((sid, i) => {
       const s = SLICE_STYLES.find(x => x.id === sid);
@@ -146,6 +155,7 @@ for (const style of SLICE_STYLES) {
 
 const report = {
   config: {
+    opening: OPENING,
     seeds: SEEDS, seedStart: SEED_START, gamesPerStyle: SEEDS * 2,
     opponentOrders: SLICE_STYLES.map(s => ({ style: s.id, orders: opponentOrders(s.id) })),
     dayLimit: 16, decisionLimit: DECISION_LIMIT,

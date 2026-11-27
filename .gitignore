@@ -11,3 +11,7 @@ assets/
 # 忽略它不改变任何产品字节（docs/evidence/current-lock.txt 只锁 src/ 与三个根文件），
 # 只是让「哪些东西会随仓库走」这件事不再取决于我敲的是 `git add -A` 还是 `git add <路径>`。
 .scratch/
+
+# #3344：探针自己的临时浏览器配置目录（曾经被误提交 168 个文件）。
+# 现在 entry-geom.py 建在系统临时目录并跑完即删，这条只是防止下次手滑。
+chrome-profile/

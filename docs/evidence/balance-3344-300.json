@@ -1,0 +1,145 @@
+{
+  "config": {
+    "opening": "contested",
+    "seeds": 150,
+    "seedStart": 1,
+    "gamesPerStyle": 300,
+    "opponentOrders": [
+      {
+        "style": "grow",
+        "orders": [
+          [
+            "take",
+            "cross"
+          ],
+          [
+            "cross",
+            "take"
+          ]
+        ]
+      },
+      {
+        "style": "take",
+        "orders": [
+          [
+            "grow",
+            "cross"
+          ],
+          [
+            "cross",
+            "grow"
+          ]
+        ]
+      },
+      {
+        "style": "cross",
+        "orders": [
+          [
+            "grow",
+            "take"
+          ],
+          [
+            "take",
+            "grow"
+          ]
+        ]
+      }
+    ],
+    "dayLimit": 16,
+    "decisionLimit": 5000
+  },
+  "product": {
+    "src/data/slice.js": "08e9670cdf1d8314bb441d521ce7b9c5ae36a739f528fd1e71ce828da516dfb7"
+  },
+  "ties": 7,
+  "failures": [],
+  "byStyle": [
+    {
+      "id": "grow",
+      "name": "街角店主",
+      "cash": 42000,
+      "hand": [
+        "worker",
+        "inflate",
+        "remotedice"
+      ],
+      "games": 300,
+      "wins": 161,
+      "tiedAtTop": 0,
+      "bankrupt": 23,
+      "failures": 0,
+      "endDays": 5076,
+      "finalAssets": 24085800,
+      "winRate": 0.5366666666666666,
+      "winRatePct": "53.7%",
+      "ci95": {
+        "lo": 0.4801310310375517,
+        "hi": 0.5922751174292809
+      },
+      "ci95Pct": [
+        "48.0%",
+        "59.2%"
+      ],
+      "meanEndDay": 16.92,
+      "meanFinalAssets": 80286
+    },
+    {
+      "id": "take",
+      "name": "机会买家",
+      "cash": 45000,
+      "hand": [
+        "buyland",
+        "remotedice",
+        "close"
+      ],
+      "games": 300,
+      "wins": 109,
+      "tiedAtTop": 4,
+      "bankrupt": 21,
+      "failures": 0,
+      "endDays": 5096,
+      "finalAssets": 21827200,
+      "winRate": 0.36333333333333334,
+      "winRatePct": "36.3%",
+      "ci95": {
+        "lo": 0.31095311702886,
+        "hi": 0.41916942050385436
+      },
+      "ci95Pct": [
+        "31.1%",
+        "41.9%"
+      ],
+      "meanEndDay": 16.986666666666668,
+      "meanFinalAssets": 72757
+    },
+    {
+      "id": "cross",
+      "name": "穿街高手",
+      "cash": 46000,
+      "hand": [
+        "close",
+        "remotedice",
+        "worker"
+      ],
+      "games": 300,
+      "wins": 133,
+      "tiedAtTop": 2,
+      "bankrupt": 14,
+      "failures": 0,
+      "endDays": 5093,
+      "finalAssets": 23433400,
+      "winRate": 0.44333333333333336,
+      "winRatePct": "44.3%",
+      "ci95": {
+        "lo": 0.388185929862749,
+        "hi": 0.4999136588703277
+      },
+      "ci95Pct": [
+        "38.8%",
+        "50.0%"
+      ],
+      "meanEndDay": 16.976666666666667,
+      "meanFinalAssets": 78111
+    }
+  ]
+}

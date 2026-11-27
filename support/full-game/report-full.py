@@ -117,10 +117,23 @@ def main():
     checks['F5 replay button pressable'] = replay['checks']['ctaUsable']
     # 三态，与 F2/F6 同一条规矩：旧记录（本条判据存在之前跑的）没有这两项证据，
     # 那时“落回完整设置页、起手不预选”是已知缺陷而非通过 —— 所以判 SKIP，不判 PASS。
+    # #3344b：supervisor 手选「整条街」打完后重开，起手与种子都对，
+    # 发牌方式却悄悄回到了默认的争街 —— 于是他想「重开对比玩法」时比的不是同两张盘。
+    # 这两项跟 sliceEntry/styleKept 同一套三态规则：旧记录没这项证据就判 SKIP，
+    # 不判 PASS（那时它确实没被验过）。
     for label, key in (('F5 replay returned to the slice entry', 'sliceEntry'),
                        ('F5 replay kept the starter it was played with', 'styleKept')):
         value = replay['checks'].get(key)
         checks[label] = None if value is None else bool(value)
+    # #3344b 的两项只在回执真的带了这份证据时才发言。
+    # 为什么不像上面两项那样「缺了就 SKIP」：那会给所有旧回执永久增加两条未判项，
+    # 而 test/receipt-slim 的规矩是「除了这一局没走到的那项，交付回执不得留未判项」——
+    # 那条规矩是对的（永久 SKIP 会把「没验过」写成看起来像结论的东西）。
+    # 所以：旧回执仍只印它当年能印的那些行；新回执（driver 总是写这两个键）必须 PASS。
+    # “必需”由 test/receipt-3345.test.js 对**当前交付的那份**回执死咬。
+    if 'openingKept' in replay['checks']:
+        checks['F5 replay kept the opening (same board)'] = bool(replay['checks']['openingKept'])
+        checks['F5 the opening is still switchable after replay'] = bool(replay['checks']['openingSwitchable'])
     # Housekeeping: the run released what it took.
     after = load('after.json')
     checks['X this run left no chrome'] = after['own_chrome'] == 0

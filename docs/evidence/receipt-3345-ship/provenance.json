@@ -1,0 +1,247 @@
+{
+ "source_run": "OUT-3345-ship",
+ "product": {
+  "lock": "docs/evidence/slice-entry-3345.sha256",
+  "lock_sha256": "d98a667239a28fe144515481d236c81ebc61c5d8413041890c369d95b18b0853",
+  "tree_sha256": "f10e8f079809336a6ddefd6189b891e9669c62300510ee1138d8b34e77465d5e",
+  "files": 36
+ },
+ "seal": {
+  "lock": "docs/evidence/slice-entry-3345.sha256",
+  "lock_sha256": "d98a667239a28fe144515481d236c81ebc61c5d8413041890c369d95b18b0853",
+  "files": 36,
+  "sealed": true,
+  "served": {
+   "index.html": {
+    "sha256": "b09ba9e3403ab60d258782070b17ceb9971c6b064323203b1607678d8d66212c",
+    "bytes": 5165,
+    "no_store": true
+   },
+   "serve.py": {
+    "sha256": "fa5412e285c1d9f11c41a99639036a4c38c5cc207683a0e8b2b2498ffdaf8c84",
+    "bytes": 9500,
+    "no_store": true
+   },
+   "styles.css": {
+    "sha256": "fc82e49363baf9ce360e6a0ed8fecb9ee0d708300f9d75cb4b6dfe10891a3fb1",
+    "bytes": 65225,
+    "no_store": true
+   },
+   "src/data/bosses.js": {
+    "sha256": "04458c23ef087f45905f5414009f892ea9e0dcdbec715b82a42a8ced777ab050",
+    "bytes": 794,
+    "no_store": true
+   },
+   "src/data/card-desc.js": {
+    "sha256": "5f385ca7b0c86b9def80ba125c0141175d976ab24b09bc9762ec16b60799d020",
+    "bytes": 2700,
+    "no_store": true
+   },
+   "src/data/characters.js": {
+    "sha256": "7f9f8910d3221e28fc4012703555937f45df14dfedc9605850add9f730723dfe",
+    "bytes": 4693,
+    "no_store": true
+   },
+   "src/data/experience.js": {
+    "sha256": "62d311659464de829ce39b9c68899dff5fa25c04e91ab86b5ec026e0e59dca0b",
+    "bytes": 1843,
+    "no_store": true
+   },
+   "src/data/lines.js": {
+    "sha256": "23568b4bd50d3c3fcf24665ce5f57d00a049723a8634f02b8392b7fdfdebf0d5",
+    "bytes": 2805,
+    "no_store": true
+   },
+   "src/data/map-boss.js": {
+    "sha256": "3d10f63b7ab46bfc3f6d0827e9995b9e749ea5bf76071af445f74ea8535430ff",
+    "bytes": 194,
+    "no_store": true
+   },
+   "src/data/maps/grand-hotel.js": {
+    "sha256": "f652296f1c463f5fc7695ec540e86db8ed7631bca6242c7549fceb918add3ca8",
+    "bytes": 6611,
+    "no_store": true
+   },
+   "src/data/maps/grid-manor.js": {
+    "sha256": "8a5e25f4c86b8c27c7dcf20c4ce9320c2bf69536f87f0175e660c0034749458e",
+    "bytes": 4127,
+    "no_store": true
+   },
+   "src/data/maps/index.js": {
+    "sha256": "511b0f7d7e7ffd470b2301b28a00a3327de1fae2d0bca22c57cd8dd4f13ef19e",
+    "bytes": 426,
+    "no_store": true
+   },
+   "src/data/maps/test-manor.js": {
+    "sha256": "7b6e079daeeb65ee491ceff2645c933213934d30f8354d222e04e46ee5e7ad12",
+    "bytes": 4411,
+    "no_store": true
+   },
+   "src/data/maps/variants.js": {
+    "sha256": "ebf3af4df53ce2231358abf10f43d100afec96bf4965ab21bc46e09261197127",
+    "bytes": 5619,
+    "no_store": true
+   },
+   "src/data/slice.js": {
+    "sha256": "08e9670cdf1d8314bb441d521ce7b9c5ae36a739f528fd1e71ce828da516dfb7",
+    "bytes": 11151,
+    "no_store": true
+   },
+   "src/data/tuning.js": {
+    "sha256": "d2c5dcef56631cfc1c7aad889be70e863289cfe1b6f67e7e09d1512afc1f069e",
+    "bytes": 1143,
+    "no_store": true
+   },
+   "src/debug/session.js": {
+    "sha256": "4c1fbb4bcecae214a57e758c8367f62b386d0b59aaa02a5d10d47b65bea07054",
+    "bytes": 3857,
+    "no_store": true
+   },
+   "src/engine/ai.js": {
+    "sha256": "fd06b320430e781b74724544161963975520c7db85217027de0fe1091f3820e0",
+    "bytes": 5887,
+    "no_store": true
+   },
+   "src/engine/board-v2.js": {
+    "sha256": "05eaa98c6f7002681844b3e15d50b3eb3502ee6f053caa737bd3f19c1e955114",
+    "bytes": 5683,
+    "no_store": true
+   },
+   "src/engine/economy.js": {
+    "sha256": "daf5054229caf02dfa68f9b5a6909d07877a1d6494ae814b48dcc39b275d44c0",
+    "bytes": 12580,
+    "no_store": true
+   },
+   "src/engine/flow.js": {
+    "sha256": "72b94a104a663e48ff757af291cc35ca64dcdac96d1a0852d2ec1c4de02020ab",
+    "bytes": 54649,
+    "no_store": true
+   },
+   "src/engine/game.js": {
+    "sha256": "2ec866d8a82e7987d5a40a53eaafbb0ea1c476fea180b50eb46175d9c5e83fd6",
+    "bytes": 38745,
+    "no_store": true
+   },
+   "src/engine/insight.js": {
+    "sha256": "c7fa5dd1d15c2369d4cae04364a29ef9d73e5383fa28563a7fa27bed1acde8d8",
+    "bytes": 30957,
+    "no_store": true
+   },
+   "src/engine/map-runtime.js": {
+    "sha256": "bbe08530d35df487ca0b623763cd3447fd2707952ece7a0fddaecc6ca0fb6bcd",
+    "bytes": 5059,
+    "no_store": true
+   },
+   "src/engine/payback.js": {
+    "sha256": "c0d59e61417afb696b4b0c152ddbf5f16fcdcc8cf2126b974fbd80970e51eb03",
+    "bytes": 6738,
+    "no_store": true
+   },
+   "src/engine/rng.js": {
+    "sha256": "17b9ccdd2c54a12aea3f7e77d851872e5274abbed5562622c5d513a290a0e5de",
+    "bytes": 818,
+    "no_store": true
+   },
+   "src/engine/slice-ai.js": {
+    "sha256": "1d4e3df51920eaa37ac1147d664c22ad9d902ad3248f3687afa31c717335f7ba",
+    "bytes": 11104,
+    "no_store": true
+   },
+   "src/main.js": {
+    "sha256": "507b38335d90b4a8cadd0656e6c02f2bd724b96cc47d42b78c69551442613a63",
+    "bytes": 31505,
+    "no_store": true
+   },
+   "src/sim.js": {
+    "sha256": "20b08eac3425a0c06d62c851ab55e6995ee61442c3e53d7fabf7aee90e1d64ae",
+    "bytes": 2246,
+    "no_store": true
+   },
+   "src/ui/icons.js": {
+    "sha256": "bc6c6d94d6d50864c3f5931556678840656f4d082b5c7c5643bd345787e2bdff",
+    "bytes": 24098,
+    "no_store": true
+   },
+   "src/ui/render.js": {
+    "sha256": "1c00af486d8d492a933d4b74a9dbda434b30eba34d64b4a7c80f6bbee9f04b61",
+    "bytes": 82827,
+    "no_store": true
+   },
+   "src/ui/slice.js": {
+    "sha256": "233149a988ffdb7675245d6b59a0402090fc4cb138edfd5c31f2eef9a7592e65",
+    "bytes": 89760,
+    "no_store": true
+   },
+   "src/ui/speech.js": {
+    "sha256": "95dc92139923af7d0342b21cf10204411531059534b9f8eb169ccc8ef7de6883",
+    "bytes": 4073,
+    "no_store": true
+   },
+   "src/ui/superdice-preview.js": {
+    "sha256": "e496d703857e34360f40d0e5d4cf20d3ea132e19effda43334d5aca8d6e4be9c",
+    "bytes": 4525,
+    "no_store": true
+   },
+   "src/ui/voice.js": {
+    "sha256": "50d86f1d3e3a21009dafeec811b7b2224513a59a18183e30d7283fc3b9aeed72",
+    "bytes": 5378,
+    "no_store": true
+   },
+   "src/engine/market-ledger.js": {
+    "sha256": "60060398141fd83cc3b85d47cac93855b7c0871f0dc956a437dda174d3e24d29",
+    "bytes": 14979,
+    "no_store": true
+   }
+  }
+ },
+ "cut_by": "support/full-game/make-receipt.py",
+ "judged_same_as_raw": true,
+ "raw": {
+  "record-8-summary.json": {
+   "bytes": 338512,
+   "sha256": "4f9944b6bb018929105616ae55a03e1d73f07b863285a855442deff5f54dd825",
+   "gz": "raw/record-8-summary.json.gz",
+   "gz_bytes": 22305,
+   "gz_sha256": "97fae6dac6a053013fac39ab5c2583d8e4f0720f056c9a59f848f95eff2977cd"
+  },
+  "record-10-replay.json": {
+   "bytes": 903,
+   "sha256": "768661c9f825c095d3e2be3da117eeb7e1fcfbf1c2f869284fd7fcab39f5db4f",
+   "gz": "raw/record-10-replay.json.gz",
+   "gz_bytes": 400,
+   "gz_sha256": "dda97d99a1efcfda77a8c81a3151c92b3d49d432d4f9a4242547d5ca6756d4e4"
+  },
+  "after.json": {
+   "bytes": 126,
+   "sha256": "230c247bd0df40a55f70c7f33d7c00b098b9354c3bb4a0a8a9c29dd6344d95a7",
+   "gz": "raw/after.json.gz",
+   "gz_bytes": 115,
+   "gz_sha256": "38ce50b50ccf98da4e38be857bad61a317c17a6b643f32602351e2783b6af8be"
+  }
+ },
+ "slim": {
+  "record-8-summary.json": {
+   "bytes": 74810,
+   "sha256": "26fe112597c7fc46a3deb37e9045b492de43233d34ef485ad360d2a360cdd60b"
+  },
+  "record-10-replay.json": {
+   "bytes": 812,
+   "sha256": "f8d9102fa8d8528dd3a874000d1d0a86e49b160b11ee206703ff349ebbb93a12"
+  },
+  "after.json": {
+   "bytes": 90,
+   "sha256": "19d347e33e3e6c2e1b1ba61e0b8a267916a239bad130e6ee9bba122197b74511"
+  }
+ },
+ "dropped_fields": {
+  "record-8-summary.json": [
+   "hintInserts",
+   "firstFrames",
+   "replay"
+  ],
+  "record-10-replay.json": [],
+  "after.json": [
+   "host_chrome_total"
+  ]
+ }
+}

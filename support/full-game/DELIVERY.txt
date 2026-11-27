@@ -51,11 +51,59 @@ lock src/ui/voice.js
 
 doc  README.md
 lock src/engine/market-ledger.js
-# #3343 的锁 = **当前**产品的描述（36 个产品文件，文件集与 3342 相同）。
-# 相对 3342 只改一个文件：src/engine/market-ledger.js —— 买地屏新增一行
-# 「这条路是补齐 / 开新的」，把「补齐自己那条街能多收多少」现算出来（rentFor 前后差）。
-# 这是本片唯一的产品字节改动；胜率、经济数值、开局表一个字未动。
-# 判据 test/market-ledger.test.js 的 C / C3 / C4（C4 逐数与 rentFor 对账）。
+# #3345 的锁（= #3344b 的同一份字节；换名是因为项目约定锁名是
+# `slice-entry-<数字>.sha256`，test/current-lock.test.js 会咬这条命名）。
+# 这份锁 = **当前**产品的描述：36 个产品文件，文件集未变。
+# 指针点名的就是下面这把（test/current-lock.test.js 只在这个距离内找它：
+# 「当前」两处说法必须是同一份文件，不是两段各自维护的注释）。
+doc  docs/evidence/slice-entry-3345.sha256
+# 相对 3343 改了四个文件，只为一件事：把「开局发给你哪几间店」变成第一屏上的一个选择，
+# 默认是争街，`?cross=0` 可回旧表。
+#   src/data/slice.js    —— initializeSlice 的注释与那一行判断（两张表都是产品功能了）
+#   src/main.js          —— 第一屏的选择框、startSlice 读它、?cross 与它同步，
+#                           **开局时把实际用的那张盘写回地址栏**（history.replaceState），
+#                           重开时把它带过去（#3344b：否则重开会悄悄回到默认盘）
+#   index.html           —— #sliceOpening 这块容器
+#   styles.css           —— 那一排单行的样式（含窄屏）
+# 为什么这样改而不直接换默认：两张表各自养着一批评据（旧表上跑真实整局建立的 grow/19
+# 出局原因、收购目标扫描），隐式换掉会让那些结论不再描述玩家看到的东西。
+# 读数据：support/probe-3344/openings.mjs（两张表的起手差距与破产率、四种花钱意图）、
+#         support/probe-3344/street-multiplier.mjs（同街乘数为什么救不了「补齐」）、
+#         support/probe-3344/entry-geom.py（两种画幅下开始键仍可点）。
+# 判据：test/ui-entry.test.js（两条发牌各自的真实租金）、test/contested-streets.test.js。
+doc  docs/evidence/balance-3344-300.json
+doc  docs/evidence/RESULT-3344.md
+# #3344b 的两份回执：一份从默认盘（争街）跑，一份从**手选整条街**跑 —— 后者正是
+# supervisor 撞到的那条路：整条街进、重开必须整条街出。两份都带 record-10-replay.json 里的
+# openingKept / openingSwitchable 证据，report-full.py 把它们当 F5 判（旧回执是 SKIP，不是 PASS）。
+doc  docs/evidence/receipt-3345-ship/provenance.json
+doc  docs/evidence/receipt-3345-ship/record-8-summary.json
+doc  docs/evidence/receipt-3345-ship/record-10-replay.json
+doc  docs/evidence/receipt-3345-ship/after.json
+doc  docs/evidence/receipt-3345-ship/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3345-ship/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3345-ship/raw/after.json.gz
+doc  docs/evidence/receipt-3345-whole/provenance.json
+doc  docs/evidence/receipt-3345-whole/record-8-summary.json
+doc  docs/evidence/receipt-3345-whole/record-10-replay.json
+doc  docs/evidence/receipt-3345-whole/after.json
+doc  docs/evidence/receipt-3345-whole/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3345-whole/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3345-whole/raw/after.json.gz
+# 3344 的锁与回执留在库里（旧回执必须可核），但它已不是当前产品。
+doc  docs/evidence/slice-entry-3344.sha256
+doc  docs/evidence/receipt-3344-ship/provenance.json
+doc  docs/evidence/receipt-3344-ship/record-8-summary.json
+doc  docs/evidence/receipt-3344-ship/record-10-replay.json
+doc  docs/evidence/receipt-3344-ship/after.json
+doc  docs/evidence/receipt-3344-ship/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3344-ship/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3344-ship/raw/after.json.gz
+tool support/probe-3344/openings.mjs
+tool support/probe-3344/street-multiplier.mjs
+tool support/probe-3344/entry-geom.py
+tool support/probe-3344/entry-geom.mjs
+# #3343 的锁（保留：receipt-3343-ship 跑在它上面，回执必须可核）。
 doc  docs/evidence/slice-entry-3343.sha256
 doc  docs/evidence/RESULT-3343.md
 doc  docs/evidence/RECEIPTS-VS-PRODUCT.md
@@ -103,6 +151,7 @@ tool support/probe-3342/entry-geom.py
 tool support/probe-3342/entry-geom.mjs
 tool support/full-game/make-lock.py
 doc  test/contested-streets.test.js
+doc  test/receipt-3345.test.js
 doc  docs/evidence/receipt-3342-final/provenance.json
 doc  docs/evidence/receipt-3342-final/record-8-summary.json
 doc  docs/evidence/receipt-3342-final/record-10-replay.json

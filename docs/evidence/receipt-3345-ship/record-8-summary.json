@@ -1,0 +1,3694 @@
+{
+ "label": "clean-full",
+ "human": "街角店主",
+ "entry": "http://127.0.0.1:47631/index.html?slice=1&style=grow&seed=1",
+ "frames": 495,
+ "ms": 63827,
+ "kinds": {
+  "action": {
+   "frames": 459,
+   "headings": [
+    "",
+    "翻修",
+    "旺季",
+    "购买 小地产 Lv.1（无主已建）",
+    "定步",
+    "还剩 1 步，往哪走？"
+   ],
+   "firstUsable": {
+    "panel": 0,
+    "map": 0,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 0,
+   "hintAgree": 0,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "mapPick/street": {
+   "frames": 13,
+   "headings": [
+    "翻修",
+    "旺季"
+   ],
+   "firstUsable": {
+    "panel": 1,
+    "map": 13,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 0,
+   "hintAgree": 0,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "buy": {
+   "frames": 3,
+   "headings": [
+    "购买 小地产 Lv.1（无主已建）"
+   ],
+   "firstUsable": {
+    "panel": 2,
+    "map": 0,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 0,
+   "hintAgree": 0,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "diceValue": {
+   "frames": 1,
+   "headings": [
+    "定步"
+   ],
+   "firstUsable": {
+    "panel": 2,
+    "map": 0,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 0,
+   "hintAgree": 0,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "direction": {
+   "frames": 14,
+   "headings": [
+    "还剩 1 步，往哪走？",
+    "还剩 4 步，往哪走？",
+    "还剩 5 步，往哪走？",
+    "还剩 2 步，往哪走？",
+    "还剩 6 步，往哪走？",
+    "还剩 3 步，往哪走？"
+   ],
+   "firstUsable": {
+    "panel": 2,
+    "map": 3,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 14,
+   "hintAgree": 14,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "supply": {
+   "frames": 5,
+   "headings": [
+    "这三天，你想怎么做？"
+   ],
+   "firstUsable": {
+    "panel": 4,
+    "map": 0,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 5,
+   "hintAgree": 5,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  },
+  "results": {
+   "frames": 1,
+   "headings": [
+    "机会买家 的生意做到了最后"
+   ],
+   "firstUsable": {
+    "panel": 1,
+    "map": 0,
+    "cards": 0,
+    "roll": 0
+   },
+   "everUsable": true,
+   "firstScroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "hintFrames": 0,
+   "hintAgree": 0,
+   "blindSpots": 0,
+   "unmountedClaims": 0
+  }
+ },
+ "presses": 66,
+ "pressLog": [
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "。最多连用两张卡，再掷骰。总资产最高者赢。D1 —— 第 1 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 111
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 111,
+    "day": "第 1 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 0,
+   "kind": "action",
+   "heading": "",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:cancel-pick",
+   "x": 36,
+   "y": 819.2,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "。最多连用两张卡，再掷骰。总资产最高者赢。D1 —— 第 1 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 111
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 111,
+    "day": "第 1 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 1,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 187,
+     "client": 187
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "。最多连用两张卡，再掷骰。总资产最高者赢。D1 —— 第 1 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 111
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 111,
+    "day": "第 1 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 2,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "。最多连用两张卡，再掷骰。总资产最高者赢。D1 —— 第 1 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 111
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 176,
+    "day": "第 1 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 3,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 187,
+     "client": 187
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "小店，升到 2 级，租 4,000（免费，立即回本）；这条街现在归你，对手踩到付 4,000",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 176
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 176,
+    "day": "第 1 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 4,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 8,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "小店，升到 2 级，租 4,000（免费，立即回本）；这条街现在归你，对手踩到付 4,000",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 176
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 204,
+    "day": "第 1 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 5,
+   "kind": "mapPick/street",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 254,
+     "client": 254
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 715.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "条街现在归你，对手踩到付 4,000D1 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 204
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 218,
+    "day": "第 1 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 6,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "buy:buy",
+   "x": 100.5,
+   "y": 812,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 1 天",
+    "logTail": "，租金翻倍 3 天D1 街角店主 掷出 1 点D1 街角店主 停在 街道，旁边是 晨光街茶铺",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 241
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 315,
+    "day": "第 1 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 7,
+   "kind": "buy",
+   "heading": "购买 小地产 Lv.1（无主已建）",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 477,
+     "client": 477
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 2 天",
+    "logTail": "手 掷出 1 点D1 穿街高手 停在 街道D2 —— 第 2 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 573
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 573,
+    "day": "第 2 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 27,
+   "kind": "action",
+   "heading": "购买 小地产 Lv.1（无主已建）",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "diceValue:diceValue",
+   "x": 197,
+   "y": 750.5,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 6,
+   "seen": {
+    "day": "第 2 天",
+    "logTail": "手 掷出 1 点D1 穿街高手 停在 街道D2 —— 第 2 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 573
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 594,
+    "day": "第 2 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 28,
+   "kind": "diceValue",
+   "heading": "定步",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 602,
+     "client": 405
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 2 天",
+    "logTail": "D2 —— 第 2 天 · 街角店主 的回合 ——D2 街角店主 使用定步：本回合走 1 步",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 594
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 624,
+    "day": "第 2 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 29,
+   "kind": "action",
+   "heading": "定步",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 738.1,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 2 天",
+    "logTail": "店主 使用定步：本回合走 1 步D2 定步生效：本回合走 1 步D2 街角店主 掷出 1 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 624
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 624,
+    "day": "第 2 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 30,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 216,
+     "client": 216
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 3 天",
+    "logTail": "手 掷出 4 点D2 穿街高手 停在 街道D3 —— 第 3 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 912
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 926,
+    "day": "第 3 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 57,
+   "kind": "action",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 729.4,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 3 天",
+    "logTail": "手 停在 街道D3 —— 第 3 天 · 街角店主 的回合 ——D3 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 926
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 926,
+    "day": "第 3 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 60,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 218,
+     "client": 218
+    }
+   }
+  },
+  {
+   "tag": "supply:supply",
+   "x": 197,
+   "y": 576.3,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 4,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "条街涨到 8,000，你踩到付 8,000D4 —— 第 4 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 1411
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 1436,
+    "day": "第 4 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 94,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 419,
+     "client": 419
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "— 第 4 天 · 街角店主 的回合 ——D4 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 1436
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 1436,
+    "day": "第 4 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 95,
+   "kind": "action",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "— 第 4 天 · 街角店主 的回合 ——D4 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 1436
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 1503,
+    "day": "第 4 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 96,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 206,
+     "client": 206
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "，升到 3 级，租 11,200（免费，立即回本）；这条街现在归你，对手踩到付 11,200",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 1503
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 1503,
+    "day": "第 4 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 97,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 10,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "，升到 3 级，租 11,200（免费，立即回本）；这条街现在归你，对手踩到付 11,200",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 1503
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 1531,
+    "day": "第 4 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 98,
+   "kind": "mapPick/street",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 277,
+     "client": 277
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": "街现在归你，对手踩到付 11,200D4 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 1531
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 1545,
+    "day": "第 4 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 99,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 709.9,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 4 天",
+    "logTail": ",200D4 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天D4 街角店主 掷出 3 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 1545
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 1545,
+    "day": "第 4 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 102,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 269,
+     "client": 269
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 5 天",
+    "logTail": "收到 0 · 穿街高手 余额 33,000D5 —— 第 5 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 2019
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2033,
+    "day": "第 5 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 132,
+   "kind": "action",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 6 天",
+    "logTail": "点 +4000D5 穿街高手 停在 发薪处D6 —— 第 6 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 2213
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2227,
+    "day": "第 6 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 157,
+   "kind": "action",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 732.8,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 6 天",
+    "logTail": " 停在 发薪处D6 —— 第 6 天 · 街角店主 的回合 ——D6 街角店主 掷出 5 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2227
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2227,
+    "day": "第 6 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 158,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 286,
+     "client": 286
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 730.6,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 6 天",
+    "logTail": " 停在 发薪处D6 —— 第 6 天 · 街角店主 的回合 ——D6 街角店主 掷出 5 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2227
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2227,
+    "day": "第 6 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 162,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 251,
+     "client": 251
+    }
+   }
+  },
+  {
+   "tag": "supply:supply",
+   "x": 197,
+   "y": 576.3,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 4,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": " 还剩 29,000，你踩到付 2,000D7 —— 第 7 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2487
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 2512,
+    "day": "第 7 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 190,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 419,
+     "client": 419
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": "— 第 7 天 · 街角店主 的回合 ——D7 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 2512
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2512,
+    "day": "第 7 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 191,
+   "kind": "action",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 137.7,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": "— 第 7 天 · 街角店主 的回合 ——D7 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2512
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 2577,
+    "day": "第 7 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 192,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 187,
+     "client": 187
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": "茶铺，升到 2 级，租 5,600（免费，立即回本）；这条街现在归你，对手踩到付 5,600",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 2577
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2577,
+    "day": "第 7 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 193,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 13,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": "茶铺，升到 2 级，租 5,600（免费，立即回本）；这条街现在归你，对手踩到付 5,600",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2577
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 2605,
+    "day": "第 7 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 194,
+   "kind": "mapPick/street",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 277,
+     "client": 277
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": "条街现在归你，对手踩到付 5,600D7 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 2605
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2619,
+    "day": "第 7 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 195,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 700.1,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 7 天",
+    "logTail": ",600D7 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天D7 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 2619
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 2619,
+    "day": "第 7 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 196,
+   "kind": "direction",
+   "heading": "还剩 6 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 337,
+     "client": 337
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 8 天",
+    "logTail": "条街涨到 4,000，你踩到付 4,000D8 —— 第 8 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3228
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3242,
+    "day": "第 8 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 232,
+   "kind": "action",
+   "heading": "还剩 6 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "buy:skip",
+   "x": 281.5,
+   "y": 812,
+   "selector": "#choice button",
+   "index": 1,
+   "siblings": 2,
+   "seen": {
+    "day": "第 8 天",
+    "logTail": "出 6 点D8 街角店主 在金钱格获得 1000D8 街角店主 停在 街道，旁边是 东巷茶铺",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3255
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3222,
+    "day": "第 8 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 239,
+   "kind": "buy",
+   "heading": "购买 小地产 Lv.1（无主已建）",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 458,
+     "client": 458
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 9 天",
+    "logTail": "000，够买一块 月色街小店（8,000）D9 —— 第 9 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3184
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3176,
+    "day": "第 9 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 258,
+   "kind": "action",
+   "heading": "购买 小地产 Lv.1（无主已建）",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 720.3,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 9 天",
+    "logTail": "（8,000）D9 —— 第 9 天 · 街角店主 的回合 ——D9 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3176
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3176,
+    "day": "第 9 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 261,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 388,
+     "client": 388
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 730.6,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 9 天",
+    "logTail": "（8,000）D9 —— 第 9 天 · 街角店主 的回合 ——D9 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3176
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3176,
+    "day": "第 9 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 265,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 251,
+     "client": 251
+    }
+   }
+  },
+  {
+   "tag": "supply:supply",
+   "x": 197,
+   "y": 576.3,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 4,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": " 的书店卖出 1 本书，获得 1 张卡D10 —— 第 10 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3450
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 3426,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 287,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 419,
+     "client": 419
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "第 10 天 · 街角店主 的回合 ——D10 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3426
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3426,
+    "day": "第 10 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 288,
+   "kind": "action",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 137.7,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "第 10 天 · 街角店主 的回合 ——D10 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3426
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 3469,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 289,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 187,
+     "client": 187
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "，升到 3 级，租 11,200（免费，立即回本）；这条街现在归你，对手踩到付 11,200",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3469
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3469,
+    "day": "第 10 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 290,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 13,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "，升到 3 级，租 11,200（免费，立即回本）；这条街现在归你，对手踩到付 11,200",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3469
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 3484,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 291,
+   "kind": "mapPick/street",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 277,
+     "client": 277
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "现在归你，对手踩到付 11,200D10 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3484
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3486,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 292,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 737.1,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "00D10 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天D10 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3486
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3486,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 295,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 321,
+     "client": 321
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 717.4,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 10 天",
+    "logTail": "00D10 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天D10 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3486
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3486,
+    "day": "第 10 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 298,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 339,
+     "client": 339
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 11 天",
+    "logTail": "10 穿街高手 在金钱格获得 1000D11 —— 第 11 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3321
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3269,
+    "day": "第 11 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 337,
+   "kind": "action",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 12 天",
+    "logTail": "出 3 点D11 穿街高手 停在 街道D12 —— 第 12 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3414
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3403,
+    "day": "第 12 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 363,
+   "kind": "action",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "buy:skip",
+   "x": 281.5,
+   "y": 812,
+   "selector": "#choice button",
+   "index": 1,
+   "siblings": 2,
+   "seen": {
+    "day": "第 12 天",
+    "logTail": " 的回合 ——D12 街角店主 掷出 1 点D12 街角店主 停在 街道，旁边是 月色街小店",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3406
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3417,
+    "day": "第 12 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 364,
+   "kind": "buy",
+   "heading": "购买 小地产 Lv.1（无主已建）",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 477,
+     "client": 477
+    }
+   }
+  },
+  {
+   "tag": "supply:supply",
+   "x": 197,
+   "y": 576.3,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 4,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "出 4 点D12 穿街高手 停在 街道D13 —— 第 13 天 · 街角店主 的回合 ——",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3374
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": false,
+    "logLen": 3375,
+    "day": "第 13 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 378,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 419,
+     "client": 419
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "第 13 天 · 街角店主 的回合 ——D13 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3375
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3375,
+    "day": "第 13 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 379,
+   "kind": "action",
+   "heading": "这三天，你想怎么做？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 280.7,
+   "y": 375.8,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "第 13 天 · 街角店主 的回合 ——D13 街角店主 选择「把生意做大」：翻修 + 旺季",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3375
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 3427,
+    "day": "第 13 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 380,
+   "kind": "mapPick/street",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 187,
+     "client": 187
+    }
+   }
+  },
+  {
+   "tag": "action:card",
+   "x": 64,
+   "y": 787,
+   "selector": "#cards button[data-card]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "茶铺，升到 2 级，租 4,000（免费，立即回本）；这条街现在归你，对手踩到付 4,000",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3427
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3427,
+    "day": "第 13 天",
+    "panelHidden": false,
+    "cardsVisible": false,
+    "bubble": null
+   },
+   "frame": 381,
+   "kind": "action",
+   "heading": "翻修",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "mapPick/street:mapTarget",
+   "x": 109.1,
+   "y": 147,
+   "selector": "[data-pick-plot]",
+   "index": 0,
+   "siblings": 13,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "茶铺，升到 2 级，租 4,000（免费，立即回本）；这条街现在归你，对手踩到付 4,000",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3427
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": null,
+    "rollDisabled": false,
+    "logLen": 3443,
+    "day": "第 13 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 382,
+   "kind": "mapPick/street",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 277,
+     "client": 277
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 13 天",
+    "logTail": "街现在归你，对手踩到付 4,000D13 街角店主 使用 旺季 → 晨光街，租金翻倍 3 天",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3443
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3439,
+    "day": "第 13 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 383,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 14 天",
+    "logTail": "13 穿街高手 在金钱格获得 2000D14 —— 第 14 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3467
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3468,
+    "day": "第 14 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 416,
+   "kind": "action",
+   "heading": "旺季",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 725.9,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 14 天",
+    "logTail": "2000D14 —— 第 14 天 · 街角店主 的回合 ——D14 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3468
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3468,
+    "day": "第 14 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 417,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 337,
+     "client": 337
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 730.6,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 14 天",
+    "logTail": "2000D14 —— 第 14 天 · 街角店主 的回合 ——D14 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3468
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3468,
+    "day": "第 14 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 421,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 251,
+     "client": 251
+    }
+   }
+  },
+  {
+   "tag": "action:roll",
+   "x": 243,
+   "y": 811.8,
+   "selector": "#dice [data-roll]",
+   "index": 0,
+   "siblings": 1,
+   "seen": {
+    "day": "第 15 天",
+    "logTail": "街高手 停在 街道，旁边是 月色街小店D15 —— 第 15 天 · 街角店主 的回合 ——",
+    "rollDisabled": false,
+    "choiceHidden": true,
+    "logLen": 3486
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3485,
+    "day": "第 15 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 436,
+   "kind": "action",
+   "heading": "还剩 2 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 0,
+     "client": 0
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 735,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 2,
+   "seen": {
+    "day": "第 15 天",
+    "logTail": "色街小店D15 —— 第 15 天 · 街角店主 的回合 ——D15 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3485
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3485,
+    "day": "第 15 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 437,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 338,
+     "client": 338
+    }
+   }
+  },
+  {
+   "tag": "direction:direction",
+   "x": 197,
+   "y": 715.4,
+   "selector": "#choice button",
+   "index": 0,
+   "siblings": 3,
+   "seen": {
+    "day": "第 15 天",
+    "logTail": "色街小店D15 —— 第 15 天 · 街角店主 的回合 ——D15 街角店主 掷出 6 点",
+    "rollDisabled": true,
+    "choiceHidden": false,
+    "logLen": 3485
+   },
+   "hit": "itself",
+   "bubble": null,
+   "after": {
+    "stillEnabled": false,
+    "rollDisabled": true,
+    "logLen": 3485,
+    "day": "第 15 天",
+    "panelHidden": true,
+    "cardsVisible": true,
+    "bubble": null
+   },
+   "frame": 440,
+   "kind": "direction",
+   "heading": "还剩 3 步，往哪走？",
+   "before": {
+    "scroll": {
+     "x": 0,
+     "y": 0,
+     "docH": 844,
+     "winH": 844,
+     "winW": 390
+    },
+    "choice": {
+     "top": 0,
+     "height": 355,
+     "client": 355
+    }
+   }
+  }
+ ],
+ "stuck": [],
+ "runtimeErrors": [],
+ "runtimeErrorCount": 0,
+ "png": {
+  "bytes": 109795,
+  "size": [
+   390,
+   844
+  ],
+  "sha256": "8595ba0c9a05c39a67dcedbd9cedc693ae963bbdae1d62769a459ef9abf6018a"
+ },
+ "judge": {
+  "ok": true,
+  "heading": "机会买家 的生意做到了最后",
+  "gapLine": "你与获胜者相差 51,600 资产。",
+  "human": "街角店主",
+  "rows": [
+   {
+    "owner": "机会买家",
+    "funds": 37400,
+    "land": 82000,
+    "total": 119400,
+    "sumOk": true,
+    "fit": "full"
+   },
+   {
+    "owner": "街角店主",
+    "funds": 19800,
+    "land": 48000,
+    "total": 67800,
+    "sumOk": true,
+    "fit": "full"
+   },
+   {
+    "owner": "穿街高手",
+    "funds": 5800,
+    "land": 36000,
+    "total": 41800,
+    "sumOk": true,
+    "fit": "full"
+   }
+  ],
+  "headRow": [
+   "店主",
+   "资金",
+   "地产",
+   "总资产"
+  ],
+  "checks": {
+   "threeRows": true,
+   "headerOrder": true,
+   "sumsOk": true,
+   "gapMatches": true,
+   "titleNamesWinner": true,
+   "rowsFull": true,
+   "replayUsable": true,
+   "nextGameVisible": true,
+   "nextGameNotEmpty": true
+  },
+  "raw": {
+   "claimed": "51,600",
+   "expect": "51,600",
+   "gapBranch": "human-behind",
+   "winnerTotal": 119400,
+   "meTotal": 67800,
+   "meName": "街角店主",
+   "winnerName": "机会买家",
+   "scroll": {
+    "x": 0,
+    "y": 0,
+    "docH": 844,
+    "winH": 844,
+    "winW": 390
+   },
+   "choice": {
+    "top": 0,
+    "height": 666,
+    "client": 519
+   },
+   "replay": {
+    "usable": true,
+    "why": "itself",
+    "fit": {
+     "rect": [
+      10,
+      788,
+      380,
+      836
+     ],
+     "band": {
+      "l": 0,
+      "t": 325,
+      "r": 390,
+      "b": 844
+     },
+     "visible": "full"
+    },
+    "rect": [
+     10,
+     788,
+     380,
+     836
+    ]
+   },
+   "tableRows": 4,
+   "winnerMeta": "现 37k 存 0 · 地 5 · 街道",
+   "players": [
+    {
+     "name": "街角店主",
+     "meta": "现 20k 存 0 · 地 3 · 街道",
+     "current": false
+    },
+    {
+     "name": "机会买家",
+     "meta": "现 37k 存 0 · 地 5 · 街道",
+     "current": false
+    },
+    {
+     "name": "穿街高手",
+     "meta": "现 6k 存 0 · 地 3 · 零工",
+     "current": true
+    }
+   ],
+   "choiceBox": {
+    "rect": [
+     0,
+     324,
+     390,
+     844
+    ],
+    "maxHeight": "520px",
+    "position": "fixed",
+    "overflowY": "auto"
+   }
+  },
+  "moneyOk": true
+ },
+ "buys": 3,
+ "buyFirstUnusable": null,
+ "mismatchCount": 0,
+ "mismatches": [],
+ "hintTrace": [
+  {
+   "frame": 30,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "key": 1,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    643.9,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 687.1,
+     "b": 789.1,
+     "insidePoint": false,
+     "top": "向右共 2 个方向 · 可逐项查看街心书屋：第 4 天开售再往前：3 步后 晚风"
+    },
+    {
+     "t": 791.1,
+     "b": 858.1,
+     "insidePoint": false,
+     "top": "向下街心书屋：第 4 天开售"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 60,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "key": 2,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    643.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 686.6,
+     "b": 772.1,
+     "insidePoint": false,
+     "top": "向右共 2 个方向 · 可逐项查看街道再往前：7 步后 监狱（失去 2 回合）"
+    },
+    {
+     "t": 774.1,
+     "b": 859.6,
+     "insidePoint": false,
+     "top": "向下街心书屋：第 4 天开售；街道再往前：7 步后 监狱（失去 2 回合）"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 94,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "key": null,
+   "text": null,
+   "sides": {
+    "above": 0,
+    "below": 0
+   },
+   "expectShow": false,
+   "expectText": "",
+   "agree": true,
+   "band": [
+    424.5,
+    844
+   ],
+   "itemBoxes": [
+    {
+     "t": 533.5,
+     "b": 619,
+     "insidePoint": false,
+     "top": "把生意做大 · 现在可用：翻修3栋（单栋+2,000–5,600） · 旺季5条"
+    },
+    {
+     "t": 631,
+     "b": 698,
+     "insidePoint": false,
+     "top": "找机会接盘 · 现在可用：收购5块（每块10,000–20,000） · 定步随"
+    },
+    {
+     "t": 710,
+     "b": 795.6,
+     "insidePoint": false,
+     "top": "穿过危险街 · 现在可用：停业随时可用（每次+10,000（对手每次少收10,0"
+    },
+    {
+     "t": 799.6,
+     "b": 834,
+     "insidePoint": false,
+     "top": "保留现有手牌，不补给"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": null
+  },
+  {
+   "frame": 102,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "key": 3,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    633.3,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 676.4,
+     "b": 743.4,
+     "insidePoint": false,
+     "top": "向左街道"
+    },
+    {
+     "t": 745.4,
+     "b": 830.9,
+     "insidePoint": false,
+     "top": "向右东巷小店：可买 8,000再往前：1 步后 监狱（失去 2 回合）"
+    },
+    {
+     "t": 832.9,
+     "b": 899.9,
+     "insidePoint": false,
+     "top": "向下东巷小店：可买 8,000"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 158,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "key": 4,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    630.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 673.5,
+     "b": 792,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看街道；街心书屋：机会买家 · 付租 4,000"
+    },
+    {
+     "t": 794,
+     "b": 914.6,
+     "insidePoint": false,
+     "top": "向上街心书屋：机会买家 · 付租 4,000；晚风街茶铺：穿街高手 · 付租 8"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 162,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "key": 5,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    636.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 679.6,
+     "b": 781.6,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看街道再往前：3 步后 西巷（机会买家 · 租 "
+    },
+    {
+     "t": 783.6,
+     "b": 885.6,
+     "insidePoint": false,
+     "top": "向上街心书屋：机会买家 · 付租 4,000再往前：3 步后 书屋（机会买家 ·"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 190,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "key": null,
+   "text": null,
+   "sides": {
+    "above": 0,
+    "below": 0
+   },
+   "expectShow": false,
+   "expectText": "",
+   "agree": true,
+   "band": [
+    424.5,
+    844
+   ],
+   "itemBoxes": [
+    {
+     "t": 533.5,
+     "b": 619,
+     "insidePoint": false,
+     "top": "把生意做大 · 现在可用：翻修2栋（单栋+2,000–2,800） · 旺季7条"
+    },
+    {
+     "t": 631,
+     "b": 698,
+     "insidePoint": false,
+     "top": "找机会接盘 · 现在可用：收购7块（每块10,000–20,000） · 定步随"
+    },
+    {
+     "t": 710,
+     "b": 795.6,
+     "insidePoint": false,
+     "top": "穿过危险街 · 现在可用：停业随时可用（每次+10,000（对手每次少收10,0"
+    },
+    {
+     "t": 799.6,
+     "b": 834,
+     "insidePoint": false,
+     "top": "保留现有手牌，不补给"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": null
+  },
+  {
+   "frame": 196,
+   "kind": "direction",
+   "heading": "还剩 6 步，往哪走？",
+   "key": 6,
+   "text": "↓ 还有 2 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 2
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 2 个方向在下面",
+   "agree": true,
+   "band": [
+    623.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 666.6,
+     "b": 733.6,
+     "insidePoint": false,
+     "top": "向下街道"
+    },
+    {
+     "t": 735.6,
+     "b": 854.1,
+     "insidePoint": false,
+     "top": "向上街心书屋：机会买家 · 付租 4,000再往前：6 步后 书屋（机会买家 ·"
+    },
+    {
+     "t": 856.1,
+     "b": 958.1,
+     "insidePoint": false,
+     "top": "向左街道；西巷小店：机会买家 · 付租 2,000再往前：6 步后 书屋（机会买"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 261,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "key": 7,
+   "text": "↓ 还有 2 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 2
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 2 个方向在下面",
+   "agree": true,
+   "band": [
+    617.9,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 661,
+     "b": 779.5,
+     "insidePoint": false,
+     "top": "向左街心书屋：机会买家 · 付租 19,200再往前：4 步后 书屋（机会买家 "
+    },
+    {
+     "t": 781.5,
+     "b": 900,
+     "insidePoint": false,
+     "top": "向右街道再往前：4 步后 东巷（机会买家 · 租 2,000）；7 步后 书屋（"
+    },
+    {
+     "t": 902,
+     "b": 1004,
+     "insidePoint": false,
+     "top": "向上晚风街茶铺：穿街高手 · 付租 8,000再往前：4 步后 晚风街（机会买家"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 265,
+   "kind": "direction",
+   "heading": "还剩 1 步，往哪走？",
+   "key": 8,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    636.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 679.6,
+     "b": 781.6,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看街心书屋：机会买家 · 付租 19,200再往"
+    },
+    {
+     "t": 783.6,
+     "b": 885.6,
+     "insidePoint": false,
+     "top": "向上街心书屋：机会买家 · 付租 19,200再往前：1 步后 书屋（机会买家 "
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 287,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "key": null,
+   "text": null,
+   "sides": {
+    "above": 0,
+    "below": 0
+   },
+   "expectShow": false,
+   "expectText": "",
+   "agree": true,
+   "band": [
+    424.5,
+    844
+   ],
+   "itemBoxes": [
+    {
+     "t": 533.5,
+     "b": 619,
+     "insidePoint": false,
+     "top": "把生意做大 · 现在可用：翻修2栋（单栋+2,000–5,600） · 旺季7条"
+    },
+    {
+     "t": 631,
+     "b": 698,
+     "insidePoint": false,
+     "top": "找机会接盘 · 现在可用：收购6块（每块10,000–15,000） · 定步随"
+    },
+    {
+     "t": 710,
+     "b": 795.6,
+     "insidePoint": false,
+     "top": "穿过危险街 · 现在可用：停业随时可用（每次+10,000（对手每次少收10,0"
+    },
+    {
+     "t": 799.6,
+     "b": 834,
+     "insidePoint": false,
+     "top": "保留现有手牌，不补给"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": null
+  },
+  {
+   "frame": 295,
+   "kind": "direction",
+   "heading": "还剩 4 步，往哪走？",
+   "key": 9,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    625.3,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 668.5,
+     "b": 805.6,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看街道；西巷小店：机会买家 · 付租 4,000"
+    },
+    {
+     "t": 807.6,
+     "b": 944.7,
+     "insidePoint": false,
+     "top": "向上晨光街小店：你的店 Lv.3 · 自己停在自己的店旁不收租；街心书屋：机会买"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 298,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "key": 10,
+   "text": "↓ 还有 2 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 2
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 2 个方向在下面",
+   "agree": true,
+   "band": [
+    623.2,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 666.4,
+     "b": 768.3,
+     "insidePoint": false,
+     "top": "向下街道再往前：3 步后 灯火街（穿街高手 · 租 2,000）；4 步后 灯火"
+    },
+    {
+     "t": 770.3,
+     "b": 855.8,
+     "insidePoint": false,
+     "top": "向上西巷小店：机会买家 · 付租 4,000再往前：5 步后 书屋（机会买家 ·"
+    },
+    {
+     "t": 857.8,
+     "b": 959.8,
+     "insidePoint": false,
+     "top": "向左医院：失去 2 回合，结算后停在医院入口再往前：2 步后 西巷（穿街高手 ·"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 378,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "key": null,
+   "text": null,
+   "sides": {
+    "above": 0,
+    "below": 0
+   },
+   "expectShow": false,
+   "expectText": "",
+   "agree": true,
+   "band": [
+    424.5,
+    844
+   ],
+   "itemBoxes": [
+    {
+     "t": 533.5,
+     "b": 619,
+     "insidePoint": false,
+     "top": "把生意做大 · 现在可用：翻修1栋（单栋+2,000） · 旺季7条街（每次+2"
+    },
+    {
+     "t": 631,
+     "b": 698,
+     "insidePoint": false,
+     "top": "找机会接盘 · 现在可用：收购6块（每块10,000–15,000） · 定步随"
+    },
+    {
+     "t": 710,
+     "b": 795.6,
+     "insidePoint": false,
+     "top": "穿过危险街 · 现在可用：停业随时可用（每次+12,000（对手每次少收12,0"
+    },
+    {
+     "t": 799.6,
+     "b": 834,
+     "insidePoint": false,
+     "top": "保留现有手牌，不补给"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": null
+  },
+  {
+   "frame": 417,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "key": 11,
+   "text": "↓ 还有 2 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 2
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 2 个方向在下面",
+   "agree": true,
+   "band": [
+    623.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 666.6,
+     "b": 785.1,
+     "insidePoint": false,
+     "top": "向左街心书屋：机会买家 · 停业 · 不付租再往前：6 步后 晚风街（机会买家 "
+    },
+    {
+     "t": 787.1,
+     "b": 889.1,
+     "insidePoint": false,
+     "top": "向右街道；东巷小店：机会买家 · 付租 2,000再往前：7 步后 晚风街（穿街"
+    },
+    {
+     "t": 891.1,
+     "b": 958.1,
+     "insidePoint": false,
+     "top": "向上晚风街小店：机会买家 · 付租 8,000"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 421,
+   "kind": "direction",
+   "heading": "还剩 2 步，往哪走？",
+   "key": 12,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    636.4,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 679.6,
+     "b": 781.6,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看街心书屋：机会买家 · 停业 · 不付租再往前"
+    },
+    {
+     "t": 783.6,
+     "b": 885.6,
+     "insidePoint": false,
+     "top": "向上街心书屋：机会买家 · 停业 · 不付租再往前：3 步后 晚风街（机会买家 "
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 437,
+   "kind": "direction",
+   "heading": "还剩 5 步，往哪走？",
+   "key": 13,
+   "text": "↓ 还有 1 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 1
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 1 个方向在下面",
+   "agree": true,
+   "band": [
+    623.3,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 666.5,
+     "b": 803.5,
+     "insidePoint": false,
+     "top": "向左共 2 个方向 · 可逐项查看零工：随机收入，最多 3,000；经过发薪处 "
+    },
+    {
+     "t": 805.5,
+     "b": 959.1,
+     "insidePoint": false,
+     "top": "向上经过发薪处 +4,000；街心书屋：机会买家 · 付租 19,200 · 现"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 440,
+   "kind": "direction",
+   "heading": "还剩 3 步，往哪走？",
+   "key": 14,
+   "text": "↓ 还有 2 个方向在下面",
+   "sides": {
+    "above": 0,
+    "below": 2
+   },
+   "expectShow": true,
+   "expectText": "↓ 还有 2 个方向在下面",
+   "agree": true,
+   "band": [
+    621.3,
+    837
+   ],
+   "itemBoxes": [
+    {
+     "t": 664.5,
+     "b": 766.4,
+     "insidePoint": false,
+     "top": "向下零工：随机收入，最多 3,000再往前：3 步后 灯火街（穿街高手 · 租 "
+    },
+    {
+     "t": 768.4,
+     "b": 853.9,
+     "insidePoint": false,
+     "top": "向上经过发薪处 +4,000再往前：5 步后 书屋（机会买家 · 租 19,20"
+    },
+    {
+     "t": 855.9,
+     "b": 974.4,
+     "insidePoint": false,
+     "top": "向左西巷茶铺：穿街高手 · 付租 4,000再往前：4 步后 西巷（穿街高手 ·"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": true
+  },
+  {
+   "frame": 457,
+   "kind": "supply",
+   "heading": "这三天，你想怎么做？",
+   "key": null,
+   "text": null,
+   "sides": {
+    "above": 0,
+    "below": 0
+   },
+   "expectShow": false,
+   "expectText": "",
+   "agree": true,
+   "band": [
+    424.5,
+    844
+   ],
+   "itemBoxes": [
+    {
+     "t": 533.5,
+     "b": 619,
+     "insidePoint": false,
+     "top": "把生意做大 · 现在可用：翻修1栋（单栋+4,000） · 旺季7条街（每次+2"
+    },
+    {
+     "t": 631,
+     "b": 698,
+     "insidePoint": false,
+     "top": "找机会接盘 · 现在可用：收购5块（每块10,000–15,000） · 定步随"
+    },
+    {
+     "t": 710,
+     "b": 795.6,
+     "insidePoint": false,
+     "top": "穿过危险街 · 现在可用：停业随时可用（每次+16,000（对手每次少收16,0"
+    },
+    {
+     "t": 799.6,
+     "b": 834,
+     "insidePoint": false,
+     "top": "保留现有手牌，不补给"
+    }
+   ],
+   "choiceTop": 0,
+   "handTop": 0,
+   "pageY": 0,
+   "visible": null
+  }
+ ]
+}
