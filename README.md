@@ -67,6 +67,15 @@ t逐个列出「买下后每局大约能收多少」，因为四个候选的价�
 同一天还修了给读者的手机复验入口：`support/probe-3334/geom.mjs` 改前从本机 `.scratch/` 起静态服务，
 干净副本上会 ENOENT；现在只用随仓库走的文件。见 [RESULT-3335](docs/evidence/RESULT-3335.md)。
 
+**「这局跑的是哪一版、浏览器收到的就是那一版」现在是一个可重算的断言。**
+这一轮没有动任何产品字节（35 个文件与上一版逐字节相同，锁仍是 `slice-entry-3335.sha256`），
+动的是**证明本身**：三个工具原来各自写死了一份「当前锁」，其中 `verify-http.py` 停在上一版，
+而且只核 5 个样本文件，恰好漏掉那一版唯一改过的 `src/ui/slice.js` —— 所以 `receipt-3335-final`
+里那句 `SEALED` 是不成立的（它的 E 项仍然成立，见下）。
+现在当前锁只活在 `docs/evidence/current-lock.txt` 一行里，封印改成核**整把锁**，
+并把每个响应的完整摘要写进回执（`verify-receipt.py` 的 F 项），拿到回执的人可以自己重算。
+索引里「当前」也不再由人写，而由测试对着指针核。见 [RESULT-3336](docs/evidence/RESULT-3336.md)。
+
 - `slice=1` 进「街角生意」切片；`style=grow|take|cross` 预选起手；`seed` 固定随机序列。
 - 不带参数打开会落在完整设置页（完整模式 12 张地图仍在）。
 - 固定端口也可：`python3 -B serve.py 8000` → `http://127.0.0.1:8000/?slice=1&style=grow&seed=1`。
@@ -82,6 +91,7 @@ python3 support/full-game/clean-checkout.py   # 只复制交付文件到空目�
 python3 support/full-game/make-candidate.py   # 只打印把交付集做成根提交的 id（不动任何分支、不 push）
 python3 support/full-game/make-candidate.py --branch candidate/3278-narrow-slice   # 同上，并把该分支指过去
 python3 support/full-game/make-receipt.py support/full-game/OUT-<那次运行>   # 把一次整局的原始帧裁成可复判的精简回执
+python3 support/full-game/verify-receipt.py docs/evidence/receipt-3336-final   # 只要回执就能核 A–F
 ```
 
 无浏览器调试（这两个脚本只依赖交付集里的模块，干净检出里可直接跑）：

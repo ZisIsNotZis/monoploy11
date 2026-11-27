@@ -6,7 +6,8 @@ the way to the results screen.
 Why the tree is built from the lock instead of the worktree
 -----------------------------------------------------------
 The ask is "from a clean checkout, independently play a whole game and know the result".
-docs/evidence/slice-entry-3334.sha256 names 35 files; this script copies ONLY those,
+docs/evidence/current-lock.txt names the current product lock (35 files); this script
+copies ONLY those,
 refuses if any is missing or drifted, then serves the tree on a second port and compares
 the RESPONSE BYTES a browser receives with the lock. The repo's test/, tools/, docs/ and
 support/ never enter the tree, so a pass here cannot be propped up by anything the lock
@@ -36,8 +37,12 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-# #3330：产品字节改了（起手开工现金），所以整局跑在新锁上。旧锁 3278 留在库里作为历史。
-LOCK = ROOT / 'docs/evidence/slice-entry-3335.sha256'
+sys.path.insert(0, str(HERE))
+import lockfile  # noqa: E402  (path set above)
+# #3336：锁名不再写在这里。三份手写的「当前锁」副本已经漂过一次
+# （verify-http.py 停在 3334，于是 receipt-3335-final 里那句 SEALED 比的是旧字节）。
+# 现在唯一的指针是 docs/evidence/current-lock.txt，解析在 lockfile.py。
+LOCK = lockfile.current_lock(ROOT)
 # OUT_NAME comes from the environment so one attempt never overwrites the last:
 # single-use means a name that already exists is refused, not reused.
 OUT = HERE / (os.environ.get('OUT_NAME') or 'OUT-clean-full')
@@ -224,12 +229,7 @@ def fc_summary():
 
 
 def lock_entries():
-    out = []
-    for line in LOCK.read_text().splitlines():
-        if line.strip():
-            digest, rel = line.split('  ', 1)
-            out.append((rel, digest))
-    return out
+    return lockfile.entries(LOCK)
 
 
 def tree_digest(pairs):
@@ -422,7 +422,12 @@ def main():
         (OUT / 'ports.json').write_text(json.dumps({
             'http': HTTP_PORT, 'cdp': CDP_PORT, 'verify': VERIFY_PORT,
             'note': port_note}, indent=2) + '\n')
-        check = subprocess.run([sys.executable, str(VERIFY), str(tree), str(VERIFY_PORT)],
+        # #3336: the seal also writes a machine-readable record. The .txt log truncates
+        # hashes to 12 chars, which reads fine and proves nothing; the JSON carries the
+        # full served digests so a reader holding only the receipt can recompare them
+        # against the lock (verify-receipt.py item F).
+        check = subprocess.run([sys.executable, str(VERIFY), str(tree), str(VERIFY_PORT),
+                               str(OUT / 'served-seal.json')],
                                capture_output=True, text=True, timeout=120)
         (OUT / 'verify-http.txt').write_text(check.stdout + '\n--- stderr ---\n' + check.stderr)
         print(check.stdout.strip())

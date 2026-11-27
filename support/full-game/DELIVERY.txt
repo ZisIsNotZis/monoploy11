@@ -4,8 +4,10 @@
 # 而 .scratch 不入库 —— 从干净检出根本跑不起来。"可复取"必须能被点名，否则只是说法。
 #
 # 格式：
-#   lock <path>   —— 产品字节，sha256 在 docs/evidence/slice-entry-3332.sha256 里钉死
-#                （#3330 起手开工现金那一轮重签；多34 个文件未变，只有下列三个变了）
+#   lock <path>   —— 产品字节，sha256 在**当前锁**里钉死。当前锁是哪一把由
+#                docs/evidence/current-lock.txt 一行指定（#3336 起不再写死在这里，
+#                以前清单/跑局/字节校验各记一份，其中一份已经漂了）。
+#                校验：python3 support/full-game/check-delivery.py
 #   doc  <path>   —— 说明与证据文字
 #   tool <path>   —— 量具（跑一局、判一局、核字节目录）
 #
@@ -166,6 +168,7 @@ tool support/full-game/check-delivery.py
 tool support/full-game/clean-checkout.py
 tool support/full-game/make-candidate.py
 tool support/full-game/make-receipt.py
+tool support/full-game/lockfile.py
 tool support/full-game/DELIVERY.txt
 # README 点名的两个调试工具。它们只 import src/ 下已在锁内的模块，不读私有路径、
 # 不写盘、不需要浏览器 ⇒ 干净检出里能直接跑。另外三个 tools/verify-*.mjs 硬编码了
@@ -255,6 +258,10 @@ doc  support/probe-3334/build-panel-390x844.png
 # 而那目录不入库，干净副本上照 RESULT-3334 的复跑命令跑会直接 ENOENT。
 # 现在它只用随仓库走的 support/probe-3334/serve.mjs；判据在 test/build-fork-lastday.test.js。
 doc  docs/evidence/RESULT-3335.md
+doc  docs/evidence/RESULT-3336.md
+# #3336：当前锁的唯一指针。run-full / check-delivery / verify-http 都读它，
+# 不许再各自写死锁名；test/current-lock.test.js 咬住。
+doc  docs/evidence/current-lock.txt
 doc  support/probe-3335/lastday-hold.mjs
 doc  support/probe-3335/len.mjs
 doc  support/probe-3335/lastday.mjs
@@ -262,6 +269,16 @@ doc  support/probe-3335/geom-lastday.mjs
 doc  support/probe-3335/serve.mjs
 doc  support/probe-3335/fixture.html
 doc  support/probe-3335/geom-lastday.json
+# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3335，
+# 并带 seal（35 个响应逐一比对，verify-receipt.py F 项可重算）。
+doc  docs/evidence/receipt-3336-final/provenance.json
+doc  docs/evidence/receipt-3336-final/record-8-summary.json
+doc  docs/evidence/receipt-3336-final/record-10-replay.json
+doc  docs/evidence/receipt-3336-final/after.json
+doc  docs/evidence/receipt-3336-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3336-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3336-final/raw/after.json.gz
+# #3335 的回执：保留（史实与它自己的 A–D），但它那句 SEALED 是错的（见 RESULT-3336.md）。
 # 整局回执：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3335。
 doc  docs/evidence/receipt-3335-final/provenance.json
 doc  docs/evidence/receipt-3335-final/record-8-summary.json

@@ -4,17 +4,23 @@
 但它**不记录**当时跑的是哪一版产品。于是改一次产品字节之后，库里那些 PASS 会看起来
 像是在为**现在**这棵树背书 —— 它们不是。
 
-| 回执 | 播放的产品字节 | 说明 |
-|---|---|---|
-| `receipt-3317-390` | `slice-entry-3278.sha256` 之前 | 记录的是 F6 扩到所有屏之后判红的那一次，判词是 FAIL，作为失败样本保留 |
-| `receipt-3319-390` | `slice-entry-3278.sha256` 之前 | 无 raw/，已在 `UNVERIFIABLE.md` 登记为不可核对 |
-| `receipt-3319i-tree` | `slice-entry-3278.sha256` | 当时用 `tree-after.sha256` 逐项核过 35 个产品文件，那份核对表未随交付发出 |
-| `receipt-3320-390` | `slice-entry-3278.sha256` | 真 Chrome 423 帧 / 64 按，`VERDICT: PASS` |
-| `receipt-3330-final` | `slice-entry-3330.sha256` | 起手开工现金改动后的一整局：415 帧 / 62 按，`VERDICT: PASS`（人类获胜），见 `RESULT-3330.md`。回执自己报 `NOT BOUND`（剪的时候还没有 `product` 字段）；这一行的锁是**对着那一版的字节核出来的**，不是它自报的 |
-| `receipt-3331-final` | `slice-entry-3331.sha256` | **第一份真正绑定产品的回执**：`provenance.json` 带 `product.lock` / `product.lock_sha256` / `product.tree_sha256`，`verify-receipt.py` 的 E 项可从库里的锁文件重算；415 帧 / 62 按，`VERDICT: PASS`（人类获胜） |
-| `receipt-3332-final` | `slice-entry-3332.sha256` | #3332 的整局回执，跑在**当前**这把锁上。修了「收购卡对空地也收 125% 溢价」（空地不再是合法目标），产品字节因此变了，所以重签锁并重跑。416 帧 / 62 按，`VERDICT: PASS`（人类获胜）。收购卡改了目标规则、平衡表逐位未变（45.7/32.0/34.7）。 |
-| `receipt-3334-final` | `slice-entry-3334.sha256` | #3334 的整局回执，跑在**当前**这把锁上（相对 3333 只改 `src/ui/slice.js` / `src/ui/render.js`，都是加盖屏那句话）。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3334.md`。 |
-| `receipt-3333-final` | `slice-entry-3333.sha256` | #3333 的整局回执，跑在它自己那把锁上（已不是当前产品）（相对 3332 只改 `insight.js` / `slice-ai.js` / `render.js`）。修了两处：①「每局约 +N，另压对手 M」把已在 N 里的 M 又印一次、且两个单位不同；②AI 的收购候选集 ⊃ 引擎合法集，导致 seed 173 那一局**永远走不下去**。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3333.md`。 |
+「当前」一列由 `docs/evidence/current-lock.txt` 决定，不是手写的判断：
+`test/current-lock.test.js` 会核对这张表标「当前」的那一行确实就是指针点名的那把锁。
+所以升级产品时这张表不会悄悄停在旧版本上（#3336 之前它正是这么停的）。
+
+| 回执 | 播放的产品字节 | 当前 | 说明 |
+|---|---|---|---|
+| `receipt-3317-390` | `slice-entry-3278.sha256` 之前 | — | 记录的是 F6 扩到所有屏之后判红的那一次，判词是 FAIL，作为失败样本保留 |
+| `receipt-3319-390` | `slice-entry-3278.sha256` 之前 | — | 无 raw/，已在 `UNVERIFIABLE.md` 登记为不可核对 |
+| `receipt-3319i-tree` | `slice-entry-3278.sha256` | — | 当时用 `tree-after.sha256` 逐项核过 35 个产品文件，那份核对表未随交付发出 |
+| `receipt-3320-390` | `slice-entry-3278.sha256` | — | 真 Chrome 423 帧 / 64 按，`VERDICT: PASS` |
+| `receipt-3330-final` | `slice-entry-3330.sha256` | — | 起手开工现金改动后的一整局：415 帧 / 62 按，`VERDICT: PASS`（人类获胜），见 `RESULT-3330.md`。回执自己报 `NOT BOUND`（剪的时候还没有 `product` 字段）；这一行的锁是**对着那一版的字节核出来的**，不是它自报的 |
+| `receipt-3331-final` | `slice-entry-3331.sha256` | — | **第一份真正绑定产品的回执**：`provenance.json` 带 `product.lock` / `product.lock_sha256` / `product.tree_sha256`，`verify-receipt.py` 的 E 项可从库里的锁文件重算；415 帧 / 62 按，`VERDICT: PASS`（人类获胜） |
+| `receipt-3332-final` | `slice-entry-3332.sha256` | — | #3332 的整局回执，跑在它自己那把锁上（已不是当前产品）。修了「收购卡对空地也收 125% 溢价」（空地不再是合法目标），产品字节因此变了，所以重签锁并重跑。416 帧 / 62 按，`VERDICT: PASS`（人类获胜）。收购卡改了目标规则、平衡表逐位未变（45.7/32.0/34.7）。 |
+| `receipt-3334-final` | `slice-entry-3334.sha256` | — | #3334 的整局回执，跑在它自己那把锁上（相对 3333 只改 `src/ui/slice.js` / `src/ui/render.js`，都是加盖屏那句话）。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3334.md`。 |
+| `receipt-3336-final` | `slice-entry-3335.sha256` | **当前** | #3336 的整局回执，跑在当前锁上，416 帧 / 62 按，`VERDICT: PASS`（人类获胜）。它带 `seal` 字段：**35 个响应逐一**与锁逐字节相同且 `no-store`，读者拿回执就能重算（`verify-receipt.py` F 项）。旧的 `receipt-3335-final` 仍在库里，但那一句 SEALED 比的其实是 3334 的字节（见它那一行）。 |
+| `receipt-3335-final` | `slice-entry-3335.sha256` | — | #3335 的整局回执（414 帧 / 62 按，`VERDICT: PASS`）。E 项经得起复核（它从锁重算树指纹），**但它当时那句 SEALED 是错的**：`verify-http.py` 还停在 3334，且只核 5 个样本文件、不含 3335 唯一改过的 `src/ui/slice.js`。保留它是因为 #3335 的结论（最后一天那句承诺）自己有独立证据；但引用字节封印时请引 `receipt-3336-final`。见 `RESULT-3336.md`。 |
+| `receipt-3333-final` | `slice-entry-3333.sha256` | — | #3333 的整局回执，跑在它自己那把锁上（相对 3332 只改 `insight.js` / `slice-ai.js` / `render.js`）。修了两处：①「每局约 +N，另压对手 M」把已在 N 里的 M 又印一次、且两个单位不同；②AI 的收购候选集 ⊃ 引擎合法集，导致 seed 173 那一局**永远走不下去**。415 帧 / 62 按，`VERDICT: PASS`（人类获胜）。平衡逐位未变（45.7/32.0/34.7）。见 `RESULT-3333.md`。 |
 
 判据由 `test/receipt-product-binding.test.js` 咬住：
 **每一份在库回执都必须在这张表里出现**，而且点名的那把锁必须是库里真实存在的文件。

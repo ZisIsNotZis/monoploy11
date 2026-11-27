@@ -187,6 +187,13 @@ def main(argv=None):
     prov = {
         'source_run': str(src.name),
         'product': product,
+        # #3336: the per-request seal record. It used to live only in OUT-*/verify-http.txt,
+        # which is gitignored and truncated to 12 hex chars -- so the most-repeated claim
+        # about this product ("the browser got the lock's bytes") could not be rechecked
+        # by a reader holding the receipt. Carried verbatim (not recomputed: recomputing
+        # would hide a tampered record) when the run produced one.
+        'seal': (json.loads((src / 'served-seal.json').read_text())
+                 if (src / 'served-seal.json').is_file() else None),
         'cut_by': 'support/full-game/make-receipt.py',
         'judged_same_as_raw': True,
         'raw': {name: {'bytes': (src / name).stat().st_size, 'sha256': sha(src / name),

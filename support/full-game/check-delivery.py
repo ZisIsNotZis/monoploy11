@@ -4,7 +4,8 @@
 Two independent questions, both answered here:
 
   1. DOES THE LIST EXIST?  Every file named by DELIVERY.txt is present, and every `lock`
-     line still matches the sha256 written in docs/evidence/slice-entry-3335.sha256.
+     line still matches the sha256 written in the current product lock
+     (docs/evidence/current-lock.txt -> lockfile.current_lock()).
      This is what stops "replayable" from being a claim about files nobody committed.
 
   2. DOES THE LIST COVER WHAT IS SHIPPED?  Walk the repo's product dirs and report any
@@ -20,8 +21,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 LIST = HERE / 'DELIVERY.txt'
-# #3330：起手开工现金改动后重签的那把锁。旧锁 3278 仍在库里，但产品已不是它的字节。
-LOCK = ROOT / 'docs/evidence/slice-entry-3335.sha256'
+sys.path.insert(0, str(HERE))
+import lockfile  # noqa: E402  (path set above)
+# #3336：锁名只活在 docs/evidence/current-lock.txt。这里曾经写死一份副本，
+# 和 run-full.py / verify-http.py 各写各的，其中一份已经漂过。
+LOCK = lockfile.current_lock(ROOT)
 
 # Product bytes a player loads. Anything here that the list forgets is a real gap.
 PRODUCT_DIRS = ['src']
@@ -45,11 +49,7 @@ def read_list():
 
 
 def main():
-    lock = {}
-    for line in LOCK.read_text().splitlines():
-        if line.strip():
-            digest, rel = line.split('  ', 1)
-            lock[rel] = digest
+    lock = dict(lockfile.entries(LOCK))
 
     kinds = read_list()
     problems = []

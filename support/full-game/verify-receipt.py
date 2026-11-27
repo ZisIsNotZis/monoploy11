@@ -219,6 +219,54 @@ def main(argv=None):
         print(f'E  product  ran exactly {lock_rel} ({prod.get("files")} files, '
               f'tree {prod["tree_sha256"][:16]}), and that lock is unchanged on disk')
 
+    # ---- F. what the browser actually received -----------------------------------
+    #
+    # E says which lock the run was BUILT from. It cannot say what crossed the wire,
+    # because the digest is computed over the tree on disk, not over responses. The run's
+    # `verify-http.txt` used to be the only evidence for that step, and it was wrong on
+    # #3335 in two ways: the script's lock name still said 3334, and its five-file sample
+    # omitted src/ui/slice.js, the one file that version changed. Both are fixed
+    # (support/full-game/verify-http.py reads current-lock.txt and seals all 35 files);
+    # this item makes the result re-checkable from the receipt alone.
+    #
+    # Older receipts have no `seal` field. Like E, that is NOT a pass token: say what was
+    # checked. It is also not a failure -- A-E remain true for them.
+    seal = prov.get('seal')
+    if not seal:
+        print('F  seal     NOT RECORDED -- this receipt predates the per-request seal record, '
+              'so nothing here shows what bytes the browser received.')
+    else:
+        claimed = (prod or {}).get('lock')
+        if claimed and seal.get('lock') != claimed:
+            return fail(f'F  seal     the seal covers {seal.get("lock")!r} but the run claims '
+                        f'{claimed!r} -- two different products in one receipt')
+        lock_path = HERE.parent.parent / seal['lock']
+        if not lock_path.is_file():
+            return fail(f'F  seal     names a lock not in the repo: {seal["lock"]}')
+        if sha256_bytes(lock_path.read_bytes()) != seal.get('lock_sha256'):
+            return fail('F  seal     the lock file changed since the seal ran')
+        # 锁文件的行是 "<sha256>  <path>"（不是反过来）—— 第一版写反了，
+        # 于是 F 说「服务过的集合与锁不一致」，错的其实是解析器。#3336 自查到的。
+        want = {rel: digest for digest, rel in
+                (ln.split('  ', 1) for ln in lock_path.read_text().splitlines() if ln.strip())}
+        served = seal.get('served') or {}
+        if not seal.get('sealed'):
+            return fail('F  seal     the run itself reported NOT-SEALED; see verify-http.txt')
+        if sorted(served) != sorted(want):
+            missing = sorted(set(want) - set(served))
+            extra = sorted(set(served) - set(want))
+            return fail(f'F  seal     served set != lock set (missing {missing}, extra {extra}); '
+                        'a sample cannot seal a product')
+        wrong = [rel for rel, digest in want.items()
+                 if (served[rel] or {}).get('sha256') != digest]
+        if wrong:
+            return fail(f'F  seal     served bytes differ from the lock for {wrong}')
+        no_store = [rel for rel in sorted(want) if not served[rel].get('no_store')]
+        if no_store:
+            return fail(f'F  seal     response for {no_store} did not forbid reuse')
+        print(f'F  seal     {len(served)} responses matched the lock byte-for-byte with no-store '
+              f'({seal["lock"]}, lock sha {seal["lock_sha256"][:12]})')
+
     print()
     print('PROVENANCE: PASS -- this receipt locates its own source and can be checked '
           'without the run directory')
