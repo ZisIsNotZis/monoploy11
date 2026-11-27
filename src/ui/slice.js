@@ -2,6 +2,7 @@ import { SLICE_CARDS } from '../data/slice.js';
 import { assetsOf, rentFor, buyPrice, buildCost, cheapestBuyable } from '../engine/economy.js';
 import { poolShareLine, poolKLine } from '../engine/payback.js';
 import { supplyWorth } from '../engine/insight.js';
+import { MARKET_LEDGER, MARKET_PLOT as LEDGER_MARKET_PLOT, holdLeversFacts, bigBuildCost } from '../engine/market-ledger.js';
 
 export const money = n => Math.round(n).toLocaleString();
 export const signed = n => `${n>=0?'+':''}${money(n)}`;
@@ -1141,6 +1142,17 @@ function rentEarnedOn(state, human, name) {
   return { sum, hits };
 }
 
+// 我自己停在某间店旁边几次。引擎里这一步只问「要不要加盖」，从不收租 ——
+// 所以这个数正好是「我走了那条路却什么都没拿到」的次数（#3338）。
+function ownStopsOn(state, human, name) {
+  let hits = 0;
+  for (const entry of state.log ?? []) {
+    if (!new RegExp(`^${human.name} 停在 \\S+，旁边是 ${name}$`).test(String(entry.text))) continue;
+    hits += 1;
+  }
+  return { hits };
+}
+
 // 人类付过的最大一笔租。这是「本局最贵的一停」，**不是**出局原因：它可能已经付清了。
 function biggestRentPaid(state, human) {
   let best = null;
@@ -1222,32 +1234,55 @@ export function nextGameLine(state) {
     const took = boughtLog(state, name);
     if (owner && owner.team === human.team) {
       // 我拿到了：本局拿到的不再是问题，下一局的问题是「拿到之后拿它做什么」。
-      // 所以这里给下一个真实动作：还能升就说到顶的价钱与租金，到顶就说再加一级值多少。
-      // 两个数都走引擎（buildCost / rentFor），不写死。
+      //
+      // #3338 修的两个真缺陷（supervisor 在 a7564dd 的真机上抓到）：
+      //
+      // ① 价报错了一倍。书屋是 big：flow.js 的 buildPlot 与 groundPhase 的加盖询问都写
+      //    `pr.big ? 30_000 : buildCost(...)`。这里原来用 buildCost(lv+1)，于是 2→3 级报 15,000，
+      //    引擎实际扣 30,000（.scratch/3338/upcost.mjs：charged=30000）。现在走 bigBuildCost。
+      //
+      // ② 更糟的是那句「下一局把它放在你的路线上（停步的落点选它旁边）」。
+      //    引擎里租金只在**别人**踩到时才收（flow.js groundPhase：自己站自己的店旁边只走
+      //    「要不要加盖」的询问）。supervisor 那一局（grow/seed 9）他自己停在书屋旁边 7 次，
+      //    一分钱也没收到，结算却叫他下次再走这条路 —— 玩家照做只会重复同一个空手。
+      //    72 局实测（support/probe-3338/ledger-table.mjs，与 MARKET_LEDGER 同一批量）：
+      //    我持有书屋的 31 局里，31 局都发生过「我自己停在它旁边」，合计 155 次；
+      //    真到账全靠对手踩到（27/31 局至少 2 次）。所以变量是对手走位，不是我的落点。
+      //    这一屏现在只说玩家真能改的两件：等级（已到顶就没了）与旺季卡（这条街租 ×2，3 天）。
       const max = state.config?.maxLevel ?? 3;
       const lv = pr?.level ?? 0;
+      const levers = holdLeversFacts(state, human);
       if (lv > 0 && lv < max) {
-        const cost = Math.round(buildCost(lv + 1) * (state.priceIndex ?? 1));
-        const saved = pr.level;
-        let now = 0, top = 0;
-        try {
-          now = rentFor(state, MARKET_PLOT);
-          pr.level = max;
-          top = rentFor(state, MARKET_PLOT);
-        } finally { pr.level = saved; }
-        return `拿到${name}之后接着往上盖：从 ${lv} 级到 ${max} 级要花 ${money(cost)}，`
-          + `它每次被踩到的租金 ${money(now)} → ${money(top)}。`;
+        const cost = levers?.buildCostToTop ?? bigBuildCost(state);
+        const now = levers?.rent ?? rentFor(state, MARKET_PLOT);
+        const top = levers?.topRent ?? now;
+        return `拿到${name}之后接着往上盖：从 ${lv} 级到 ${max} 级要花 ${money(cost)}（书屋每级都是这个价），`
+          + `它每次被对手踩到的租金 ${money(now)} → ${money(top)}。`;
       }
-      // 到顶了：再投钱也涨不上去。这一支不该只复述本局 —— 它得说清「这座店还剩什么事可做」。
-      // 引擎规则：租金只在别人踩到时才收（rentFor 只在付款那一路被读取），所以满级之后
-      // 唯一的变量是「它有没有被踩到」。这两个数都来自日志原文，不是估算。
+      // 到顶了：再投钱也涨不上去。剩下的真变量只有两个，都得说出来：
+      // 「对手踩到几次」——不由我决定；「旺季卡」——我手里唯一还能把这条街租金翻倍的牌。
       const earned = rentEarnedOn(state, human, name);
-      if (!earned.hits) {
-        return `${name}已经 ${lv} 级到顶，再投钱也涨不上去：本局它一次没被踩到。`
-          + `下一局把它放在你的路线上（停步的落点选它旁边），满级的租才收得到。`;
-      }
-      return `${name}已经 ${lv} 级到顶：本局它被踩到 ${earned.hits} 次、替你收了 ${money(earned.sum)}，`
-        + `下一局这个数只能靠「多被踩到」再涨。`;
+      const own = ownStopsOn(state, human, name);
+      const m = MARKET_LEDGER.whenMine;
+      const [z] = m.stoppedByRival;
+      const where = earned.hits === 0
+        ? `本局它一次没被对手踩到（72 局里这样的是 ${z} 局）`
+        : `本局对手踩到它 ${earned.hits} 次、替你收了 ${money(earned.sum)}`;
+      // 自己停旁边的次数照实说 —— 这正是 supervisor 被绕晕的那件事，不说清他会再试一次。
+      const minePart = own.hits
+        ? `你自己停在它旁边 ${own.hits} 次，那几次一分钱也没有（自己的店不收自己的租）。`
+        : '';
+      // #3358：旺季那一句必须说清「什么时候才有用」。supervisor 在 grow/4 上读到
+      // 「每次 0 变 0」—— 终局那条街在停业，而停业时 rentFor 直接返回 0，
+      // 旺季卡（inflate=3）根本盖不过它（game.js：close 设 closed=2，rentFor 先判 closed）。
+      // 两个 0 相乘得 0 不是玩家的账，是我把两个不同状态混在一句里。
+      const closed = levers?.closed ?? 0;
+      const base = closed > 0 ? (levers?.reopened ?? 0) : (levers?.rent ?? 0);
+      const inflated = closed > 0 ? (levers?.reopenedInflated ?? 0) : (levers?.inflatedRent ?? 0);
+      const season = closed > 0
+        ? `这条街结束时还在停业（${closed} 天），停业期间旺季也没用 —— 停业先结束，旺季才把 ${money(base)} 变 ${money(inflated)}。`
+        : `你手里还能改的是旺季卡：打在这条街上，每次 ${money(base)} 变 ${money(inflated)}，持续 3 天。`;
+      return `${name}已经 ${lv} 级到顶，再投钱也涨不上去：${where}。${minePart}${season}`;
     }
     if (owner) {
       const paid = rentPaidOn(state, human, name);
@@ -1259,15 +1294,23 @@ export function nextGameLine(state) {
         ? `你踩到它 ${paid.hits} 次、付了 ${money(paid.sum)}`
         : truncated ? '' : '你一次也没踩到它';
       const who = took ? `${took.by}第 ${took.day} 天` : '对手';
-      return `第 ${fromDay} 天就去拿${name}：本局${who}用 ${money(price)} 拿走了它`
-        + (mine ? `，${mine}。` : '。');
+      // #3338：这一支以前只说「第 4 天就去拿」。现在把买地屏那三行账的同一份数接上来：
+      // 谁哪一天拿走的、本局你为它付了多少，以及 72 局里先拿到它的 31 局实收多少。
+      // 两屏指的是同一份表（MARKET_LEDGER），所以不会再一屏劝退一屏劝买。
+      const m = MARKET_LEDGER.whenMine;
+      return `第 ${fromDay} 天开售就去拿${name}：本局${who}用 ${money(price)} 拿走了它`
+        + (mine ? `，${mine}。` : '。')
+        + `同规则 72 局里先拿到它的 ${m.games} 局，平均实收 ${money(m.earnedMean)}`
+        + `（${m.earnedZero} 局一分没收到）—— 这笔钱不靠你停在旁边，靠对手停过来。`;
     }
     // 全程没人买：把它值多少用引擎自己的 rentFor 算出来，不用记忆里的「近一万」。
     const hypothetical = { ...state, properties: { ...props,
       [MARKET_PLOT]: { ...pr, ownerId: human.id, level: Math.max(1, pr?.level ?? 0) } } };
     const rent = rentFor(hypothetical, MARKET_PLOT);
+    const m = MARKET_LEDGER.whenMine;
     return `第 ${fromDay} 天带 ${money(price)} 走到${name}旁边：本局它全程没人买，`
-      + (rent ? `买下后每次被踩到你收 ${money(rent)}。` : '而它整局没人接手。');
+      + (rent ? `买下后每次被对手踩到你收 ${money(rent)}。` : '而它整局没人接手。')
+      + `同规则 72 局里有 ${m.earnedZero} 个「我拿着它」的局一分没收到；这间店的钱靠对手走位，不靠你站旁边。`;
   }
 
   // ③ 兜底：本局我为对手那间店付租最多，而它本来只是标价。
@@ -1306,6 +1349,5 @@ export function sliceResults(state) {
     <p>你收租 ${money(human.sliceStats.rentEarned)}，付租 ${money(human.sliceStats.rentPaid)}，用了 ${human.sliceStats.cardsPlayed} 张卡，完成 ${human.sliceStats.takeovers} 次接盘。</p>
     ${stepPaybackSection(state)}
     <details><summary>回看你改变局面的回合</summary>${state.slice.history.filter(h=>h.playerId===human.id&&(h.cardsPlayed||h.money!==0)).map(h=>`<p>第 ${h.day} 天 · 资金 ${signed(h.money)} / 资产 ${signed(h.assets)}<br>${h.lines.filter(t=>!/回合|掷出|方向/.test(t)).join('<br>')}</p>`).join('')}</details>
-    <p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p>
-    <button data-replay>换个打法，再开一局</button>`;
+    <div class="next-bar"><p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p><button data-replay>换个打法，再开一局</button></div>`;
 }

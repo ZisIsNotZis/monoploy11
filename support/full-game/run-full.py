@@ -251,7 +251,19 @@ def tree_digest(pairs):
 def build_lock_tree(dest):
     """Copy exactly the lock's files; a missing or drifted source refuses the run."""
     entries = lock_entries()
-    need(len(entries) == 35, f'lock names {len(entries)} files, expected 35')
+    # #3338: 这里原来是 `== 35`，是「当前锁有几个文件」的**第二份副本**。
+    # 加一个产品文件（src/engine/market-ledger.js）就把它撞红了 —— 而那一次红
+    # 说的是量具自己不会数，不是产品坏了。真正要钉的不是「35 个」，是两件事：
+    # 锁里没有重复行，且锁的文件集**恰好覆盖** src/ 与三个根产品文件（少一个就是
+    # 干净检出里少一个文件，多一个就是封了不该封的东西）。
+    need(len(entries) == len({rel for rel, _ in entries}), 'lock names the same file twice')
+    named = {rel for rel, _ in entries}
+    expected = {'index.html', 'serve.py', 'styles.css'} | {
+        str(p.relative_to(ROOT)).replace('\\', '/')
+        for p in (ROOT / 'src').rglob('*')
+        if p.is_file() and '__pycache__' not in p.parts}
+    need(named == expected,
+         f'lock and product disagree: missing {sorted(expected - named)}, extra {sorted(named - expected)}')
     dest.mkdir(parents=True)
     for rel, digest in entries:
         src = ROOT / rel

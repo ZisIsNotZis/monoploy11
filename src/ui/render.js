@@ -7,6 +7,7 @@ import { CARD_DESC } from '../data/card-desc.js';
 import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=150';
 import { reachableLandings, landingInfo, landingText, routePreview, sliceTargetIds, nextTurnWords, nextTurnStreetNames, streetCardModel, supplyWorth } from '../engine/insight.js';
 import { renderSliceInsight, sliceResults, sliceCardName, sliceCardDescription, sliceCardLine, upgradeAfterLine, money, buildForwardLine, buildOpportunityLine, buildOrderLine } from './slice.js';
+import { buyLedgerLines } from '../engine/market-ledger.js';
 import { poolShareLine, roundsToRecover } from '../engine/payback.js';
 import { superdiceLines } from './superdice-preview.js';
 
@@ -816,7 +817,7 @@ function renderChoice(el, state, p, actions) {
     const label = pending.level > 0 ? `${base} Lv.${pending.level}（无主已建）` : base;
     const poor = (p?.cash ?? 0) < pending.price;
     html = box(`购买 ${label}`, `<p>售价 ${pending.price.toLocaleString()}${poor ? ' · 现金不足' : ''}</p>
-      ${state.slice?`<p class="hint">买下立即开始收租；${plot.big?'书屋每次收租额外产出一张卡。':'同街己方两间已建店铺会增加租金。'}剩余现金 ${money(p.cash-pending.price)}。资金不够付租会破产。</p>`:''}
+      ${state.slice?`<p class="hint">买下这间店就归你；${plot.big?'书屋每次收租额外产出一张卡。':'同街己方两间已建店铺会增加租金。'}这笔钱换到了什么、还差多少（若买不起），见下面三行。资金不够付租会破产。</p>`:''}
       ${state.slice&&plot?(()=>{/* #672：中局给“这一把值不值”的代价/收益，不只售价 */
         // 买下会改变同街与等级，所以先临时“模拟买下”再 rentFor，算完立刻恢复。
         // 这与 flow.js:647-651 给加盖算回本的做法同构（临时改状态→读 rentFor→恢复）。
@@ -833,15 +834,23 @@ function renderChoice(el, state, p, actions) {
         // rent 为 0 有两种：这条街停业封租，或买下也收不到钱。
         // 两种情况都必须说出来 —— “买下也拿不到租”正是玩家最该知道的事（
         // 实测 take/seed=11 第13天就碰到了，而旧写法直接 return ''，一个字不提）。
+        // #3338：这一支也要带那三行账。收不到租的时候，「这笔钱变成了同价的地」和
+        // 「买完还剩多少、够付几次」正是玩家最需要看到的两件事 —— 旧写法直接 return，
+        // 结果这一屏只剩一句「收不到租」，等于把最贵的那个事实藏起来。
+        const ledgerRows = buyLedgerLines(state, plot.id, p)
+          .map(t => `<p class="hint" data-ledger>${t}</p>`).join('');
         if (!rent) {
           const why = state.properties[plot.id]?.closed > 0 ? '这条街现在停业，买下也收不到租' : '此刻买下收不到租';
-          return `<p class="hint"><b>${why}</b>；不计回本回合数。</p>`;
+          return `<p class="hint"><b>${why}</b>；不计回本回合数。</p>${ledgerRows}`;
         }
         // 账面回本：按“对手每回合会踩到一次”算，只是账，不是承诺（#574 已证 77% 未兑现）。
-        // #1044：回合数改由 payback.roundsLine 出（全仓唯一 ceil），并在同句后给出本盘租金池。
-        // 旧的「账面约 N 回合回本」逐字保留（test/midgame-buy.test.js:52 钉着），只把 ceil 换成共享函数。
+        // 旧的「账面约 N 回合回本」逐字保留（test/midgame-buy.test.js:52 钉着）。
+        // #3338：后面不再接 poolShareLine。那一句说的是「这一笔占全场租金多少、几局收不回来」，
+        // 它把这笔钱当**花掉的钱**；而买地是资产换手（真 buyPlot 前后 assetsOf 差 0）。
+        // 结果是买地屏劝退、结算屏劝买，同一局里前后两句打脸。改成 market-ledger 的三行：
+        // 记分（总资产不变）/ 现金压力（买完剩多少、够付对手最贵的一次租几次）/ 对手走位（72 局分布）。
         const turns = roundsToRecover(pending.price, rent);
-        return `<p class="hint">此刻这条街 租 ${money(rent)}；账面约 ${turns} 回合回本（对手不走过来就不兑现）。${poolShareLine(pending.price, plot?.name)}</p>`;
+        return `<p class="hint">此刻这条街 租 ${money(rent)}；账面约 ${turns} 回合回本（对手不走过来就不兑现）。</p>${ledgerRows}`;
       })():''}
       <button data-act="buy" ${poor ? 'disabled' : ''}>买下</button><button data-act="skip">放弃</button>`);
   } else if (pending.type === 'build') {

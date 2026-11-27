@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#3338 · 买地的三行账</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="slice-mode">
+<!-- #3338：只为「买下这块地」那一屏的版面存在。结构与 index.html 逐层一致，
+     否则量出来的几何不是同一个版面。不跑对局：用真的 createSliceConfig → startSession
+     造出第 4 天的真状态，再调真的 render()，所以每个数仍来自引擎。 -->
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+<script type="module">
+import { createSliceConfig } from '/src/data/slice.js';
+import { startSession } from '/src/engine/flow.js';
+import { buyPrice } from '/src/engine/economy.js';
+import { render } from '/src/ui/render.js';
+
+const qs = new URLSearchParams(location.search);
+const style = qs.get('style') || 'grow';
+const seed = Number(qs.get('seed') || 1);
+const big = qs.get('plot') !== 'small';
+const state = startSession(createSliceConfig({ human: true, seed, style }));
+const p = state.players.find(q => q.controller === 'human');
+state.day = 4;
+p.cash = Number(qs.get('cash') || 44000);
+// 取一块真的无主地（书屋第 4 天开售，此刻无主）。
+const plot = big ? state.map.plots.find(x => x.big) : state.map.plots.find(x => !x.big);
+// 买地面板只在无主地上出现（flow.js 的 groundPhase 只在 !ownerId 时问买地）。
+// 夹具起手时每间小店都有主，所以这里把它清空 —— 否则量到的是另一条分支（0 行）。
+if (!big) state.properties[plot.id] = { ...state.properties[plot.id], ownerId: null, level: 0 };
+state.phase = 'action';
+state.pending = { type: 'buy', cellId: plot.id, price: buyPrice(state, plot.id),
+  level: state.properties[plot.id]?.level ?? 0, bigType: state.properties[plot.id]?.bigType ?? null };
+
+const root = {
+  system: document.querySelector('#system'), players: document.querySelector('#players'),
+  board: document.querySelector('#board'), log: document.querySelector('#log'),
+  insight: document.querySelector('#insight'), dice: document.querySelector('#dice'),
+  cards: document.querySelector('#cards'), hand: document.querySelector('#hand'),
+  choice: document.querySelector('#choice'),
+};
+render(root, state, new Proxy({}, { get: () => () => {} }));
+window.__ready = { style, seed, plot: plot.name, price: state.pending.price, cash: p.cash };
+</script>
+</body>
+</html>

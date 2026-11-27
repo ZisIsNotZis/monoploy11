@@ -5,6 +5,7 @@ import { startSession, runGame } from '../src/engine/flow.js';
 import { aiAnswer } from '../src/engine/ai.js';
 import { rentFor, buildCost } from '../src/engine/economy.js';
 import { nextGameLine } from '../src/ui/slice.js';
+import { MARKET_LEDGER, bigBuildCost } from '../src/engine/market-ledger.js';
 
 // #3337b：supervisor 在 5ec96f8 上抓到结算建议把「付过的最大一笔租」说成了出局原因，
 // 并要求「书屋提示里的实付、标价和升一级/升到顶分别说准确」。
@@ -40,6 +41,8 @@ function verifiableNumbers(state) {
     if (rent) ok.add(rent);
   }
   for (let lv = 1; lv <= 3; lv++) ok.add(Math.round(buildCost(lv) * (state.priceIndex ?? 1)));
+  // 书屋的加盖价不是 buildCost：flow.js 对 big 固定扣 30,000（#3338 修的口径）。
+  ok.add(bigBuildCost(state));
   const pr = state.properties?.market;
   if (pr) {
     for (let lv = 1; lv <= 3; lv++) {
@@ -52,6 +55,22 @@ function verifiableNumbers(state) {
   }
   return ok;
 }
+
+// 常数表里的数（MARKET_LEDGER）：它们是**声明过的**常数，不是拍出来的。
+// #3338：句子现在会引「72 局里先拿到它的 31 局平均实收 11,948」这类数。
+// 这类数允许出现，但必须紧跟在标了来源的从句后面 —— 这是 #1143 定下的口径纪律，
+// 下面那条判据检查的正是「常数没有冒充本局」。
+function ledgerNumbers() {
+  const ok = new Set();
+  const walk = v => {
+    if (typeof v === 'number') ok.add(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk(MARKET_LEDGER);
+  return ok;
+}
+const SOURCE_MARK = /72 局|同规则/;
 
 // 合法合计：任意若干「可核金额」之和（cap 防爆炸）。句子里的「付了 N」「收了 N」都是这种。
 function sums(set) {
@@ -71,9 +90,15 @@ test('180 局真整局：结算建议里每个数字都能从本局 state/log �
       const line = nextGameLine(state);
       const allowed = verifiableNumbers(state);
       const reach = sums(allowed);
+      const table = ledgerNumbers();
+      // 常数只允许出现在标了来源的句子里：整句必须提到「72 局/同规则」，
+      // 否则「3 级」「31 局」这类常数就成了没头没尾的数（#1143 的口径纪律）。
+      const labeled = SOURCE_MARK.test(line);
       const nums = (line.match(RE_NUM) ?? []).map(x => Number(x.replace(/,/g, '')));
-      const unknown = nums.filter(v => !allowed.has(v) && !reach.has(v));
+      const unknown = nums.filter(v => !allowed.has(v) && !reach.has(v) && !(table.has(v) && labeled));
       if (unknown.length) bad.push({ style, seed, line, unknown });
+      const onlyTable = nums.filter(v => !allowed.has(v) && !reach.has(v) && table.has(v));
+      if (onlyTable.length && !labeled) bad.push({ style, seed, line, unlabeled: onlyTable });
       games += 1;
     }
   }

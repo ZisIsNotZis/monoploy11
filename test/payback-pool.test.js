@@ -169,14 +169,14 @@ test('#1044 池子句里的数出自表，且百分比不向上取整', () => {
   assert.ok(line.includes('72 局'), `句子里没有局数：${line}`);
 });
 
-// ⑦ 买地框（第三个打印点）也必须带池子句，并且要报**这间店自己的**实测频率。
-//    为什么单独测：这条路径我在交付前真的漏读过一次 —— 调 poolShareLine 时忘了传店名，
-//    于是它静默降级成“每间店平均 0.28 次（这间店没有单独实测）”，13 间店全都有实测表却说没有。
-//    不报错的静默降级比报错危险，所以这里钉住店名必须被传下去。
-test('#1044 买地框带池子句，且报的是这间店自己的实测频率', () => {
+// ⑦ 买地框（第三个打印点）不再印池子句 —— #3338。
+//
+// 为什么改：那句「72 局里有 56 局的整局租金还不够这一笔」把 26,000 当**花掉的钱**，
+// 而买地是资产换手（真 buyPlot 前后 assetsOf 差 0）。它让买地屏劝退，而结算屏劝买，
+// 玩家在同一局里先后读到，只能认为有一句在骗人。买地屏现在印 market-ledger 的三行。
+// 这条判据守住「池子句不许回到买地屏」，并指向新的判据文件。
+test('#3338 买地框不再印池子句（那笔钱没有消失，它变成了同价的地）', () => {
   const s = slice();
-  // 选一块「此刻买下真能收到租」的地：收不到租时买地框走的是另一句（已签的“不计回本回合数”）。
-  // 第一版我凭「!x.big」随便挑一块，结果那块租为 0，测到的是另一条分支，红得没错。
   const plot = s.map.plots.find(x => !x.big && rentFor(s, x.id) > 0);
   assert.ok(plot, '夹具里没有可收租的小地，这条断言会空过');
   const pr = s.properties[plot.id];
@@ -187,13 +187,20 @@ test('#1044 买地框带池子句，且报的是这间店自己的实测频率',
   render(r, s, noop);
   s.pending = saved;
   const html = r.choice.innerHTML;
-  assert.ok(html.includes(POOL_MARK), `买地框没有池子句：${html}`);
-  assert.equal(html.includes('这间店没有单独实测'), false, `买地框降级成了“无实测”：${html}`);
+  // 注意：不能拿 POOL_MARK（「同规则 72 局」）当唯一特征 —— market-ledger 的表也用同一个来源前缀，
+  // 那是件好事（两份表同一批量、同一句话报来源）。池子句自己的特征是「一整局全场租金 / 整局租金还不够」。
+  assert.equal(html.includes(poolShareLine(8000, plot.name)), false,
+    `池子句回到了买地屏（它说的是「这一笔占全场租金多少」，把一个资产换手当成了花销）：${html}`);
+  assert.equal(/一整局全场租金|整局租金还不够这一笔/.test(html), false,
+    `买地屏又拿「收不回本钱」的口气说一笔资产换手：${html}`);
+  // 替代它的是三行本局账，第一行必须自报口径，且说明总资产不变。
+  assert.match(html, /本局账本：现金 [\d,]+ → [\d,]+/, `买地框没有本局账：${html}`);
+  assert.match(html, /总资产不变/, `买地框没说清这笔钱变成了地：${html}`);
+  assert.equal(html.includes('这间店没有单独实测'), false, `降级成了“无实测”：${html}`);
   const expected = RENT_POOL.meansPerPlot[plot.name];
   assert.ok(Number.isFinite(expected), `夹具选的 ${plot.name} 不在实测表里`);
-  // #1143：措辞从「这间店平均每局被踩」改成「这间店在那 72 局里平均每局被踩」
-  // （常数要报来源）。断言意图不变：必须出现这间店自己的那个数，不能落回全盘均值。
-  assert.ok(html.includes(`这间店在那 ${RENT_POOL.games} 局里平均每局被踩 ${expected.toFixed(2)} 次`),
+  // 这间店自己的走位频率仍然必须出现（不能落回全盘均值）。
+  assert.ok(html.includes(`这间店整局被踩到 ${expected.toFixed(2)} 次/局`),
     `买地框没报这间店自己的频率（应 ${expected.toFixed(2)}）：${html}`);
 });
 
@@ -233,7 +240,8 @@ test('#1143 常数句一律不许写「本盘」/「本局」，且必须先报�
   assert.equal(/本盘|本局/.test(lineB), false, `B 加盖日志出现「本盘/本局」：${lineB}`);
   assert.ok(lineB.includes(POOL_SOURCE), `B 加盖日志没报来源：${lineB}`);
 
-  // C 买地框
+  // C 买地框：池子句已在 #3338 撤掉（它把一个资产换手当成了花销）。
+  // 这条判据现在钉的是「它确实撤了，而且新三行自带自己的口径标签」。
   const s2 = slice();
   const plot = s2.map.plots.find(x => !x.big && rentFor(s2, x.id) > 0);
   assert.ok(plot, '夹具里没有可收租的小地，这条断言会空过');
@@ -244,6 +252,10 @@ test('#1143 常数句一律不许写「本盘」/「本局」，且必须先报�
   render(r, s2, noop);
   s2.pending = saved;
   const htmlC = r.choice.innerHTML;
-  assert.equal(/本盘|本局/.test(htmlC), false, `C 买地框出现「本盘/本局」：${htmlC}`);
-  assert.ok(htmlC.includes(POOL_SOURCE), `C 买地框没报来源：${htmlC}`);
+  assert.equal(htmlC.includes(poolShareLine(8000, plot.name)), false, `C 买地框还挂着 72 局池子句：${htmlC}`);
+  assert.equal(/一整局全场租金|整局租金还不够这一笔/.test(htmlC), false, `C 买地框又用「收不回本钱」的口径：${htmlC}`);
+  // 留下来的是本局账：它的主语是「本局」，而里面的数都来自这一局（上面 A/B 的纪律反过来）。
+  assert.match(htmlC, /本局账本：/, `C 买地框没有本局账：${htmlC}`);
+  // 常数（72 局那张表）仍然出现，但必须自己带来源，不许借「本局」二字开口。
+  assert.match(htmlC, /同规则 72 局/, `C 买地框引了常数却没报来源：${htmlC}`);
 });

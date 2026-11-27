@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSliceConfig } from '../src/data/slice.js';
-import { startSession } from '../src/engine/flow.js';
+import { startSession, buildPlot } from '../src/engine/flow.js';
 import { nextGameLine, money, sliceResults } from '../src/ui/slice.js';
 import { rentFor, buildCost } from '../src/engine/economy.js';
 
@@ -134,26 +134,45 @@ test('半条街的另一半在对手手里：不得推荐「补齐」（那只�
 
 // 已经买下书屋时，本局「拿到没拿到」不再是问题 —— 下一局的问题是「拿到之后做什么」。
 // 所以那一支必须给出下一个动作的引擎真值（buildCost 与 rentFor），而不是复述本局。
-test('已买下书屋且未到顶：给出到顶的价钱与租金，两个数都与引擎一致', () => {
+// 已经买下书屋时，本局「拿到没拿到」不再是问题 —— 下一局的问题是「拿到之后做什么」。
+//
+// #3338：这条判据原来把 buildCost(3)=15,000 当成「书屋从 2 级盖到 3 级」的价。
+// 那是**小店**的价；书屋是 big，flow.js 的 buildPlot / groundPhase 都写
+// `pr.big ? 30_000 : buildCost(...)`。实测（.scratch/3338/upcost.mjs）：句子说 15,000，
+// 真 buildPlot 扣 30,000 —— 差一倍，而这条判据当时是绿的，因为它自己也用同一个错公式算。
+// 所以现在钉的是「句子的价 = 引擎真实扣款」，不钉某个公式。
+test('已买下书屋且未到顶：报的价必须等于引擎真实扣款，租金两个数也都与引擎一致', () => {
   const state = seed('grow', 1);
   const me = human(state);
   state.properties.market = { ...state.properties.market, ownerId: me.id, level: 2, bigType: 'bookstore' };
   state.log.push({ day: 5, text: `${me.name} 买下 街心书屋（支付 26000）` });
   const line = nextGameLine(state);
-  const cost = Math.round(buildCost(3) * (state.priceIndex ?? 1));
+
+  // 真扣款：给足现金，调引擎的 buildPlot，看现金少了多少。
+  me.cash = 500_000;
+  const before = me.cash;
+  buildPlot(state, me, 'market');
+  const charged = before - me.cash;
+  assert.equal(state.properties.market.level, 3, '夹具没把书屋盖到顶');
+  assert.match(line, new RegExp(money(charged)), `结算屏必须报引擎真扣的 ${money(charged)}：${line}`);
+  // 小店的价不得再被当成书屋的价（两者真的不同，否则上面那条断言什么也没钉住）。
+  const smallPrice = Math.round(buildCost(3) * (state.priceIndex ?? 1));
+  assert.notEqual(charged, smallPrice, '书屋与小店同价，这条判据区分不了两个口径');
+  assert.doesNotMatch(line, new RegExp(`要花 ${money(smallPrice)}`),
+    `报的还是小店的价 ${money(smallPrice)}：${line}`);
+
   const saved = state.properties.market.level;
   state.properties.market.level = 2; const now = rentFor(state, 'market');
   state.properties.market.level = 3; const top = rentFor(state, 'market');
   state.properties.market.level = saved;
-  assert.match(line, new RegExp(money(cost)), `应报出到顶的花费 ${money(cost)}：${line}`);
   assert.match(line, new RegExp(money(now)), `应报出现在每次 ${money(now)}：${line}`);
   assert.match(line, new RegExp(money(top)), `应报出到顶后每次 ${money(top)}：${line}`);
   assert.match(line, /2 级/, `应说出现在几级：${line}`);
 });
 
-// 满级是一支很容易写成「复述本局」的分支（第一版就是）。它必须回答「这座店还剩什么事可做」，
-// 而引擎里满级之后唯一的变量就是「有没有被踩到」——所以句子里必须出现这个变量。
-test('书屋已满级：说清再投钱没用，并给出剩下的唯一变量（被踩次数/金额来自日志）', () => {
+// 满级是一支很容易写成「复述本局」的分支。它必须回答「这座店还剩什么事可做」，
+// 而引擎里满级之后租金只取决于「对手有没有踩到」（自己踩到不收租）。
+test('书屋已满级：说清再投钱没用，并给出剩下的真变量（被踩次数/金额来自日志）', () => {
   const state = seed('cross', 1);
   const me = human(state);
   const rival = state.players.find(p => p.team !== me.team);
@@ -168,13 +187,35 @@ test('书屋已满级：说清再投钱没用，并给出剩下的唯一变量�
   assert.match(line, /踩到/, `必须点出「被踩到」才是剩下的变量：${line}`);
 });
 
-test('书屋已满级且一次没被踩到：不能把「没被踩」写成「没用」', () => {
+// #3338（supervisor 在 a7564dd 的真机上抓到的）：满级且一次没被踩到时，旧句写
+// 「下一局把它放在你的路线上（停步的落点选它旁边），满级的租才收得到」——**这是假的**。
+// 引擎里租金只在别人踩到时才收（flow.js groundPhase：自己站自己的店旁边只走加盖询问）。
+// supervisor 那一局（grow/seed 9）他自己停在书屋旁边 7 次、一分钱没收，结算却叫他下次再走。
+// 所以这条判据现在钉两件事：① 不许再出现「放在你的路线上/落点选它旁边」这类不可执行建议；
+//                        ② 必须点出真正的变量（对手走位）与玩家真能改的那张牌（旺季）。
+test('书屋已满级且一次没被踩到：不许再叫玩家自己走那条路，要说出真变量', () => {
   const state = seed('grow', 9);
   const me = human(state);
   state.properties.market = { ...state.properties.market, ownerId: me.id, level: 3, bigType: 'bookstore' };
   const line = nextGameLine(state);
-  assert.match(line, /一次没被踩到|一次也没被踩到/, `应如实说没被踩到：${line}`);
+  assert.match(line, /一次没被(对手)?踩到/, `应如实说没被踩到：${line}`);
   assert.match(line, /到顶/, `应说明已到顶：${line}`);
+  assert.doesNotMatch(line, /放在你的路线上|落点选它旁边|你的路线/,
+    `又出现了「自己走过去」这条假建议（自己的店不收自己的租）：${line}`);
+  assert.match(line, /对手/, `必须点出租金来自对手走位：${line}`);
+  assert.match(line, /旺季/, `必须给出玩家真能改的那张牌（旺季：这条街租 ×2）：${line}`);
+});
+
+// 自己停在旁边那几次是**空手**，句子里必须明说 —— 这正是玩家会被绕晕的那件事。
+test('自己停在自己书屋旁边：照实说那几次一分钱没有', () => {
+  const state = seed('grow', 9);
+  const me = human(state);
+  state.properties.market = { ...state.properties.market, ownerId: me.id, level: 3, bigType: 'bookstore' };
+  state.log.push({ day: 5, text: `${me.name} 停在 街道，旁边是 街心书屋` });
+  state.log.push({ day: 9, text: `${me.name} 停在 街道，旁边是 街心书屋` });
+  const line = nextGameLine(state);
+  assert.match(line, /你自己停在它旁边 2 次/, `应数出自己停了几次：${line}`);
+  assert.match(line, /一分钱也没有|不收自己的租/, `必须说清自己站旁边收不到：${line}`);
 });
 
 test('句子里的钱一律是 money() 的格式（与排名表同一个格式化函数）', () => {

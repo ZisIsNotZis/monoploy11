@@ -837,17 +837,28 @@ button { font: inherit; }
      我先写过一个更重的版本（把句子自己也 position:sticky 钉到 bottom:56px），
      负对照证明它不必要：撤掉那条规则、只留这份留白，句子仍在 754–792 且点得到。
      实测代价：面板内容高 625、可视 519，本来就要滚 —— 留白增加不改变这一点。 */
-  #choice:not([hidden]):has([data-replay]) { padding-bottom: 116px; }
+  /* #3338 真正修好上面那个遮挡：留白只能救**那一个**文案长度。
+     实测（support/probe-3338/settlement.mjs，三种结算形状）：rival 支 125 字、mineMax 支 133 字
+     都在按钮上方（留白够用）；而 nobody 支只有 102 字，反而落到按钮**中心**
+     （elementFromPoint 命中 BUTTON:replay）—— 越短的句子越容易被遮，留白治不了这件事。
+     根因是「一句话 + 一个提交」原本是两个独立元素：句子在流里，按钮 sticky 贴在底边，
+     两者谁压谁取决于面板内容高度。所以把这两件钉成一个条，整条 sticky：
+     任何分支的句子都带在按钮上方一起贴底，且都不脱离滚动几何。 */
+  #choice:not([hidden]):has([data-replay]) { padding-bottom: 8px; }
+  #choice:not([hidden]):has([data-replay]) .next-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: 6px;
+    background: var(--panel);
+    box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
+  }
+  #choice:not([hidden]):has([data-replay]) .next-bar [data-next-game] { margin: 6px 0; }
   #choice:not([hidden]):has([data-replay]) [data-replay] {
     display: block;
     width: 100%;
     min-height: 48px;
-    margin: 6px 0 0;
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    background: var(--panel);
-    box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
+    margin: 0;
   }
   #choice:not([hidden]):has([data-act="build"]) [data-act="build"],
   #choice:not([hidden]):has([data-act="build"]) [data-act="skip"],

@@ -50,7 +50,18 @@ lock src/ui/superdice-preview.js
 lock src/ui/voice.js
 
 doc  README.md
-# #3337 的锁 = **当前**产品的描述（35 个产品文件）。
+lock src/engine/market-ledger.js
+# #3338 的锁 = **当前**产品的描述（36 个产品文件）。
+doc  docs/evidence/slice-entry-3338.sha256
+# 相对 3337 改了四个文件，都围绕同一件事：让买地屏与结算屏说同一份账。
+#   src/engine/market-ledger.js  新增：这一笔的整局账（本局三行 + 72 局走位表）
+#   src/ui/render.js             买地屏不再拿「全场租金池」去比一笔资产换手，改印那三行
+#   src/ui/slice.js              结算屏不再叫玩家「自己走到书屋旁边」（自己的店不收自己的租），
+#                                书屋加盖价改成引擎真扣的 30,000（原报 15,000，是小店价）；
+#                                「下局试试」与「再开一局」打成一个 sticky 条
+#   styles.css                   上面那条 sticky 条（留白只能救一个文案长度，短的句子反而被盖住）
+# 引擎与平衡未动：market-ledger 只读 state，不改一次结算；故平衡表不重跑。
+# #3337 的锁（仍可核，已不是当前产品）。
 # 相对 3335 只改两个文件：src/ui/slice.js（结算屏那句「下局试试」从三条按起手写死的
 # 推销句改成 nextGameLine(state)，数全从本局 state/log 算；实测旧句里那条「去收购」是最差
 # 的一条路：300 seed 配对胜 126→60、资产 −20,945、chi²=34.63）与 styles.css（结算屏底部
@@ -286,7 +297,16 @@ doc  support/probe-3335/geom-lastday.mjs
 doc  support/probe-3335/serve.mjs
 doc  support/probe-3335/fixture.html
 doc  support/probe-3335/geom-lastday.json
-# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3337，
+# 整局回执（当前）：同一条 390×844 真鼠标路径跑到结算，绑定 slice-entry-3338，
+# 并带 seal（36 个响应逐一比对，verify-receipt.py F 项可重算）。
+doc  docs/evidence/receipt-3338-final/provenance.json
+doc  docs/evidence/receipt-3338-final/record-8-summary.json
+doc  docs/evidence/receipt-3338-final/record-10-replay.json
+doc  docs/evidence/receipt-3338-final/after.json
+doc  docs/evidence/receipt-3338-final/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3338-final/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3338-final/raw/after.json.gz
+# 整局回执（曾为当前，仍可核）：绑定 slice-entry-3337，
 # 并带 seal（35 个响应逐一比对，verify-receipt.py F 项可重算）。
 doc  docs/evidence/receipt-3337-final/provenance.json
 doc  docs/evidence/receipt-3337-final/record-8-summary.json
@@ -332,3 +352,13 @@ doc  docs/evidence/receipt-3333-final/raw/after.json.gz
 # 否则从干净检出跑一局之后，`git add -A` 会把证据目录当成源码提交进去。
 tool support/full-game/.gitignore
 # test/no-edge-profiles.test.js reads .scratch directly too; it tolerates absence.
+doc  docs/evidence/RESULT-3338.md
+tool support/probe-3338/ledger-table.mjs
+tool support/probe-3338/geom.mjs
+tool support/probe-3338/settlement.mjs
+tool support/probe-3338/new-lock.py
+doc  support/probe-3338/geom-buy.json
+doc  support/probe-3338/settle-verdict.json
+doc  support/probe-3338/fixture.html
+doc  support/probe-3338/settle.html
+doc  support/probe-3338/serve.mjs

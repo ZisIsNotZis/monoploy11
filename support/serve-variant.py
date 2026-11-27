@@ -112,6 +112,7 @@ SERVABLE_MODULES = (
     '/src/engine/game.js',
     '/src/engine/insight.js',
     '/src/engine/map-runtime.js',
+    '/src/engine/market-ledger.js',
     '/src/engine/payback.js',
     '/src/engine/rng.js',
     '/src/engine/slice-ai.js',

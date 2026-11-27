@@ -1,0 +1,195 @@
+{
+ "cases": [
+  {
+   "setup": "rival",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "setup": "rival",
+    "day": 16
+   },
+   "vw": 390,
+   "vh": 844,
+   "heading": "穿街高手 的生意做到了最后",
+   "text": "下局试试：第 4 天开售就去拿街心书屋：本局机会买家第 5 天用 26,000 拿走了它，你踩到它 1 次、付了 4,000。同规则 72 局里先拿到它的 31 局，平均实收 11,948（5 局一分没收到）—— 这笔钱不靠你停在旁边，靠对手停过来。",
+   "len": 125,
+   "rect": [
+    10,
+    705.3,
+    380,
+    782
+   ],
+   "fullyInside": true,
+   "insidePanel": true,
+   "lineHit": {
+    "hit": true,
+    "x": 195,
+    "y": 743.6,
+    "at": "P:nextGame"
+   },
+   "replayHit": {
+    "hit": true,
+    "x": 195,
+    "y": 812,
+    "at": "BUTTON:replay"
+   },
+   "scrollH": 498,
+   "clientH": 498
+  },
+  {
+   "setup": "mineMax",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "setup": "mineMax",
+    "day": 16
+   },
+   "vw": 390,
+   "vh": 844,
+   "heading": "穿街高手 的生意做到了最后",
+   "text": "下局试试：街心书屋已经 3 级到顶，再投钱也涨不上去：本局它一次没被对手踩到（72 局里这样的是 1 局）。你自己停在它旁边 1 次，那几次一分钱也没有（自己的店不收自己的租）。你手里还能改的是旺季卡：打在这条街上，每次 9,600 变 19,200，持续 3 天。",
+   "len": 133,
+   "rect": [
+    10,
+    705.3,
+    380,
+    782
+   ],
+   "fullyInside": true,
+   "insidePanel": true,
+   "lineHit": {
+    "hit": true,
+    "x": 195,
+    "y": 743.6,
+    "at": "P:nextGame"
+   },
+   "replayHit": {
+    "hit": true,
+    "x": 195,
+    "y": 812,
+    "at": "BUTTON:replay"
+   },
+   "scrollH": 498,
+   "clientH": 498
+  },
+  {
+   "setup": "nobody",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "setup": "nobody",
+    "day": 16
+   },
+   "vw": 390,
+   "vh": 844,
+   "heading": "穿街高手 的生意做到了最后",
+   "text": "下局试试：第 4 天带 26,000 走到街心书屋旁边：本局它全程没人买，买下后每次被对手踩到你收 4,000。同规则 72 局里有 5 个「我拿着它」的局一分没收到；这间店的钱靠对手走位，不靠你站旁边。",
+   "len": 102,
+   "rect": [
+    10,
+    724.4,
+    380,
+    782
+   ],
+   "fullyInside": true,
+   "insidePanel": true,
+   "lineHit": {
+    "hit": true,
+    "x": 195,
+    "y": 753.2,
+    "at": "P:nextGame"
+   },
+   "replayHit": {
+    "hit": true,
+    "x": 195,
+    "y": 812,
+    "at": "BUTTON:replay"
+   },
+   "scrollH": 479,
+   "clientH": 479
+  }
+ ],
+ "control": {
+  "vw": 390,
+  "vh": 844,
+  "heading": "穿街高手 的生意做到了最后",
+  "text": "下局试试：第 4 天开售就去拿街心书屋：本局机会买家第 5 天用 26,000 拿走了它，你踩到它 1 次、付了 4,000。同规则 72 局里先拿到它的 31 局，平均实收 11,948（5 局一分没收到）—— 这笔钱不靠你停在旁边，靠对手停过来。再补一句用来撑高的长句子，让这一屏真的越过面板底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过面板底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过面板底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过面板底部，看看量具会不会红。再补一句用来撑高的长句子，让这一屏真的越过面板底部，看看量具会不会红。",
+  "len": 300,
+  "rect": [
+   10,
+   590.1,
+   380,
+   782
+  ],
+  "fullyInside": true,
+  "insidePanel": true,
+  "lineHit": {
+   "hit": true,
+   "x": 195,
+   "y": 686.1,
+   "at": "P:nextGame"
+  },
+  "replayHit": {
+   "hit": true,
+   "x": 195,
+   "y": 812,
+   "at": "BUTTON:replay"
+  },
+  "scrollH": 613,
+  "clientH": 519
+ },
+ "controlCaught": true,
+ "sameLedger": {
+  "buyText": [
+   "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+   "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+   "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。"
+  ],
+  "settleLine": "下局试试：第 4 天开售就去拿街心书屋：本局机会买家第 5 天用 26,000 拿走了它，你踩到它 1 次、付了 4,000。同规则 72 局里先拿到它的 31 局，平均实收 11,948（5 局一分没收到）—— 这笔钱不靠你停在旁边，靠对手停过来。",
+  "buyTableValues": [
+   72,
+   1,
+   31,
+   1,
+   1,
+   3,
+   27,
+   11948,
+   5
+  ],
+  "settleTableValues": [
+   4,
+   5,
+   1,
+   72,
+   31,
+   11948,
+   5
+  ],
+  "bothCiteGames": true,
+  "bothCiteMean": true
+ },
+ "verdict": [
+  {
+   "setup": "rival",
+   "readable": true,
+   "replayUsable": true,
+   "noScroll": true,
+   "len": 125
+  },
+  {
+   "setup": "mineMax",
+   "readable": true,
+   "replayUsable": true,
+   "noScroll": true,
+   "len": 133
+  },
+  {
+   "setup": "nobody",
+   "readable": true,
+   "replayUsable": true,
+   "noScroll": true,
+   "len": 102
+  }
+ ]
+}

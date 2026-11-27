@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#3338 · 结算屏那句话</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="slice-mode">
+<!-- #3338：只为「结算屏那句话读不读得到」存在。结构与 index.html 逐层一致，
+     否则量出来的几何不是同一个版面。不跑对局：用真的 createSliceConfig → startSession
+     造出真状态，再调真的 sliceResults()，所以每个数仍来自引擎。 -->
+<main id="desk">
+  <section id="board" aria-label="棋盘"></section>
+  <aside id="side">
+    <div id="sideGrip" title="拖动调整侧栏宽度"></div>
+    <div id="system"></div>
+    <div id="players"></div>
+    <div id="insight"></div>
+    <ol id="log"></ol>
+    <div id="hand">
+      <div id="cards"></div>
+      <div id="dice"></div>
+      <div id="choice" hidden></div>
+    </div>
+  </aside>
+</main>
+<script type="module">
+import { createSliceConfig } from '/src/data/slice.js';
+import { startSession } from '/src/engine/flow.js';
+import { sliceResults } from '/src/ui/slice.js';
+
+const qs = new URLSearchParams(location.search);
+const style = qs.get('style') || 'grow';
+const seed = Number(qs.get('seed') || 1);
+const setup = qs.get('setup') || 'rival';
+
+const state = startSession(createSliceConfig({ human: true, seed, style }));
+const p = state.players.find(q => q.controller === 'human');
+const rival = state.players.find(q => q.team !== p.team);
+// 三种真会出现的结算形状，全部由真状态造出来（不手写句子）。
+if (setup === 'rival') {
+  state.properties.market = { ...state.properties.market, ownerId: rival.id, level: 2 };
+  state.log.push({ day: 5, text: `${rival.name} 买下 街心书屋（支付 26000）` });
+  state.log.push({ day: 8, text: `${p.name} 实付租金 4000（街心书屋），${rival.name} 收到 4000` });
+} else if (setup === 'mineMax') {
+  state.properties.market = { ...state.properties.market, ownerId: p.id, level: 3 };
+  state.log.push({ day: 4, text: `${p.name} 买下 街心书屋（支付 26000）` });
+  state.log.push({ day: 6, text: `${p.name} 停在 街道，旁边是 街心书屋` });
+} else {
+  state.properties.market = { ...state.properties.market, ownerId: null };
+}
+state.day = state.config.dayLimit;
+state.over = true;
+state.phase = 'over';
+
+const choice = document.querySelector('#choice');
+choice.hidden = false;
+choice.innerHTML = sliceResults(state);
+window.__ready = { style, seed, setup, day: state.day };
+</script>
+</body>
+</html>

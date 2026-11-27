@@ -1,0 +1,541 @@
+{
+ "cases": [
+  {
+   "style": "grow",
+   "plot": "big",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "plot": "街心书屋",
+    "price": 26000,
+    "cash": 44000
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    435.1,
+    390,
+    844
+   ],
+   "heading": "购买 书店 Lv.2（无主已建）",
+   "scrollH": 408,
+   "clientH": 408,
+   "rows": [
+    {
+     "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+     "rect": [
+      10,
+      611.7,
+      380,
+      650.1
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+     "rect": [
+      10,
+      662.1,
+      380,
+      700.4
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+     "rect": [
+      10,
+      712.4,
+      380,
+      770
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    }
+   ],
+   "buttons": [
+    {
+     "tag": "buy",
+     "text": "买下",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"buy\">买下</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "style": "take",
+   "plot": "big",
+   "ready": {
+    "style": "take",
+    "seed": 1,
+    "plot": "街心书屋",
+    "price": 26000,
+    "cash": 44000
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    435.1,
+    390,
+    844
+   ],
+   "heading": "购买 书店 Lv.2（无主已建）",
+   "scrollH": 408,
+   "clientH": 408,
+   "rows": [
+    {
+     "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+     "rect": [
+      10,
+      611.7,
+      380,
+      650.1
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+     "rect": [
+      10,
+      662.1,
+      380,
+      700.4
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+     "rect": [
+      10,
+      712.4,
+      380,
+      770
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    }
+   ],
+   "buttons": [
+    {
+     "tag": "buy",
+     "text": "买下",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"buy\">买下</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "style": "cross",
+   "plot": "big",
+   "ready": {
+    "style": "cross",
+    "seed": 1,
+    "plot": "街心书屋",
+    "price": 26000,
+    "cash": 44000
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    435.1,
+    390,
+    844
+   ],
+   "heading": "购买 书店 Lv.2（无主已建）",
+   "scrollH": 408,
+   "clientH": 408,
+   "rows": [
+    {
+     "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+     "rect": [
+      10,
+      611.7,
+      380,
+      650.1
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+     "rect": [
+      10,
+      662.1,
+      380,
+      700.4
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+     "rect": [
+      10,
+      712.4,
+      380,
+      770
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    }
+   ],
+   "buttons": [
+    {
+     "tag": "buy",
+     "text": "买下",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"buy\">买下</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "style": "grow",
+   "plot": "small",
+   "ready": {
+    "style": "grow",
+    "seed": 1,
+    "plot": "晨光街小店",
+    "price": 8000,
+    "cash": 44000
+   },
+   "vw": 390,
+   "vh": 844,
+   "panel": [
+    0,
+    473.5,
+    390,
+    844
+   ],
+   "heading": "购买 小地产",
+   "scrollH": 369,
+   "clientH": 369,
+   "rows": [
+    {
+     "text": "本局账本：现金 44,000 → 36,000，地产标价 +8,000，总资产不变。",
+     "rect": [
+      10,
+      650.1,
+      380,
+      669.3
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "买完剩 36,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 12 次 —— 等级和旺季都会把租金再抬高。",
+     "rect": [
+      10,
+      681.3,
+      380,
+      719.6
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    },
+    {
+     "text": "同规则 72 局（grow/take/cross × seed 1–24）：这间店整局被踩到 0.32 次/局（13 间店平均 0.28 次）。",
+     "rect": [
+      10,
+      731.6,
+      380,
+      770
+     ],
+     "insidePanel": true,
+     "onScreen": true
+    }
+   ],
+   "buttons": [
+    {
+     "tag": "buy",
+     "text": "买下",
+     "rect": [
+      10,
+      788,
+      191,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"buy\">买下</button>",
+     "x": 100.5,
+     "y": 812,
+     "disabled": false
+    },
+    {
+     "tag": "skip",
+     "text": "放弃",
+     "rect": [
+      191,
+      788,
+      372,
+      836
+     ],
+     "hit": true,
+     "at": "<button data-act=\"skip\">放弃</button>",
+     "x": 281.5,
+     "y": 812,
+     "disabled": false
+    }
+   ]
+  }
+ ],
+ "control": {
+  "vw": 390,
+  "vh": 844,
+  "panel": [
+   0,
+   324,
+   390,
+   844
+  ],
+  "heading": "购买 书店 Lv.2（无主已建）",
+  "scrollH": 748,
+  "clientH": 519,
+  "rows": [
+   {
+    "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+    "rect": [
+     10,
+     500.5,
+     380,
+     538.9
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+    "rect": [
+     10,
+     550.9,
+     380,
+     589.3
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+    "rect": [
+     10,
+     601.3,
+     380,
+     658.9
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+    "rect": [
+     10,
+     670.9,
+     380,
+     709.2
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "本局账本：现金 44,000 → 18,000，地产标价 +26,000，总资产不变。",
+    "rect": [
+     10,
+     721.2,
+     380,
+     759.6
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+    "rect": [
+     10,
+     771.6,
+     380,
+     810
+    ],
+    "insidePanel": true,
+    "onScreen": true
+   },
+   {
+    "text": "买完剩 18,000；此刻对手店里最贵的一次租是 2,800（晚风街小店），够付 6 次 —— 等级和旺季都会把租金再抬高。",
+    "rect": [
+     10,
+     822,
+     380,
+     860.4
+    ],
+    "insidePanel": false,
+    "onScreen": false
+   },
+   {
+    "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+    "rect": [
+     10,
+     872.4,
+     380,
+     929.9
+    ],
+    "insidePanel": false,
+    "onScreen": false
+   },
+   {
+    "text": "同规则 72 局（grow/take/cross × seed 1–24）：先拿到它的 31 局里，对手踩到 0 次 1 局 / 1 次 3 局 / 2 次及以上 27 局，平均实收 11,948（5 局一分没收到）。",
+    "rect": [
+     10,
+     941.9,
+     380,
+     999.5
+    ],
+    "insidePanel": false,
+    "onScreen": false
+   }
+  ],
+  "buttons": [
+   {
+    "tag": "buy",
+    "text": "买下",
+    "rect": [
+     10,
+     788,
+     191,
+     836
+    ],
+    "hit": true,
+    "at": "<button data-act=\"buy\">买下</button>",
+    "x": 100.5,
+    "y": 812,
+    "disabled": false
+   },
+   {
+    "tag": "skip",
+    "text": "放弃",
+    "rect": [
+     191,
+     788,
+     372,
+     836
+    ],
+    "hit": true,
+    "at": "<button data-act=\"skip\">放弃</button>",
+    "x": 281.5,
+    "y": 812,
+    "disabled": false
+   }
+  ]
+ },
+ "verdict": [
+  {
+   "style": "grow",
+   "plot": "big",
+   "rows": 3,
+   "noScroll": true,
+   "rowsInside": true,
+   "bothHit": true
+  },
+  {
+   "style": "take",
+   "plot": "big",
+   "rows": 3,
+   "noScroll": true,
+   "rowsInside": true,
+   "bothHit": true
+  },
+  {
+   "style": "cross",
+   "plot": "big",
+   "rows": 3,
+   "noScroll": true,
+   "rowsInside": true,
+   "bothHit": true
+  },
+  {
+   "style": "grow",
+   "plot": "small",
+   "rows": 3,
+   "noScroll": true,
+   "rowsInside": true,
+   "bothHit": true
+  }
+ ],
+ "controlCaught": true
+}
