@@ -376,7 +376,7 @@ export function renderSliceInsight(el,state,p) {
     <p>你的资产 <b>${money(assetsOf(state,human))}</b> · 当前第 ${human.alive?rank.indexOf(human)+1:'—'} 名<br>已收租 ${money(human.sliceStats.rentEarned)} · 已付租 ${money(human.sliceStats.rentPaid)}</p>
     ${businessLine(state,human)}
     ${state.day<4?'<p class="hint">街心书屋第 4 天开售，标价 26,000。先经营，或留钱抢位置。</p>':bookHint}
-    ${!state.over&&p.controller==='human'&&state.phase==='action'?`<p class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡，随后掷骰。下次补给：${state.day>=16?'本局最后一天':`第 ${1+3*Math.ceil(state.day/3)} 天`}。<br>翻修 → 旺季；停业 → 定步。也可以留牌等时机。</p>`:''}${report}`;
+    ${!state.over&&p.controller==='human'&&state.phase==='action'?`<p class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡，随后${p.diceValue == null ? '掷骰' : '按「出发」'}。下次补给：${state.day>=16?'本局最后一天':`第 ${1+3*Math.ceil(state.day/3)} 天`}。<br>翻修 → 旺季；停业 → 定步。也可以留牌等时机。</p>`:''}${report}`;
 }
 
 // #574：把「账面回本」落到「本局真回本了吗」。

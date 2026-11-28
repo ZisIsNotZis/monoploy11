@@ -62,6 +62,12 @@
 .slice-mode #hand { flex-direction:column; align-items:stretch; min-height:0; }
 .slice-mode #cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); max-height:34vh; overflow:auto; gap:8px; padding:2px; }
 .slice-mode #dice { display:flex; flex-direction:row; align-items:center; justify-content:space-between; }
+.slice-mode #dice:has(.closed-shops) { flex-wrap:wrap; }
+.closed-shops { flex:0 0 100%; box-sizing:border-box; min-width:0; max-height:4.8em; overflow:auto;
+  padding:4px 8px; border:1px solid #71563d; border-radius:6px; background:#302923; color:#f3d9af;
+  font:12px/1.5 system-ui,sans-serif; }
+.closed-shops > div { display:flex; flex-wrap:wrap; column-gap:8px; }
+.closed-shops span { color:#e8d7c1; }
 .slice-card { display:flex; flex-direction:column; gap:6px; padding:10px; text-align:left; border:1px solid #64543a; background:linear-gradient(145deg,#302c25,#22262d); border-radius:8px; color:#eee4d1; cursor:pointer; min-height:104px; }
 .slice-card b { font-size:17px; color:#f3d38e; }
 .slice-card span { font:12px/1.5 system-ui,sans-serif; color:#c1c7ce; }
@@ -930,6 +936,13 @@ button { font: inherit; }
   }
   .slice-mode #side:has(#hand:not(.choice)) > #insight {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  }
+  /* Give the decision notice its own room without collapsing the player strip or hiding the log. */
+  .slice-mode #desk:has(#hand:not(.choice) .closed-shops) { --closure-room:54px; }
+  .slice-mode #desk:has(#hand:not(.choice) .closed-shops) #board { height:calc(62vh - var(--closure-room)); min-height:280px; }
+  .slice-mode #desk:has(#hand:not(.choice) .closed-shops) #side { height:calc(38vh + var(--closure-room)); }
+  @media (max-height: 700px) {
+    .slice-mode #desk:has(#hand:not(.choice) .closed-shops) { --closure-room:90px; }
   }
   /* #3468：有那只营业按钮时，#insight 里第一块是「营业还是掷骰：…」，它有两行。
      实测 390×844：标题 594–613、代价句 618–656，而这块的可视下边 647 ⇒ 第二行最后 8px

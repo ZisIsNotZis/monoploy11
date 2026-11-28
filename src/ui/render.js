@@ -796,7 +796,7 @@ function renderChoice(el, state, p, actions) {
       return;
     }
     const title = state.slice?'定步':isSteps ? '超级骰子' : '遥控骰子';
-    const desc = state.slice?'选 1–6 步。下面是所有可能落点，途中岔路由你选。指向一个选项可在地图预览。':isSteps ? '选择本回合要走的步数；方向按正常规则处理。' : '选择本回合每颗骰子的点数；最终步数 = 点数 × 骰子数。';
+    const desc = state.slice?'选 1–6 步，再按「出发」才会移动。下面列出可能落点，途中岔路仍由你选。':isSteps ? '选择本回合要走的步数；方向按正常规则处理。' : '选择本回合每颗骰子的点数；最终步数 = 点数 × 骰子数。';
     el.innerHTML = `<h3>${title}</h3><p class="hint">${desc}</p><div class="dice-choice${state.slice?' landing-options':''}">${nums.map(n => `<button data-dice-choice="${n}">${n}${state.slice?` 步<span>${[...new Set(reachableLandings(state,p,n).map(id=>landingText(state,p,id)))].join('；')}</span>`:''}</button>`).join('')}</div>`;
     el.querySelectorAll('[data-dice-choice]').forEach(b => b.onclick = () => actions.diceValue(+b.dataset.diceChoice));
     if(state.slice)el.querySelectorAll('[data-dice-choice]').forEach(b=>{b.onmouseenter=b.onfocus=()=>actions.preview(+b.dataset.diceChoice);b.onmouseleave=b.onblur=()=>actions.preview(null);});
@@ -1057,6 +1057,26 @@ function renderLog(el, state) {
 
 function maxDice(p) { return Math.min(TUNING.maxDice, 1 + Math.max(0, p.vehicle ?? 0)); }
 
+// Read the live counters, not the card duration: the day may have advanced since it was played.
+function closedShopNotice(state, p) {
+  const byStreet = new Map();
+  for (const plot of state.map.plots) {
+    const shop = state.properties[plot.id];
+    if (shop?.ownerId !== p.id || !(shop.closed > 0) || !(shop.level > 0)) continue;
+    const key = `${plot.street}:${shop.closed}`;
+    const group = byStreet.get(key) ?? { street: plot.street, days: shop.closed, names: [] };
+    group.names.push(plot.name);
+    byStreet.set(key, group);
+  }
+  if (!byStreet.size) return '';
+  const rows = [...byStreet.values()].map(({ street, days, names }) => {
+    const single = names.length === 1;
+    const shops = names.map(name => name.startsWith(street) ? name.slice(street.length) || name : name);
+    return `<div><b>${single ? names[0] : street}停业 · 还剩 ${days} 天</b><span>你的${single ? '这间店' : shops.join('、')}暂不收租</span></div>`;
+  });
+  return `<div id="closed-shops" class="closed-shops">${rows.join('')}</div>`;
+}
+
 function renderHand(root, state, p, actions, opts = {}) {
   if (!p) { root.dice.innerHTML = ''; root.cards.innerHTML = ''; return; }
   // #3278：`state` 说「轮到你掷骰」并不等于**此刻的点击会被接住**。answer() 收下一个答案后
@@ -1080,7 +1100,11 @@ function renderHand(root, state, p, actions, opts = {}) {
     const operateBtn = offer
       ? `<button data-operate="1" class="operate-btn" ${canRoll && !offer.blocked ? '' : 'disabled'} title="${offer.blocked ? `${offer.street} 己方店面停业中，今天开门没有进项` : `留在 ${offer.street}，本回合不移动、不过起点、不落地`}">开门营业 +${money(offer.amount)} · 不走</button>`
       : '';
-    root.dice.innerHTML=`<button data-roll="1" ${canRoll?'':'disabled'}>掷骰 · 1–6 步</button>${operateBtn}<span class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡</span>`;
+    const atDecision = state.phase === 'action' && p.controller === 'human';
+    const fixed = atDecision ? p.diceValue : null;
+    const closed = atDecision ? closedShopNotice(state, p) : '';
+    const rollLabel = fixed == null ? '掷骰 · 1–6 步' : `出发 · 固定 ${fixed} 步`;
+    root.dice.innerHTML=`${closed}<button data-roll="1" ${closed ? 'aria-describedby="closed-shops" ' : ''}${canRoll?'':'disabled'}>${rollLabel}</button>${operateBtn}<span class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡</span>`;
     root.dice.querySelector('[data-roll]').onclick=event=>actions.roll(1,event);
     const opBtn = root.dice.querySelector('[data-operate]');
     if (opBtn) opBtn.onclick = () => actions.operate();
