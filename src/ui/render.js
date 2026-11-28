@@ -6,6 +6,7 @@ import { isPlatformActive } from '../engine/board-v2.js';
 import { CARD_DESC } from '../data/card-desc.js';
 import { svgIcon, tokenSvg, cardSvg, avatarSvg, structureSvg, obstacleSvg } from './icons.js?v=150';
 import { reachableLandings, landingInfo, landingText, routePreview, sliceTargetIds, nextTurnWords, nextTurnStreetNames, streetCardModel, supplyWorth } from '../engine/insight.js';
+import { operateOffer } from '../engine/operate.js';
 import { renderSliceInsight, sliceResults, sliceCardName, sliceCardDescription, sliceCardLine, upgradeAfterLine, money, buildForwardLine, buildOpportunityLine, buildOrderLine } from './slice.js';
 import { buyLedgerLines } from '../engine/market-ledger.js';
 import { poolShareLine, roundsToRecover } from '../engine/payback.js';
@@ -1068,8 +1069,21 @@ function renderHand(root, state, p, actions, opts = {}) {
     `<button data-roll="${i + 1}" ${canRoll ? '' : 'disabled'}>${i + 1} 骰</button>`).join('');
   root.dice.querySelectorAll('button[data-roll]').forEach(b => b.onclick = () => actions.roll(+b.dataset.roll));
   if(state.slice) {
-    root.dice.innerHTML=`<button data-roll="1" ${canRoll?'':'disabled'}>掷骰 · 1–6 步</button><span class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡</span>`;
+    // #3468：动作屏上并排的第二条路。
+    // 一句里必须同时有「做这笔得多少」「放弃的是什么」，否则它就只是一个更大的掷骰键。
+    // 金额只从 operateOffer 来（引擎结算用同一个函数），所以按钮写多少、实收就是多少。
+    const offer = operateOffer(state, p);
+    // 一整行放不下第三块：这里**只能是单行**。
+    // 实测（support/compare/operate-entry-smoke.mjs，1280×800）第一版用了嵌套的
+    // `<span class="hint">`，骰子行被抬高 16px，第三张手牌底边 845.7 → 900，
+    // 中心点不再命中自己 —— 与 #1398 同一类回归。所以代价写在同一行里，用 · 隔开。
+    const operateBtn = offer
+      ? `<button data-operate="1" class="operate-btn" ${canRoll && !offer.blocked ? '' : 'disabled'} title="${offer.blocked ? `${offer.street} 己方店面停业中，今天开门没有进项` : `留在 ${offer.street}，本回合不移动、不过起点、不落地`}">开门营业 +${money(offer.amount)} · 不走</button>`
+      : '';
+    root.dice.innerHTML=`<button data-roll="1" ${canRoll?'':'disabled'}>掷骰 · 1–6 步</button>${operateBtn}<span class="hint">还能用 ${Math.max(0,2-(p.sliceCardsUsed??0))} 张卡</span>`;
     root.dice.querySelector('[data-roll]').onclick=event=>actions.roll(1,event);
+    const opBtn = root.dice.querySelector('[data-operate]');
+    if (opBtn) opBtn.onclick = () => actions.operate();
     // #1398：卡面写这一局此刻的数（sliceCardLine 内部只调 supplyWorth，不改 state）。
     root.cards.innerHTML=p.controller==='ai'?'<p class="hint">留意对手改造了哪条街，等轮到你时再作打算。</p>':p.cards.map((id,i)=>{const valid=!['worker','buyland'].includes(id)||sliceTargetIds(state,p,id).length;return `<button class="slice-card" data-card="${i}" ${canRoll&&(p.sliceCardsUsed??0)<2&&valid?'':'disabled'}><b>${sliceCardName(id)}</b><span>${sliceCardLine(state,p,id)}</span>${valid?'':'<em>现在没有合法目标</em>'}</button>`;}).join('');
     root.cards.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>actions.card(+b.dataset.card));return;

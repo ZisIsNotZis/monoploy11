@@ -3,8 +3,8 @@ import { assetsOf, rentFor, buyPrice, buildCost, cheapestBuyable } from '../engi
 import { poolShareLine, poolKLine, paybackAccount, seasonTerms, seasonLength, roundsToRecover } from '../engine/payback.js';
 import { supplyWorth } from '../engine/insight.js';
 import { streetBusinessStatus } from '../engine/flow.js';
+import { operateCostLine } from '../engine/operate.js';
 import { MARKET_LEDGER, MARKET_PLOT as LEDGER_MARKET_PLOT, holdLeversFacts, bigBuildCost } from '../engine/market-ledger.js';
-
 export const money = n => Math.round(n).toLocaleString();
 export const signed = n => `${n>=0?'+':''}${money(n)}`;
 export function sliceCardDescription(id) {return SLICE_CARDS[id]?.desc??'';}
@@ -157,6 +157,13 @@ const MONEY_MOVES = [
     say: m => `过起点 +${money(+m[2])}` },
   { re: /^(\S+) 在(\S+)获得 (\d+)$/, who: 1, money: 3, sign: 1,
     say: m => `${m[2]}得 ${money(+m[3])}` },
+  // #3468：开门营业也是一笔真入账，必须有自己的原因短语。
+  // 不补这一条时，那一回合的侧栏只能写「资金 +900 · 资产 +900」而说不出是为什么 ——
+  // 玩家会以为钱是白来的。日志行形如
+  // 「街角店主 留在 晨光街 开门营业：1 层 × 900 = 900（本回合不移动）」，只认「= N」那个数。
+  // 规则关闭时这种日志行不存在，所以正式盘的侧栏逐字不变。
+  { re: /^(\S+) 留在 (\S+) 开门营业：.*= (\d+)（本回合不移动）/, who: 1, money: 3, sign: 1,
+    say: m => `${m[2]}营业 +${money(+m[3])}` },
 ];
 
 // #1444：资金没变、但**资产变了**的那些回合也要写原因。
@@ -351,7 +358,20 @@ export function renderSliceInsight(el,state,p) {
   // 只复用 turnCauseLine 已有的来源，不新增数字。
   const out=p.controller!=='human'&&!state.over&&!human.alive;
   const heading=state.over?'收摊结算':out?'你已出局 · 剩下的回合只能看':p.controller==='ai'?`${p.name} 正在行动…`:'轮到你了';
+  // #3468 复核补丁：营业按钮只写「+900 · 不走」——那说的是**得多少**，没说**放弃什么**。
+  // 而「放弃什么」正是这一片要玩家看懂的那一半（#1144 同一条规矩）。
+  // 只在**这一刻真有这只按钮**时才写：规则关着、或站在别处时，正式盘逐字不变。
+  const operateCost=!state.over&&p.controller==='human'&&state.phase==='action'?operateCostLine(state,p):'';
+  // 位置：紧跟在标题下面，而不是排在 #insight 末尾。
+  // supervisor 真机（seed 3 grow 第 1 天、390×844）撞到的正是位置问题：宽屏它能露出半行，
+  // 窄屏下 #insight 被压成可滚动的剩余高度（#1523/#3319c 的窄屏布局），这句话排在最后
+  // ⇒ 决定了才滚到它。它说的是**按下去之前**必须读到的代价，所以必须与「轮到你了」同屏。
+  // 标签从「营业的代价」改成「这一回合的两面」：原句把「停到对手店旁要付 2,000」也列在
+  // 「代价」下，supervisor 真机读到会以为**做营业要付 2,000** —— 方向反了，那是留下来的好处。
+  // 现在两个方向各带自己的前缀（见 operateCostLine），外层不再用一个会误读的总标题。
+  const operateCostLineHtml=operateCost?`<p class="hint" data-operate-cost>${operateCost}</p>`:'';
   el.innerHTML=`<div class="turn-heading">${heading} <span>第 ${Math.min(state.day,state.config.dayLimit)} / ${state.config.dayLimit} 天</span></div>
+    ${operateCostLineHtml}
     <p>你的资产 <b>${money(assetsOf(state,human))}</b> · 当前第 ${human.alive?rank.indexOf(human)+1:'—'} 名<br>已收租 ${money(human.sliceStats.rentEarned)} · 已付租 ${money(human.sliceStats.rentPaid)}</p>
     ${businessLine(state,human)}
     ${state.day<4?'<p class="hint">街心书屋第 4 天开售，标价 26,000。先经营，或留钱抢位置。</p>':bookHint}

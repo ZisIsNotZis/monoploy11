@@ -28,6 +28,15 @@
    为什么不另起一行：实测 360×640 下另起一行会把「开一局」顶出视口（561 → 643）。 */
 .style-choice .style-head { grid-column:2; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .style-choice .style-cash { color:var(--gold); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* #3468：实验规则开关。一行、放在开局键下面 —— 开局键的位置不受影响。
+   为什么不做成第三个「开局」单选框：那一排是「发牌表」的轴，而这是一条规则开关，
+   两者混在一起会让「争街/整条街」看起来也像试验。 */
+.experiment-rule { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:10px 0 0;
+  padding:7px 10px; border:1px dashed #4a5361; border-radius:9px; background:#171c24; cursor:pointer; }
+.experiment-rule:has(input:checked) { border-color:var(--gold); background:#d8a13f12; }
+.experiment-rule input { accent-color:var(--gold); }
+.experiment-rule b { color:#e8dcc2; font-size:12px; white-space:nowrap; }
+.experiment-rule span { color:#98a1ac; font-size:11px; line-height:1.4; }
 .advanced-setup { width:min(1000px,94vw); padding:10px; }
 .advanced-setup summary { cursor:pointer; color:#abb2bd; }
 #setup:has(.slice-intro) { justify-content:flex-start; overflow:auto; padding:24px 0; }
@@ -922,4 +931,14 @@ button { font: inherit; }
   .slice-mode #side:has(#hand:not(.choice)) > #insight {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   }
+  /* #3468：有那只营业按钮时，#insight 里第一块是「营业还是掷骰：…」，它有两行。
+     实测 390×844：标题 594–613、代价句 618–656，而这块的可视下边 647 ⇒ 第二行最后 8px
+     被裁（supervisor 真机第一张截图就是这个：2,000 的下半截看不到）。
+     一局里两件事必须同时读到：留下的机会、走出去的风险；漏掉后半个数就会算错方向。
+     所以只在**这行字存在**时，把这块的内边距与段间距收窄（7px→4px、5px→2px，共省 12px）。
+     不动 #board / #hand / #cards 的高度：那三块的高度是 #1523 与 #3319c 拿真机读数定的，
+     手牌可点与棋盘尺寸不能为了这一段话后退。 */
+  .slice-mode #insight:has([data-operate-cost]) { padding: 4px 7px; }
+  .slice-mode #insight:has([data-operate-cost]) p { margin: 2px 0; }
+  .slice-mode #insight [data-operate-cost] { line-height: 1.45; }
 }

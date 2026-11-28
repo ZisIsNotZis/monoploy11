@@ -6,6 +6,7 @@ import { tickMap, mapExtraSteps, mapShopMultiplier } from './map-runtime.js';
 import { SUPPLIES, SLICE_CARDS } from '../data/slice.js';
 import { poolShareLine, roundsLine, paybackAccount, seasonTerms, seasonLength, roundsToRecover } from './payback.js';
 import { sliceTargetIds } from './insight.js';
+import { operateOffer, operateHere } from './operate.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
   useCard, applyCard, attachGod, makeOffer, drawLottery, tickStocks, TARGET_RANGE_5, SELF_TARGET, PASSIVE, cardRange,
@@ -218,7 +219,7 @@ async function playTurn(state, p, ui) {
   else if (p.status === '冰冻') n = 0;
   else if (p.forcedDice != null) { n = p.forcedDice; p.forcedDice = null; }
   else if (p.diceValue != null) { n = p.diceValue * diceCount; p.diceValue = null; log(state, state.slice?`定步生效：本回合走 ${n} 步`:`遥控骰子：${diceCount} 颗骰子都按 ${n / diceCount} 点计算`); }
-  else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(6)).reduce((a, b) => a + b, 0);
+  else n = Array.from({ length: diceCount }, () => 1 + state.rng.int(TUNING.dieFaces)).reduce((a, b) => a + b, 0);
   state.phase = 'move';
   state.lastRoll = { playerId: p.id, value: n, path: [] };
   log(state, stay ? `${p.name} 停留，本回合移动 0 步` : `${p.name} 掷出 ${n} 点`);
@@ -250,6 +251,15 @@ async function actionPhase(state, p, ui) {
     const a = await ui.ask({ type: 'action', player: p });
     if (!a) return null;
     if (a.action === 'roll') return Math.max(1, Math.min(TUNING.maxDice, 1 + Math.max(0, p.vehicle ?? 0), a.dice ?? 1));
+    // #3468：开门营业 = **整回合不移动**。它走的是同一个「本回合结束」的出口（return null），
+    // 所以不经过起点、不落地、不加盖、不掷骰 —— 那些机会就是这条路的代价，
+    // 它们不能由「再发一笔钱」补回来。规则只在这里实现一次，UI 与 AI 都问 operate.js。
+    if (a.action === 'operate') {
+      const done = operateHere(state, p);
+      if (!done || !done.paid) continue;   // 没有可经营的店面/今天停业 ⇒ 不消耗回合
+      p.sliceStats.operatedTurns = (p.sliceStats.operatedTurns ?? 0) + 1;
+      return null;
+    }
     if (a.action === 'bank') { await bankFlow(state, p, ui, false); continue; }
     if (a.action === 'stock') { await stockFlow(state, p, ui); continue; }
     if (a.action === 'card') {

@@ -44,4 +44,7 @@ export const TUNING = {
   godBaseDays: 3,
   godRangeBonus: 2,
   maxDice: 3,
+  // 一颗骰子几面。`maxDice` 是**骰子颗数**上限，不是步数上限 —— #3468 的代价句曾经把两者
+  // 弄混，于是切片（一颗六面骰、最多 6 步）被按 3 步算。
+  dieFaces: 6,
 };

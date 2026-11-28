@@ -9,6 +9,7 @@ import { EXPERIENCE, aiPauseMs, CSS_TIMINGS } from './data/experience.js';
 import { say, flushSpeech } from './ui/speech.js?v=150';
 import { avatarSvg } from './ui/icons.js?v=150';
 import { createSliceConfig, SLICE_STYLES, SLICE_CARDS } from './data/slice.js';
+import { parseOperateParam } from './engine/operate.js';
 import { reachableLandings, takeoverModel } from './engine/insight.js';
 
 const $ = s => document.querySelector(s);
@@ -319,6 +320,8 @@ const actions = {
     document.querySelectorAll('[data-cell]').forEach(el=>el.classList.toggle('landing-preview',ids.has(el.dataset.cell)));
   },
   roll(n, event) { armRollFocus(event); answer({ action: 'roll', dice: n }); },
+  // #3468：开门营业 —— 一个会结束本回合（不移动）的答案，和掷骰同级。
+  operate() { answer({ action: 'operate' }); },
   card(i) { answer({ action: 'card', index: i }); },
   openStock() { answer({ action: 'stock' }); },
   stock(id, qty, side) { answer({ action: side === 'buy' ? 'buy' : 'sell', stockId: id, qty }); },
@@ -498,6 +501,26 @@ function readBusiness() {
   const picked = Number(new URLSearchParams(location.search).get('business') ?? 0);
   return Number.isFinite(picked) && picked > 0 ? picked : 0;
 }
+// #3468：「开门营业」与 #3391v 的营业进项同一条规矩 —— 试验档只由地址栏打开，不占首屏。
+//   ?slice=1&operate=1      用默认档（= OPERATE_PER_LEVEL = 900/层，就是量过的那一档）
+//   ?slice=1&operate=900    指定每层每天多少
+// 省略 = 0 = 规则关闭，正式入口的行为与已发布版逐字节相同。
+// 解析本身在 operate.js：默认档若在这里再写一遍，就会像上一版那样分家
+//（地址栏给 1500、而全部读数在 900，于是默认档从没被任何一局量过）。
+// 为什么还不给它首屏控件：首屏高度被窄视口卡过两次（support/compare/layout-smoke.mjs），
+// 而这一档的数值还在量。等「两条路都能选」这条判据过了再决定它配不配占那一行。
+// #3468：入口上那只勾选框（index.html 的 #operateRule）与地址栏是**同一件事**的两面：
+// 勾上 = 打开量过的那一档（900/层），取消 = 关闭。
+// 两处必须回到同一处解析：上一版的教训是默认档在两处各写一遍，于是地址栏给 1500、
+// 而全部读数在 900，默认档从没被任何一局量过。
+function readOperate() {
+  const fromUrl = parseOperateParam(new URLSearchParams(location.search).get('operate'));
+  const box = $('#operateRule');
+  // 控件不在（旧页面 / 测试夹具）时退回地址栏，不改变任何旧行为。
+  if (!box) return fromUrl;
+  // 初值由进场时的 qs 拨过去（见文件末尾的 qs 分支）；之后勾选框就是玩家那一刻的选择。
+  return box.checked ? (fromUrl || parseOperateParam('1')) : 0;
+}
 $('#count').onchange = renderSetupRows;
 $('#start').onclick = startGame;
 // 三种起手强度不同，默认不勾任何一项：必须由玩家选一手再开局。
@@ -538,8 +561,10 @@ function startSlice() {
   // 从**当前这一屏的选择**读，不从 qs：qs 是进场那一刻的快照，玩家可能在屏上改过它，
   // 那样「开局用的规则」与「地址栏记的规则」会静默分叉。
   const business = readBusiness();
+  const operate = readOperate();
   state=startSession(createSliceConfig({style,seed,sliceContestedStreets:contested,
-    ...(Number.isFinite(business) && business > 0 ? {streetBusinessPerShop: business} : {})}));
+    ...(Number.isFinite(business) && business > 0 ? {streetBusinessPerShop: business} : {}),
+    ...(operate > 0 ? { sliceOperatePerLevel: operate } : {})}));
   // #3344b：把**实际开局用的那张盘**写回地址栏。
   // 根因不是 replay() 漏了一个参数，是第一屏的单选从来不落到 URL 上：
   // 玩家手选「整条街」开局，地址栏里却什么都没有；于是重开时无据可循，
@@ -555,6 +580,8 @@ function startSlice() {
     u.searchParams.set('cross', contested ? '1' : '0');
     if (business > 0) u.searchParams.set('business', String(business));
     else u.searchParams.delete('business');
+    if (operate > 0) u.searchParams.set('operate', String(operate));
+    else u.searchParams.delete('operate');
     if (u.href !== location.href) history.replaceState(null, '', u.href);
   } catch { /* 老浏览器或 file:// 下没有 history，不影响开局 */ }
   lastMoney=null;lastSnap=null;lastNews=0;
@@ -612,6 +639,10 @@ if (qs.get('slice')) {
   // `?cross=0|1` 与第一屏的选择是同一件事：带参数进来时把单选拨过去。
   // 顺序很要紧 —— 先拨单选，再让提示跟着它走；反过来会出现「选的是整条街、
   // 提示却说争街」那一帧。
+  // 实验规则开关：带 `?operate` 进来就把勾选框拨到那边，否则保持默认不勾。
+  // 与上面那排单选同一个顺序规矩：先拨控件、再让它决定开局。
+  const operateBox = $('#operateRule');
+  if (operateBox) operateBox.checked = parseOperateParam(qs.get('operate')) > 0;
   if (qs.get('cross') === '1' || qs.get('cross') === '0') {
     const want = qs.get('cross') === '1' ? 'contested' : 'whole';
     const radio = document.querySelector(`[name="sliceOpening"][value="${want}"]`);

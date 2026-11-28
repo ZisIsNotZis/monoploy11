@@ -17,6 +17,14 @@
     <div id="sliceStyles" class="slice-styles"></div>
     <p id="sliceStyleNote" class="hint" hidden></p>
     <button id="startSlice">开一局街角生意</button>
+    <!-- #3468：实验规则开关。放在开局键**正下方**，开局键的位置逐像素不变（首屏高度被窄视口
+         卡过两次：390×844 开局键 718–754、360×640 已到 773）。
+         为什么不放到那段 hint 之后：390×844 实测开关落在 874–935，视口 844 —— 要往下滚
+         才看得到，而“能从正式版接上的实验版”不该藏在折叠线下。放在这里实测 762–823，
+         完整在窗内，且不与开头键重叠。默认不勾 = 正式规则，与已发布版行为相同。 -->
+    <label class="experiment-rule" title="站在自己已建成的店旁时，可以放弃本回合的移动（不过起点、不落地、不掷骰）换一笔日额。默认关闭。">
+      <input type="checkbox" id="operateRule"> <b>实验规则：开门营业</b><span>放弃一回合的移动，换该街己方层数 × 900</span>
+    </label>
     <p class="hint">不用先读规则。卡片效果、地产租金与每回合发生的事都会直接显示。16 天是回合上限，实际时长正在验证。</p>
   </section>
   <details class="advanced-setup"><summary>完整模式与自定义设置</summary>

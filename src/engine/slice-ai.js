@@ -1,5 +1,7 @@
 import { buyPrice, acquisitionPrice, rentFor } from './economy.js';
 import { reachableLandings, sliceTargetIds } from './insight.js';
+import { operateOffer } from './operate.js';
+import { TUNING } from '../data/tuning.js';
 
 // Only public board information is scored. No RNG draws or future dice are read.
 const ownerOf = (state, pr) => state.players.find(p => p.id === pr?.ownerId);
@@ -21,9 +23,9 @@ function expectedRent(state, plotId) {
 
 function landingExposure(state, players) {
   const exposure = new Map();
-  for (const player of players) for (let steps = 1; steps <= 6; steps++) {
+  for (const player of players) for (let steps = 1; steps <= TUNING.dieFaces; steps++) {
     const nodes = reachableLandings(state, player, steps);
-    for (const id of nodes) exposure.set(id, (exposure.get(id) ?? 0) + 1 / (6 * nodes.length));
+    for (const id of nodes) exposure.set(id, (exposure.get(id) ?? 0) + 1 / (TUNING.dieFaces * nodes.length));
   }
   return exposure;
 }
@@ -122,11 +124,75 @@ function streetTargets(state, player, cardId) {
 }
 
 function stepScoresForNodes(state, player) {
-  return Array.from({ length: 6 }, (_, i) => reachableLandings(state, player, i + 1)).flat();
+  return Array.from({ length: TUNING.dieFaces }, (_, i) => reachableLandings(state, player, i + 1)).flat();
+}
+
+// #3468：「开门营业」的估值 —— 与它放弃的那个回合放在**同一个单位（现金）**里比。
+//
+// 这是 AI 的启发式，不是产品规则：金额本身来自 operate.js（与按钮、引擎同一份）。这里只
+// 回答「本回合站着收这笔，还是掷骰去捡另一个」。
+//
+// 两项：
+//   · 落点当场进出（过发薪处、零工、付给别人的租金）—— 只算确定的格子。
+//     自家店不在里面：引擎只在移动结束后对**别人**的店结租，自家店只问加盖；
+//   · 机动权的固定估值 MOVE_OPTION：站着不动的机会成本不是零，但也不能大到「永不营业」，
+//     这个数是**量出来的**（support/probe-3468/operate-route.mjs 的 option 扫描），
+//     不是拍的。
+export const MOVE_OPTION = 1200;
+
+// #3468 复核抓到：这里曾把「停到自家/同盟的店旁」算成 **+租金**。
+// 引擎不是这么结的 —— groundPhase 在 owner.team === p.team 时只问「要不要加盖」，
+// 一分钱不收也不付（flow.js 的 `owner?.team === p.team` 分支）。把自家店当收入会让
+// 「这一回合能捡到多少」虚高，于是 operateChoice 更难开门：9 seed 的 productOn 里有
+// 198/3141 个真正开得出营业的分岔点被这个虚高挡住。
+// 更糟的是探针里那份同名函数早就修过（它的注释原话：「把“自己的店”当成了收入，
+// 于是 opSmart 的估值虚高」），而产品里这一份没跟着改 —— 于是 RESULT-3468 量的
+// 不是产品在跑的那套估值。两份实现必然漂，现在探针改为 import 这里的 turnCash。
+function landingCash(state, player, nodeId) {
+  const node = state.map.nodes.find(n => n.id === nodeId);
+  if (!node) return -1000;
+  if (node.kind === 'money') return 1500;              // 零工：随机收入，最多 3,000
+  if (node.kind === 'hospital' || node.kind === 'jail') return -4000;  // 停两回合
+  let cash = 0;
+  for (const plotId of node.adjacentPlots ?? []) {
+    const pr = state.properties[plotId];
+    if (!pr || !pr.ownerId) continue;
+    // 自家/同盟的店：引擎不收也不付 ⇒ 对这一回合的现金是 0，不是收入。
+    if (allied(state, player, pr)) continue;
+    const rent = rentFor(state, plotId);
+    if (rent) cash -= rent;
+  }
+  return cash;
+}
+
+// 导出是给探针用的（support/probe-3468/operate-route.mjs 的 opSmart 臂）：证据必须量
+// 产品真正在跑的估值。上一版两边各写一份，产品这份漂成了「自家店 = 收入」。
+export function turnCash(state, player) {
+  let bestCash = -Infinity;
+  for (let steps = 1; steps <= TUNING.dieFaces; steps++) {
+    for (const nodeId of reachableLandings(state, player, steps)) {
+      bestCash = Math.max(bestCash, landingCash(state, player, nodeId));
+    }
+  }
+  return Number.isFinite(bestCash) ? bestCash : 0;
+}
+
+// 有牌可出时，先出牌：营业会结束本回合，而牌只能在本回合出。
+// 所以「营业」只在**已经没牌可出**或手里的牌确实不值得出的时候才让步 ——
+// 这一段不重写牌的估值，只问 actionAnswer 原本会不会选一张牌。
+function operateChoice(state, player, bestCardScore) {
+  const offer = operateOffer(state, player);
+  if (!offer || offer.blocked || offer.amount <= 0) return null;
+  if (bestCardScore > 0) return null;                 // 先把牌打完，再考虑站着收钱
+  const moving = turnCash(state, player) + MOVE_OPTION;
+  return offer.amount > moving ? { action: 'operate' } : null;
 }
 
 function actionAnswer(state, player) {
-  if ((player.sliceCardsUsed ?? 0) >= 2) return { action: 'roll', dice: 1 };
+  if ((player.sliceCardsUsed ?? 0) >= 2) {
+    const op = operateChoice(state, player, 0);
+    return op ?? { action: 'roll', dice: 1 };
+  }
   const choices = player.cards.flatMap((cardId, index) => {
     let score = 0;
     if (cardId === 'worker') score = best(plotTargets(state, player, cardId))?.score ?? 0;
@@ -142,7 +208,8 @@ function actionAnswer(state, player) {
     return score > 0 ? [{ value: index, score }] : [];
   });
   const choice = best(choices);
-  return choice ? { action: 'card', index: choice.value } : { action: 'roll', dice: 1 };
+  if (choice) return { action: 'card', index: choice.value };
+  return operateChoice(state, player, 0) ?? { action: 'roll', dice: 1 };
 }
 
 export function sliceAnswer(prompt, state) {
