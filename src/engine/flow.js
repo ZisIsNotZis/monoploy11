@@ -79,6 +79,7 @@ function endPlayerTurn(state, p) {
     const before=state.slice.turnStart;
     const report={playerId:p.id,name:p.name,day:before.day,money:p.cash+p.deposit-before.cash-before.deposit,assets:assetsOf(state,p)-before.assets,
       cardsPlayed:p.sliceCardsUsed??0,lines:state.log.slice(state.log.indexOf(before.log)+1).map(l=>l.text)};
+    if (before.operatingReceipt) report.operatingReceipt = before.operatingReceipt;
     state.slice.history.push(report); p.lastTurn=report;
   }
   // #646：记一次全场绝对资产快照，供离场屏指出「哪一天开始落后」。
@@ -257,6 +258,8 @@ async function actionPhase(state, p, ui) {
     if (a.action === 'operate') {
       const done = operateHere(state, p);
       if (!done || !done.paid) continue;   // 没有可经营的店面/今天停业 ⇒ 不消耗回合
+      // Capture only a successful transfer, not an offer or a line of display copy.
+      state.slice.turnStart.operatingReceipt = { street: done.street, amount: done.paid };
       p.sliceStats.operatedTurns = (p.sliceStats.operatedTurns ?? 0) + 1;
       return null;
     }

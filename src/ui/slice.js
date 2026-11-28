@@ -157,13 +157,6 @@ const MONEY_MOVES = [
     say: m => `过起点 +${money(+m[2])}` },
   { re: /^(\S+) 在(\S+)获得 (\d+)$/, who: 1, money: 3, sign: 1,
     say: m => `${m[2]}得 ${money(+m[3])}` },
-  // #3468：开门营业也是一笔真入账，必须有自己的原因短语。
-  // 不补这一条时，那一回合的侧栏只能写「资金 +900 · 资产 +900」而说不出是为什么 ——
-  // 玩家会以为钱是白来的。日志行形如
-  // 「街角店主 留在 晨光街 开门营业：1 层 × 900 = 900（本回合不移动）」，只认「= N」那个数。
-  // 规则关闭时这种日志行不存在，所以正式盘的侧栏逐字不变。
-  { re: /^(\S+) 留在 (\S+) 开门营业：.*= (\d+)（本回合不移动）/, who: 1, money: 3, sign: 1,
-    say: m => `${m[2]}营业 +${money(+m[3])}` },
 ];
 
 // #1444：资金没变、但**资产变了**的那些回合也要写原因。
@@ -324,6 +317,14 @@ export function businessLine(state, human) {
   return `<p class="hint">${head}：${best.street} ${best.owned}/${best.total} 间，${gap.join('、') || '条件已满足'}。</p>`;
 }
 
+// The credit is a recorded transfer; the remainder is a net, not an inferred card charge.
+function operatingAccount(turn, compact = false) {
+  const receipt = turn?.operatingReceipt;
+  if (!receipt) return '';
+  const other = turn.money - receipt.amount;
+  return `<b data-operate-day="${turn.day}" data-operate-paid="${receipt.amount}">${compact ? '' : receipt.street}营业实收 ${signed(receipt.amount)}</b>${other ? ` · ${compact ? '其他' : '其他收支'} <span data-operate-other="${other}">${signed(other)}</span>` : ''} · ${compact ? '净额' : '回合净变动'} <span data-operate-net="${turn.money}">${signed(turn.money)}</span>`;
+}
+
 export function renderSliceInsight(el,state,p) {
   if(!el)return;
   el.hidden=!state.slice;
@@ -331,14 +332,14 @@ export function renderSliceInsight(el,state,p) {
   const human=state.players.find(p=>p.controller==='human')??p;
   const last=human?.lastTurn;
   const rank=[...state.players].filter(q=>q.alive).sort((a,b)=>assetsOf(state,b)-assetsOf(state,a));
-  const cause=turnCauseLine(last,human?.name);
+  const cause=last?.operatingReceipt ? null : turnCauseLine(last,human?.name);
   // #1458：两栏都是 0 时**换掉**这一行，而不是在后面再挂一句。
   // 实测（真 Edge 1280×800，同一帧、同一 365px 宽）：追加变 2 行（H 20.8→41.6），
   // 第三张卡中心从 elementFromPoint 命中变成 out-of-view（bottom 845.7→863.2）；
   // 换成「你上回合：掷出 6 点，停在 发薪处；这回合钱没动」仍是 1 行、第三张卡仍可点。
   // 「资金 +0 · 资产 +0」这两个数本来就什么也没说，换掉不丢信息。
   const bothZero=!!last&&!last.money&&!last.assets;
-  const summary=bothZero&&cause?`你上回合：${cause}`
+  const summary=last?.operatingReceipt?`展开上回合明细 · 资产 ${signed(last.assets)}`:bothZero&&cause?`你上回合：${cause}`
     :`你上回合：资金 ${signed(last?.money??0)} · 资产 ${signed(last?.assets??0)}${cause?`（${cause}）`:''}`;
   const report=last?`<details><summary>${summary}</summary><ul>${last.lines.map(t=>`<li>${t}</li>`).join('')}</ul></details>`:'';
   // 候选 C（#554）：书屋易主后，「谁在收、走邻街要付多少」必须在玩家下一次做决定时就在眼前。
@@ -371,7 +372,7 @@ export function renderSliceInsight(el,state,p) {
   // 现在两个方向各带自己的前缀（见 operateCostLine），外层不再用一个会误读的总标题。
   const operateCostLineHtml=operateCost?`<p class="hint" data-operate-cost>${operateCost}</p>`:'';
   el.innerHTML=`<div class="turn-heading">${heading} <span>第 ${Math.min(state.day,state.config.dayLimit)} / ${state.config.dayLimit} 天</span></div>
-    ${operateCostLineHtml}
+    ${last?.operatingReceipt ? `<p class="hint" data-operate-account>上回合：${operatingAccount(last, true)}</p>` : ''}${operateCostLineHtml}
     <p>你的资产 <b>${money(assetsOf(state,human))}</b> · 当前第 ${human.alive?rank.indexOf(human)+1:'—'} 名<br>已收租 ${money(human.sliceStats.rentEarned)} · 已付租 ${money(human.sliceStats.rentPaid)}</p>
     ${businessLine(state,human)}
     ${state.day<4?'<p class="hint">街心书屋第 4 天开售，标价 26,000。先经营，或留钱抢位置。</p>':bookHint}
@@ -1405,6 +1406,12 @@ export function nextGameLine(state) {
   return '这一局你既没付过租也没收过租：换个起手，走一条会踩到别人地盘的路。';
 }
 
+function recapTurn(turn) {
+  const details = turn.lines.filter(t=>!/回合|掷出|方向/.test(t)).join('<br>');
+  if (!turn.operatingReceipt) return `<p>第 ${turn.day} 天 · 资金 ${signed(turn.money)} / 资产 ${signed(turn.assets)}<br>${details}</p>`;
+  return `<p data-operate-day="${turn.day}">第 ${turn.day} 天 · ${operatingAccount(turn)} / 资产 ${signed(turn.assets)}${details ? `<br>${details}` : ''}</p>`;
+}
+
 export function sliceResults(state) {
   const rank=[...state.players].sort((a,b)=>assetsOf(state,b)-assetsOf(state,a));
   const human=state.players.find(p=>p.controller==='human')??rank[0];
@@ -1420,6 +1427,6 @@ export function sliceResults(state) {
     <p class="hint">资产 = 现金 + 存款 + 地产当前标价。收购会转移店铺，也会把收购款交给原主人；翻修每层增加估值，小店 4,000 / 书屋 8,000。</p>
     <p>你收租 ${money(human.sliceStats.rentEarned)}，付租 ${money(human.sliceStats.rentPaid)}，用了 ${human.sliceStats.cardsPlayed} 张卡，完成 ${human.sliceStats.takeovers} 次接盘。</p>
     ${stepPaybackSection(state)}
-    <details><summary>回看你改变局面的回合</summary>${state.slice.history.filter(h=>h.playerId===human.id&&(h.cardsPlayed||h.money!==0)).map(h=>`<p>第 ${h.day} 天 · 资金 ${signed(h.money)} / 资产 ${signed(h.assets)}<br>${h.lines.filter(t=>!/回合|掷出|方向/.test(t)).join('<br>')}</p>`).join('')}</details>
+    <details><summary>回看你改变局面的回合</summary>${state.slice.history.filter(h=>h.playerId===human.id&&(h.operatingReceipt||h.cardsPlayed||h.money!==0)).map(recapTurn).join('')}</details>
     <div class="next-bar"><p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p><button data-replay>换个打法，再开一局</button></div>`;
 }

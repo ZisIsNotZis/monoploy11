@@ -938,7 +938,7 @@ button { font: inherit; }
      所以只在**这行字存在**时，把这块的内边距与段间距收窄（7px→4px、5px→2px，共省 12px）。
      不动 #board / #hand / #cards 的高度：那三块的高度是 #1523 与 #3319c 拿真机读数定的，
      手牌可点与棋盘尺寸不能为了这一段话后退。 */
-  .slice-mode #insight:has([data-operate-cost]) { padding: 4px 7px; }
-  .slice-mode #insight:has([data-operate-cost]) p { margin: 2px 0; }
-  .slice-mode #insight [data-operate-cost] { line-height: 1.45; }
+  .slice-mode #insight:has([data-operate-cost], [data-operate-account]) { padding: 4px 7px; }
+  .slice-mode #insight:has([data-operate-cost], [data-operate-account]) p { margin: 2px 0; }
+  .slice-mode #insight :is([data-operate-cost], [data-operate-account]) { line-height: 1.45; }
 }
