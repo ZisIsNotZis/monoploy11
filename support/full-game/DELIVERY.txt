@@ -13,7 +13,18 @@
 #
 # 校验：python3 support/full-game/check-delivery.py
 
-# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3406.sha256（#3391zp4）。
+# 这份锁 = **当前**产品的描述：docs/evidence/slice-entry-3412.sha256（#3456）。
+# 从公开版 30dfef6 起只收这一片：加盖那一屏的**旺季容量口径**、玩家说明、可重跑的最终证据。
+# 相对 3406 只改玩家可见措辞与一条上限口径，规则一行未动：
+#   ① 「剩几天」不再写成「最多几次」：容量 = **当天敌对座位数 × 剩余天数**。切片里每人一天
+#      一个回合，而两位对手可以在同一天各踩到同一格（882 个「店×天」里 18 个当天两笔，2.0%）。
+#      屏上只留一句能做决定的话（「3 天内最多收 6 次：2 位对手每天各来一次」），
+#      乘法推导留在 payback.js 的注释里，不进界面。
+#   ② 那个「最多」是**上界不是期望值**，并对着产品自己的结算核过：cap-vs-settlement.mjs 数
+#      180 局里 845 个「店×天」的实付行，笔数 > 当天对手数 0 行、同一人一天同格两次 0 行。
+#   ③ 判据 test/season-window-capacity.test.js 第 2 条**自己跑真整局**（命中
+#      grow seed 4 第 6 天 街心书屋 的两位不同付款人），不再用手写日志字符串。
+# 前一份：docs/evidence/slice-entry-3406.sha256（#3391zp4）。
 # 相对 3405 又收了复核 #3446 的四条（都是我自己没做干净的地方）：
 #   ① 旺季的 K 只在旺季还开着时成立 —— 屏上现在带上兑现期限（「还剩 2 天」/「今天是最后一天」），
 #      剩余天数读 pr.inflate，不推测。上一版把「满 2 次」写成无条件上界。
@@ -111,6 +122,17 @@ lock src/engine/market-ledger.js
 # #3391 的锁与证据。
 # #3391t 的锁（**已不是当前**）：36 个文件，文件集与 3393 相同。
 doc  docs/evidence/slice-entry-3406.sha256
+# #3456 的锁（**当前**）：文件集与 3406 相同（36 个），变的是四个文件里的字节。
+# 回执 receipt-3412-full 跑的就是这把锁；RESULT-3456 是它的证据与边界。
+doc  docs/evidence/slice-entry-3412.sha256
+doc  docs/evidence/receipt-3412-full/provenance.json
+doc  docs/evidence/receipt-3412-full/record-8-summary.json
+doc  docs/evidence/receipt-3412-full/record-10-replay.json
+doc  docs/evidence/receipt-3412-full/after.json
+doc  docs/evidence/receipt-3412-full/raw/record-8-summary.json.gz
+doc  docs/evidence/receipt-3412-full/raw/record-10-replay.json.gz
+doc  docs/evidence/receipt-3412-full/raw/after.json.gz
+doc  docs/evidence/RESULT-3456.md
 doc  docs/evidence/receipt-3406-full/provenance.json
 doc  docs/evidence/receipt-3406-full/record-8-summary.json
 doc  docs/evidence/receipt-3406-full/record-10-replay.json
@@ -195,6 +217,18 @@ tool support/probe-3391/neg-control.sh
 tool support/probe-3391/hook-render.mjs
 # 它的负对照：删掉 HOOKS 里一个 id，屏上真的回退到旧文案，探针必须红。
 tool support/probe-3391/hook-render-neg.sh
+# #3456：屏上那个「最多」是从产品自己的结算里数出来的，不是推断。
+#   ① same-day-landings.mjs：按「店×天」数实付行，得到 18/882 个当天两笔；
+#   ② cap-vs-settlement.mjs：同一批行再数付款人数，验证「笔数 ≤ 当天对手数」；
+#   ③ first-double.mjs：找出那一局，给测试当坐标（测试自己 runGame，不硬编码 seed）；
+#   ④ print-season-screens.mjs：把剩余 0–3 天的原句逐字打印出来；
+#   ⑤ seed42-day15.mjs：复核 supervisor 报的那个具体例子在本树上能否复现
+#      （它只印那一天那一店的结算行，复现不出两笔就抛 —— 「我没找到」也得可重跑）。
+tool support/probe-3391/same-day-landings.mjs
+tool support/probe-3391/cap-vs-settlement.mjs
+tool support/probe-3391/first-double.mjs
+tool support/probe-3391/print-season-screens.mjs
+tool support/probe-3391/seed42-day15.mjs
 tool support/find-chrome.mjs
 doc  docs/evidence/RESULT-3391v.md
 doc  docs/evidence/slice-entry-3393.sha256

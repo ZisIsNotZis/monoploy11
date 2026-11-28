@@ -4,7 +4,7 @@ import { buildAdj, edgeUsable, isPlatformActive, nearestStable, pathWithin } fro
 import { rentFor, buyPrice, buildCost, assetsOf, pay, log, bossRentMultiplier, incomeBonus, cheapestBuyable, cheapestAcquirable } from './economy.js';
 import { tickMap, mapExtraSteps, mapShopMultiplier } from './map-runtime.js';
 import { SUPPLIES, SLICE_CARDS } from '../data/slice.js';
-import { poolShareLine, roundsLine, paybackAccount, seasonTerms, roundsToRecover } from './payback.js';
+import { poolShareLine, roundsLine, paybackAccount, seasonTerms, seasonLength, roundsToRecover } from './payback.js';
 import { sliceTargetIds } from './insight.js';
 import {
   createGame, current, addCard, randomCard, CARD_DEFS, BIG_NAMES,
@@ -811,7 +811,7 @@ export function buildPlot(state, p, id) {
       // #3391zp4（复核 #3446 第⑤条）：不在这里自己 ceil（仓里只有一个实现）。
       const k = roundsToRecover(cost, paybackGain);
       // #3391zp3：同样接季节。这里 pr.level 已经是升级后的，所以传 level-1。
-      log(state, `这笔怎么算：${paybackAccount(cost, paybackGain, k, rentFor(state, id), seasonTerms(state, id, pr.level - 1))}`);
+      log(state, `这笔怎么算：${paybackAccount(cost, paybackGain, k, rentFor(state, id), seasonTerms(state, id, pr.level - 1), seasonLength(state))}`);
     }
   }
   log(state, `${p.name} 将 ${state.slice?plot.name:plot?.big ? '大空地' : '小地产'} 升到 Lv.${pr.level}（花费 ${cost}）${state.slice?`，${pr.inflate>0?'旺季 ':''}租 ${rentFor(state,id).toLocaleString()}${paybackText}`:''}${q3Text}`);

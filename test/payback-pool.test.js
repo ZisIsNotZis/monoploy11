@@ -8,7 +8,7 @@ import { startSession, runGame, buildPlot } from '../src/engine/flow.js';
 import { sliceAnswer } from '../src/engine/slice-ai.js';
 import { rentFor } from '../src/engine/economy.js';
 import { render } from '../src/ui/render.js';
-import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, paybackAccount, seasonTerms, POOL_SOURCE } from '../src/engine/payback.js';
+import { RENT_POOL, paybackFacts, poolShareLine, poolKLine, roundsToRecover, roundsLine, paybackAccount, seasonTerms, seasonLength, POOL_SOURCE } from '../src/engine/payback.js';
 import { buildForwardLine, buildForwardK } from '../src/ui/slice.js';
 
 // n0 是 payback.js 内部的格式化函数；测试只需要一致地把 10000 印成「10,000」。
@@ -156,7 +156,10 @@ test('#3391zp2 确认框与流水单是同一笔账，且抬价不被说成少�
   // #3391zp3：账里多了季节那两句（平常/旺季各一个说法），所以参数也要把季节带进去 ——
   // 不传的话就等于拿一句“屏上不存在的话”去比对，那比的是测试自己造的句子。
   const terms = seasonTerms(s, id, info.level);
-  const account = paybackAccount(cost, info.unit, info.K, info.after, terms);
+  // #3450：这里原来漏了第 6 个参数 seasonDays，于是拿一句**产品从来不会印的话**去比对。
+  // 平常分支有了季节长度之后，产品句子与这句就不再逐字相等 —— 红的不是措辞，是这条判据自己
+  // 少传了一个产品真的在传的参数（与它上面那句「参数也要把季节带进去」自相矛盾）。
+  const account = paybackAccount(cost, info.unit, info.K, info.after, terms, seasonLength(s));
   // ① 两块屏都说同一句
   const confirm = buildForwardLine(s, id, cost);
   assert.ok(confirm.includes(account), `确认框没有那句共用的除法：${confirm}`);
@@ -424,26 +427,116 @@ test('#3391zp3 旺季不重复计数，且两个季节都说清会变', () => {
   assert.ok(line2.includes(`每次会多收 ${n0(terms2.hotUnit)}`), `平常现场没说旺季会多收多少：${line2}`);
   assert.ok(line2.includes(`回到 ${info2.K} 次`), `平常现场没说旺季过去后又变回几次：${line2}`);
 
+  // hotLine 先取：下面 ④b 与 ⑤ 都要用它。
+  const hotLine = buildForwardLine(hot.s, hot.id, cost);
+
+  // ④b #3450（supervisor 第六轮真机，**两次**）：他要的是「先在旺季收过两次，结束后还差几次」。
+  // 我第一版只写方向（「收过的算贵的、剩下少于 K 次」），他回的仍是「答不上来」——
+  // 方向不能拿去做决定。现在屏上直接给一笔**能用屏上自己的数逐位复算**的例子，
+  // 而且两个分支都要给（他第一次撞到的恰恰是 `inHot >= 天数` 那一支，我当时只改了另一支）。
+  //
+  // 判据不认措辞：从屏上抽出「旺季踩 m 次、收回 G、剩 L、再 n 次」，逐个与现算值比。
+  const checkExample = (name, line, plan, hot) => {
+    const m = /旺季里踩到 (\d+) 次/.exec(line);
+    assert.ok(m, `${name}分支没给可用数复算的例子：${line}`);
+    const got = /收回 ([\d,]+)，剩 ([\d,]+)/.exec(line);
+    const rest = /再 (\d+) 次(?:就够本|$)/.exec(line);
+    assert.ok(got && rest, `${name}分支的例子不全（收回/剩余/剩余次数）：${line}`);
+    const n = Number(got[1].replace(/,/g, '')), left = Number(got[2].replace(/,/g, ''));
+    assert.equal(n, Number(m[1]) * hot, `${name}：收回的数不等于 次数×旺季价`);
+    assert.equal(left, cost - n, `${name}：剩余的钱不等于 花费−已收`);
+    assert.equal(Number(rest[1]), Math.ceil(left / plan), `${name}：剩余次数不等于 ceil(剩余÷平常价)`);
+    // 负对照：例子一删，上面三条就无从判 —— 产品退回「两个端点、中间留白」。
+    assert.equal(/旺季里踩到 \d+ 次/.test(line.replace(/例：[^。]*。/, '')), false, `${name}：负对照没生效`);
+  };
+  checkExample('平常', line2, terms2.plainUnit, terms2.hotUnit);
+  checkExample('旺季', hotLine, hot.terms.plainUnit, hot.terms.hotUnit);
+
+  // ④c #3453 复核第 1、2 条（两条真缺陷），**#3456 又把第一条的修法推翻了**：
+  //   ① 例子里的 m 原来固定取 inHot−1，不看窗口。我把它夹成 min(inHot−1, 剩余天数)，
+  //      等于把**天数当成了次数上限** —— supervisor 实跑 seed 42 机会买家第 15 天，
+  //      晨光街茶铺一天收到两笔全额（7,800 与 11,200）。所以上界是「对手数 × 剩余天数」。
+  //   ② ④b 的夹具只有 inHot=2 一档，m 写成 inHot−2 也全绿 —— 那条判据在夹具里分不出对错。
+  // 所以这里：(a) 断言 m == min(inHot−1, 对手数 × 剩余天数)；(b) 补 inHot=3 的一格（月色街茶铺式：
+  // 10,000 / 平常 2,000 / 旺季 4,000）—— 这一档 m 应该是 2，写成 1 立刻红；
+  // (c) 负对照：把上界改回「只看天数」，只剩 1 天那一档必须变红（否则本条又变成 pin 旧修法）。
+  const clampCase = (() => {
+    const s = slice();
+    const [p] = s.players;
+    const id = s.map.plots.find(x => x.name === '月色街茶铺').id;
+    for (const plot of s.map.plots) {
+      if (plot.id === id) continue;
+      if (!plot.big) s.properties[plot.id].ownerId = null;
+      s.properties[plot.id].inflate = 0; s.properties[plot.id].closed = 0;
+    }
+    s.properties[id].ownerId = p.id; s.properties[id].level = 1;
+    s.properties[id].closed = 0;
+    if (!p.properties.includes(id)) p.properties.push(id);
+    return { s, id };
+  })();
+  for (const daysLeft of [1, 2, 3]) {
+    clampCase.s.properties[clampCase.id].inflate = daysLeft;
+    const terms3 = seasonTerms(clampCase.s, clampCase.id, 1);
+    const line3 = buildForwardLine(clampCase.s, clampCase.id, 10000);
+    const inHot3 = Math.ceil(10000 / terms3.hotUnit);
+    assert.equal(inHot3, 3, `夹具没造出 inHot=3 那一档（实得 ${inHot3}）`);
+    const m = /旺季里踩到 (\d+) 次/.exec(line3);
+    assert.ok(m, `旺季只剩 ${daysLeft} 天时没有例子：${line3}`);
+    // 上界 = 剩余天数 × 当天能踩到的对手数（3 人局里是 2），**不是剩余天数**。
+    const cap3 = daysLeft * terms3.maxPerDay;
+    assert.equal(terms3.maxPerDay, 2, `夹具的对手数不对（实得 ${terms3.maxPerDay}）`);
+    assert.equal(Number(m[1]), Math.min(inHot3 - 1, cap3),
+      `剩余 ${daysLeft} 天时例子举的「踩到 ${m[1]} 次」不是 min(inHot−1, 对手数×天数=${cap3})：${line3}`);
+    // 自相矛盾的反面：只要没超过窗口容量，就不算打架。超出容量才是假话。
+    assert.ok(Number(m[1]) <= cap3, `剩余 ${daysLeft} 天却举了 ${m[1]} 次，超出窗口容量 ${cap3}：${line3}`);
+    // 负对照：把上界退回「只看天数」，剩 1 天那一档会从 2 变成 1 —— 本条必须能看见这个差别。
+    const daysOnly = Math.min(inHot3 - 1, daysLeft);
+    if (daysOnly !== Math.min(inHot3 - 1, cap3)) {
+      assert.notEqual(daysOnly, Number(m[1]),
+        `剩余 ${daysLeft} 天：产品仍按「天数=次数上限」取数（${daysOnly}），与对手数×天数不一致`);
+    }
+    // 例子自己的算术仍要成立（复算，不认措辞）。
+    const got = /收回 ([\d,]+)，剩 ([\d,]+)/.exec(line3);
+    assert.equal(Number(got[1].replace(/,/g, '')), Number(m[1]) * terms3.hotUnit,
+      `剩余 ${daysLeft} 天：收回的数不等于 次数×旺季价`);
+  }
+  clampCase.s.properties[clampCase.id].inflate = 0;   // 复原，不污染同进程后续
+
   // ⑤ #3446 第②条（复核抓到，真缺陷）：旺季的 K 只在**旺季还开着**时成立，
   // 「满 2 次」不能写成无条件上界（旺季一共 3 天，2 次踩到一间小店几乎不可能）。
   // 所以旺季现场必须带上兑现期限，且期限读的是 pr.inflate（不推测）。
-  const hotLine = buildForwardLine(hot.s, hot.id, cost);
   assert.match(hotLine, /还剩 2 天|今天是最后一天/, `旺季没说还剩几天：${hotLine}`);
   assert.match(hotLine, /得在旺季结束前踩到/, `旺季没说那几次要在期限前兑现：${hotLine}`);
   // 负对照：把期限那句删掉，「满 2 次」就会变回一个会过期的许诺 —— 上面两条必须同时红。
-  const noDeadline = hotLine.replace(/得在旺季结束前踩到；/, '');
+  // #3456：这句话中间现在可能夹着窗口容量那个括号（「…结束前踩到（这几天最多…）；」），
+  // 所以负对照不能只匹配「踩到；」这种紧邻形状 —— 那会让它对**当前的**句子失效，
+  // 变成一条永远通过的检查。改成从「得在旺季结束前踩到」到下一个「；」整段抹掉。
+  const noDeadline = hotLine.replace(/得在旺季结束前踩到[^；]*；/, '');
   assert.notEqual(noDeadline, hotLine, '负对照没生效：找不到那半句');
   assert.equal(/得在旺季结束前踩到/.test(noDeadline), false, '负对照没生效');
 
   // ⑥ #3446 第③条：同一屏上每个关键数只该出现一次（我自己写的「一个数只说一遍」）。
   // 上一版：2,800 出现 4 次、5,600 3 次，读者得从四个「2,800」里挑哪个是分母。
+  // #3450 / #3453：例子里一个数是当**操作数**用的（收回 = 次数×单价），与 ⑥ 要防的病
+  //（读者得从几个候选里挑分母）不是一回事。但**不能整句抹掉**（#3453 复核第 3 条指出的真雷）：
+  // 抹掉后例子里的错价与**第三个价**都绿 —— 那正是 ⑥ 该叫的地方。
+  // 所以改成**令牌级**：例子里只允许多次出现那几个被 ④b 复算过的数，不许出现任何价格串。
   for (const [name, line, nums] of [
     ['平常', line2, ['2,800']],
     ['旺季', hotLine, ['5,600', '2,800']],
   ]) {
+    const ex = /例：[^。]*。/.exec(line);
+    assert.ok(ex, `${name}屏上没有那笔例子 —— ⑥ 的例子检查就变成了空跑`);
+    // 例子内不许出现「多数钱」的价格串（2,800 / 5,600 / 11,200 之类）：它的四个数
+    //（次数、收回、剩余、剩余次数）都已由 ④b/④c 复算，再冒一个价就是多余的候选分母。
+    const priceInExample = /[\d,]{3,}/g;
+    const big = (ex[0].match(priceInExample) ?? []).filter(x => x !== '10,000');
+    // 例子里允许出现的钱只有「收回」与「剩」两个（已验算）；多余的一个都不许。
+    assert.ok(big.length <= 2, `${name}：例子里出现了多于两个金额（多出来的就是没验算的候选分母）：${ex[0]}`);
+    const prose = line.replace(/例：[^。]*。/, '');
     for (const n of nums) {
-      const c = line.split(n).length - 1;
-      assert.ok(c <= 2, `${name}屏上「${n}」出现了 ${c} 次（每个数最多两处：除法／提醒）：${line}`);
+      const c = prose.split(n).length - 1;
+      assert.ok(c <= 2, `${name}屏上（除法与提醒部分）「${n}」出现了 ${c} 次（每个数最多两处：除法／提醒）：${line}`);
     }
   }
 
@@ -477,15 +570,51 @@ test('#3446 回本次数只有一处 ceil 实现', () => {
         // 不按「所有 ceil」收 —— game.js:229 的 `ceil(n / 3)` 是分座位，与回本无关，
         // 把它算进来会让这条判据变成“改不动别人的代码”，那不叫判据。
         if (/Math\.ceil\(\s*(cost|spend|price)\s*\//.test(line)) {
-          hits.push(`${path.relative(ROOT, p)}:${i + 1}: ${line.trim()}`);
+          hits.push(`${path.relative(ROOT, p)}: ${line.trim()}`);
         }
       });
     }
   };
   walk(SRC);
-  assert.deepEqual(hits, [
-    'src/engine/payback.js:204: return Math.max(1, Math.ceil(cost / perRound));',
-  ], '回本次数的 ceil 不止一处 —— 改口径时它们会各自漂开（读到的：\n' + hits.join('\n') + '\n）');
+  // #3448 复核 C 条：这里原来把**行号**和**变量名**都钉进了期望值，于是两种真实回归漏过去：
+  //   · `const ceilAlias = Math.ceil;` 再 `Math.max(1, ceilAlias(cost / gain))`
+  //   · `const due = cost;` 再 `Math.max(1, Math.ceil(due / gain))`
+  //   两者都过了 36 条判据（我实测过），而那正是这条判据声称要防的「改口径时各自漂开」。
+  // 现在分两层：
+  //   ① 行为层 —— 同一个花费/增量，所有能出次数的地方必须返回同一个数；
+  //   ② 源码层 —— 不认变量名，只数「src 里除 payback.js 外还有没有 Math.ceil」。
+  // 期望值里**不带行号**：#3448 复核 C 条同时指出，钉行号会让「删掉三行无关注释」就假红
+  // （我自己刚把 204 移到 231，立刻红了一次）。这里只钉「文件 + 这条语句」的形状。
+  assert.deepEqual(hits, ['src/engine/payback.js: return Math.max(1, Math.ceil(cost / perRound));'],
+    '回本次数的 ceil 不止一处 —— 改口径时它们会各自漂开（读到的：\n' + hits.join('\n') + '\n）；'
+    + '注意这一层只认 cost/spend/price 作分子，换名字或换别名的重实现由下面的行为层兜住');
+
+  // ② 不认名字：src 里任何 Math.ceil 都必须在 payback.js 里。
+  // 这条抓的是「换变量名/换别名」的写法 —— 正则层看不见它们。
+  const ceilOutside = [];
+  const walk2 = dir => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { walk2(p); continue; }
+      if (!e.name.endsWith('.js')) continue;
+      readFileSync(p, 'utf8').split(/\r?\n/).forEach((line, i) => {
+        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+        if (!/Math\.ceil|\.ceil\(/.test(line)) return;
+        const rel = path.relative(ROOT, p);
+        // 允许：payback.js（唯一实现）、以及与非回本无关的两处已登记位置。
+        if (rel === 'src/engine/payback.js') return;
+        // 两处已登记的非回本 ceil（分座位 / 补给日）。空白不敏感：
+        // 我第一版写死了 `n / 3` 的空格，而源码是 `state.day/3`，于是假红一次。
+        if (rel === 'src/engine/game.js' && /ceil\(\s*n\s*\/\s*3\s*\)/.test(line)) return;
+        if (rel === 'src/ui/slice.js' && /ceil\(\s*state\.day\s*\/\s*3\s*\)/.test(line)) return;
+        ceilOutside.push(`${rel}:${i + 1}: ${line.trim()}`);
+      });
+    }
+  };
+  walk2(SRC);
+  assert.deepEqual(ceilOutside, [],
+    'payback.js 以外又出现了 ceil —— 换名字/换别名正是上一版判据看不见的那种重实现：\n'
+    + ceilOutside.join('\n') + '\n');
   // 负对照：上一版那两处（slice.js / flow.js）都用了 cost 作分子，
   // 所以同一个正则吃得到它们 —— 否则这条判据是空跑。
   for (const old of [

@@ -1,6 +1,6 @@
 import { SLICE_CARDS } from '../data/slice.js';
 import { assetsOf, rentFor, buyPrice, buildCost, cheapestBuyable } from '../engine/economy.js';
-import { poolShareLine, poolKLine, paybackAccount, seasonTerms, roundsToRecover } from '../engine/payback.js';
+import { poolShareLine, poolKLine, paybackAccount, seasonTerms, seasonLength, roundsToRecover } from '../engine/payback.js';
 import { supplyWorth } from '../engine/insight.js';
 import { streetBusinessStatus } from '../engine/flow.js';
 import { MARKET_LEDGER, MARKET_PLOT as LEDGER_MARKET_PLOT, holdLeversFacts, bigBuildCost } from '../engine/market-ledger.js';
@@ -939,12 +939,14 @@ export function buildForwardLine(state, plotId, cost) {
   // 现在的主句只陈述本盘实测的两个数：这一笔占整局全场租金多少、有几局的整局租金还不够这一笔。
   // K 句逐字保留在上界的位置（#993 已签的不变量：不许写成「才够本/至少要」，
   // 因为 grow/7 街心书屋 K=4 却在 2 次足额 + 1 次少付时就收回 37,000）。
-  const share = poolShareLine(cost, plot.name);
+  // #3450：这里紧跟着会印 0/1/2+ 分布，所以池子句不再重复那句「平均每局被踩 X 次」（同一个统计两遍）。
+  const share = poolShareLine(cost, plot.name, { withHits: false });
   // #3391zp2：把 cost 传进去 —— 确认框里那句除法（花费 ÷ 每次多收）与流水行同源。
   // 上一版只传 (unit, K, full)，于是屏上有全额、却没有「拿哪个数去除」；
   // supervisor 重走 seed 3 时正是拿 4,000 去除了 10,000。
   // #3391zp3：把季节那两句也接上 —— 这一笔若是旺季价，读者必须知道旺季结束后要几次。
-  const kLine = poolKLine(info.unit, info.K, info.after, cost, seasonTerms(state, plotId, info.level));
+  // seasonLength 现读（不写死）：平常那一支要靠它说清「旺季只有几天，那几次得在这几天里踩到」。
+  const kLine = poolKLine(info.unit, info.K, info.after, cost, seasonTerms(state, plotId, info.level), seasonLength(state));
   return `${share}${dist}${kLine}`
     + `这句不是“会有人来”的预测。`;
 }
