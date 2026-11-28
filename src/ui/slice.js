@@ -1406,8 +1406,98 @@ export function nextGameLine(state) {
   return '这一局你既没付过租也没收过租：换个起手，走一条会踩到别人地盘的路。';
 }
 
+// Only describe actions the player actually executed. In particular, choosing a
+// fixed step is not moving (it can be held across an operating turn).
+export function sliceRecapMoments(state, human) {
+  const plots = new Map(state.map.plots.map(plot => [plot.name, plot]));
+  const mine = `${human.name} `;
+  const purchases = [], closures = [], renovations = [], seasons = [];
+  const seasonByStreet = new Map();
+  const rentByPlot = new Map();
+  for (const {day, playerId, lines} of state.slice.history) {
+    const closed = new Set();
+    let inSeason;
+    let fixed;
+    for (const line of lines) {
+      const season = /^.+? 使用 旺季 → (.+?)，租金翻倍 3 天$/.exec(line);
+      if (season) {
+        const window = {day, playerId, street:season[1], amount:0, hits:0, plots:new Set()};
+        seasonByStreet.set(window.street, window);
+        if (playerId === human.id) seasons.push(window);
+      }
+      const owed = / 应付租金 \d+（([^）]+)）(.*)$/.exec(line);
+      if (owed) inSeason = owed[2].includes('旺季翻倍') ? owed[1] : null;
+      // Use settled transfers, including partial payments. The actual payer may
+      // go bust. Another card on the same street replaces the current window.
+      const transfer = /^.+? 实付租金 (\d+)（([^）]+)），(.+?) 收到 (\d+)/.exec(line);
+      if (transfer && transfer[3] === human.name && +transfer[4] > 0) {
+        const plot = plots.get(transfer[2]);
+        const amount = +transfer[4];
+        const rent = rentByPlot.get(transfer[2]) ?? [];
+        rent.push({day, amount});
+        rentByPlot.set(transfer[2], rent);
+        const active = seasonByStreet.get(plot?.street);
+        if (plot?.name === inSeason && active?.playerId === human.id && day < active.day+3) {
+          active.amount += amount;
+          active.hits++;
+          active.paidDay = day;
+          active.plots.add(plot.name);
+        }
+      }
+      if (transfer) inSeason = null;
+      if (playerId !== human.id) continue;
+      const step = /^定步生效：本回合走 ([1-6]) 步$/.exec(line);
+      if (step) fixed = Number(step[1]);
+      if (!line.startsWith(mine)) continue;
+      const action = line.slice(mine.length);
+      const close = /^使用 停业 → (.+?)，停租 2 天$/.exec(action);
+      if (close) closed.add(close[1]);
+      const free = /^向 .+? 应付租金 0（([^）]+)） · 停业中，不计租$/.exec(action);
+      const street = free && plots.get(free[1])?.street;
+      if (street && closed.has(street)) {
+        closures.push({day, text:`你让${street}停业，走到${free[1]}旁没付租。`});
+      }
+      const bought = /^买下 (.+?)（支付 (\d+)）/.exec(action);
+      if (bought && plots.has(bought[1])) {
+        const [, name, cost] = bought;
+        purchases.push({day, fixed, plot:name, cost:+cost, market:plots.get(name).id === MARKET_PLOT});
+      }
+      const renovated = /^使用 翻修 → (.+?)，升到 (\d+) 级/.exec(action);
+      if (renovated && plots.has(renovated[1])) {
+        renovations.push({day, text:`你免费把${renovated[1]}升到 ${renovated[2]} 级。`});
+      }
+    }
+  }
+  // Keep at most two days: a time-gated purchase and one other concrete play.
+  // Don't label any selected event the cause of the player's rank.
+  const purchase = purchases.find(p => p.market && p.fixed) ?? purchases.find(p => p.market)
+    ?? purchases.find(p => p.fixed) ?? purchases[0];
+  const events = [purchase].filter(Boolean);
+  const seasonMoments = seasons.filter(w => w.amount > 0).sort((a,b) => b.amount-a.amount).map(w => {
+    const plot = w.plots.size === 1 ? [...w.plots][0] : null;
+    const name = plot ?? w.street;
+    const when = w.paidDay === w.day ? '当天' : `第 ${w.paidDay} 天`;
+    const text = w.hits > 1
+      ? `你开了旺季，从${name}实收 ${money(w.amount)}（${w.hits} 笔）。`
+      : `你打出旺季，${when}从${name}实收 ${money(w.amount)}。`;
+    return {day:w.day, plot, text};
+  });
+  for (const event of [...seasonMoments, ...closures, ...renovations, ...purchases]) {
+    if (events.length === 2) break;
+    if (!events.some(e => e.day === event.day)) events.push(event);
+  }
+  return events.sort((a,b) => a.day-b.day).map(({day, text, fixed, plot, cost}) => {
+    if (text) return {day, text};
+    const start = `你${fixed ? `用定步走 ${fixed} 步，` : ''}花 ${money(cost)} 买下${plot}`;
+    if (events.some(e => e.text && e.plot === plot)) return {day, text:`${start}。`};
+    const sum = (rentByPlot.get(plot) ?? []).reduce((total, row) => total+(row.day >= day ? row.amount : 0), 0);
+    return {day, text:`${start}，${sum ? `此后从它实收 ${money(sum)}` : '后来没收到它的租'}。`};
+  });
+}
+
 function recapTurn(turn) {
-  const details = turn.lines.filter(t=>!/回合|掷出|方向/.test(t)).join('<br>');
+  // The old broad “回合” filter also hid the exact step that made a purchase possible.
+  const details = turn.lines.filter(t => t.startsWith('定步生效：') || !/回合|掷出|方向/.test(t)).join('<br>');
   if (!turn.operatingReceipt) return `<p>第 ${turn.day} 天 · 资金 ${signed(turn.money)} / 资产 ${signed(turn.assets)}<br>${details}</p>`;
   return `<p data-operate-day="${turn.day}">第 ${turn.day} 天 · ${operatingAccount(turn)} / 资产 ${signed(turn.assets)}${details ? `<br>${details}` : ''}</p>`;
 }
@@ -1417,16 +1507,19 @@ export function sliceResults(state) {
   const human=state.players.find(p=>p.controller==='human')??rank[0];
   const winner=rank.find(p=>p.team===state.winnerTeam)??rank[0];
   const gap=assetsOf(state,winner)-assetsOf(state,human);
+  const moments=sliceRecapMoments(state,human);
   // #3278：390×844 实测，结算面板在 #hand 里只有 405px，排名表整块落在面板外
   // （首屏只露表头，三行名次与「再开一局」都在滚动区外，见 RESULT-3278.md 首屏截图）。
   // 玩家来这一屏要的就是「谁赢、差多少、再开一局」，所以把它们提到最前；
   // 差距走向、资产口径、回本明细这些解释放在后面，读不到也不影响做决定。
   return `<h3>${winner.name} 的生意做到了最后</h3><p>${human.team===state.winnerTeam?'你赢了。':`你与获胜者相差 ${money(gap)} 资产。`}${human.alive?'':'你的资金耗尽，提前破产。'}</p>
     <table class="rank"><thead><tr><th>店主</th><th>资金</th><th>地产</th><th>总资产</th></tr></thead><tbody>${rank.map(p=>`<tr><td>${p.name}${p.alive?'':'（破产）'}</td><td>${money(p.cash+p.deposit)}</td><td>${money(assetsOf(state,p)-p.cash-p.deposit)}</td><td>${money(assetsOf(state,p))}</td></tr>`).join('')}</tbody></table>
+    ${moments.length ? `<section class="slice-recap" aria-labelledby="slice-recap-title"><h4 id="slice-recap-title">这局，你做了什么</h4>${moments.map(({day,text})=>`<p><b>第 ${day} 天</b> · ${text}</p>`).join('')}</section>` : ''}
     ${gapTurningLine(state)}
     <p class="hint">资产 = 现金 + 存款 + 地产当前标价。收购会转移店铺，也会把收购款交给原主人；翻修每层增加估值，小店 4,000 / 书屋 8,000。</p>
     <p>你收租 ${money(human.sliceStats.rentEarned)}，付租 ${money(human.sliceStats.rentPaid)}，用了 ${human.sliceStats.cardsPlayed} 张卡，完成 ${human.sliceStats.takeovers} 次接盘。</p>
     ${stepPaybackSection(state)}
     <details><summary>回看你改变局面的回合</summary>${state.slice.history.filter(h=>h.playerId===human.id&&(h.operatingReceipt||h.cardsPlayed||h.money!==0)).map(recapTurn).join('')}</details>
-    <div class="next-bar"><p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p><button data-replay>换个打法，再开一局</button></div>`;
+    <p class="hint" data-next-game>下局试试：${nextGameLine(state)}</p>
+    <div class="next-bar"><button data-replay>换个打法，再开一局</button></div>`;
 }

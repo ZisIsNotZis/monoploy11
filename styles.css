@@ -193,6 +193,10 @@ button { font: inherit; }
 
 .rank { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; }
 .rank th, .rank td { border-bottom: 1px solid var(--line); padding: 3px 5px; text-align: left; }
+.slice-recap { margin: 12px 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.slice-recap h4 { margin: 0 0 5px; font-size: 14px; color: var(--gold); }
+#choice .slice-recap p { margin: 3px 0; }
+.slice-recap b { white-space: nowrap; }
 .big-msg { font-size: 14px; color: var(--gold); padding: 6px 0; }
 
 @media (max-width: 900px) { #desk { grid-template-columns: minmax(0, 1fr) 300px; } }
@@ -854,25 +858,9 @@ button { font: inherit; }
      滚动区底缘以下（实测 810.4..858.4，面板止于 844 ⇒ 被裁 14.4px，玩家只看到半个按钮）。
      所以把它们钉在滚动区底边：position:sticky + bottom:0 让它们在任何内容长度下都完整可见，
      且仍参与流式布局（不会盖住上面的数字段落）。背景与顶边只为不透明，避免正文透出来。 */
-  /* #3278：结算屏同样被 #hand 裁掉，但它的「下一步」只有一颗「再开一局」。
-     把按钮钉在滚动区底边，让玩家在读完名次表后不必再找它；
-     另给面板留出按钮高度（结算屏不挂溢出提示，padding 不会影响提示计数）。 */
-  /* #3337：结算屏底部是「一句话 + 一个提交」。真 390×844 实测（run-full OUT-3337b）：
-     那句「下局试试」在 754–792，而 sticky 的「再开一局」在 734–782 —— 按钮把它整块盖住。
-     这个遮挡在旧文案上就有，只是那句旧文案没有任何判据在读，所以一直没人看见
-     （读不到的一句建议等于没有）。
-     修法只动一处：把底部留白从 62px 抬到 116px，让那句话排在按钮下面而不是被它压住。
-     我先写过一个更重的版本（把句子自己也 position:sticky 钉到 bottom:56px），
-     负对照证明它不必要：撤掉那条规则、只留这份留白，句子仍在 754–792 且点得到。
-     实测代价：面板内容高 625、可视 519，本来就要滚 —— 留白增加不改变这一点。 */
-  /* #3338 真正修好上面那个遮挡：留白只能救**那一个**文案长度。
-     实测（support/probe-3338/settlement.mjs，三种结算形状）：rival 支 125 字、mineMax 支 133 字
-     都在按钮上方（留白够用）；而 nobody 支只有 102 字，反而落到按钮**中心**
-     （elementFromPoint 命中 BUTTON:replay）—— 越短的句子越容易被遮，留白治不了这件事。
-     根因是「一句话 + 一个提交」原本是两个独立元素：句子在流里，按钮 sticky 贴在底边，
-     两者谁压谁取决于面板内容高度。所以把这两件钉成一个条，整条 sticky：
-     任何分支的句子都带在按钮上方一起贴底，且都不脱离滚动几何。 */
-  #choice:not([hidden]):has([data-replay]) { padding-bottom: 8px; }
+  /* Keep the replay action in reach. Advice and receipts scroll with the result
+     so a long hint cannot crowd out the recap on a short screen. */
+  #choice:not([hidden]):has([data-replay]) { padding-bottom: 8px; scroll-padding-bottom: 56px; }
   #choice:not([hidden]):has([data-replay]) .next-bar {
     position: sticky;
     bottom: 0;
@@ -881,7 +869,6 @@ button { font: inherit; }
     background: var(--panel);
     box-shadow: 0 -1px 0 rgba(216, 161, 63, .35);
   }
-  #choice:not([hidden]):has([data-replay]) .next-bar [data-next-game] { margin: 6px 0; }
   #choice:not([hidden]):has([data-replay]) [data-replay] {
     display: block;
     width: 100%;
